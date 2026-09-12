@@ -1,0 +1,6 @@
+:root { color-scheme: light; background: #fafbf9; }
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+#world { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: grab; }
+#world:active { cursor: grabbing; }
+#world[data-camera="free"] { cursor: crosshair; }
