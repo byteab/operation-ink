@@ -18,7 +18,9 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `main.ts` | renderer, scene, orbit camera, rAF loop, hotkeys |
 | `weapons/models/` | individual gun builders and shared ink primitives; grip origin and local muzzle/ejection markers |
 | `weapons/guns.ts` | gun clips, firing/reload operations, moving parts, effects, interruption cleanup |
-| `weapons/support.ts` | analytic arm positioning for support grips and moving mechanisms |
+| `weapons/poses.ts` | solves authored weapon holds into fixed-length arm animation keys |
+| `weapons/support.ts` | analytic arm positioning, wrist orientation, and elbow direction for grips and moving mechanisms |
+| `weapons/dropped.ts` | released weapon fall, floor settling, and cleanup |
 
 ## Adding things (drop a file in, no edits to existing files)
 
@@ -57,7 +59,7 @@ export const actions: Action[] = [
 ```ts
 type Pose = Partial<Record<BoneName, [x, y, z, len?]>>   // degrees, bone-local, relative to REST; [0,0,0] = T-pose
 // len (optional, default 1) scales the bone's length for upper_arm/forearm/thigh: the child bone slides along it and the
-// shader compresses that bone's mesh along its axis (thickness unchanged). Use it to fit an arm to a prop, see guns.ts aim2.
+// shader compresses that bone's mesh along its axis (thickness unchanged). Weapon holds retain the rig's actual lengths.
 type Key = { t: number; pose: Pose; root?: [x, y, z]; ease?: 'linear' | 'smooth' }
 makeClip(name, keys, { loop?: boolean; duration?: number })
 ```
@@ -121,12 +123,49 @@ Arm corrections use `Player.adjustBones()` so the original animation pose is res
 This is necessary even for static poses: Three's mixer can skip unchanged track writes. The sniper retains its
 solved support arm during the bolt cycle, while the free hand follows the bolt handle.
 
+The loaded rig rebases each wrist 8 cm toward the visible hand and recalculates its inverse bind matrices, preserving
+the rest mesh. Grip contact is then 3.5 cm along hand-local +Y, inside the visible fist. Weapon poses solve the
+unchanged arm lengths with explicit wrist orientations and outward/downward elbow directions. Ordinary body clips
+receive a weapon carry correction; crossfades start from the last corrected arm pose. Entering a weapon action
+from movement interpolates the visible gun transform while maintaining hand contact. Equipping establishes a
+safe hold immediately, since the lab has no draw animation.
+Small guns use a relaxed thigh-level lowered hold, a softly extended aiming arm, and a nearly neutral wrist.
+Idle and walking carry reuse that lowered hold. The SMG receiver sits above the fist so its rear clears the forearm.
+Exported clips target this calibrated rig; use `loadStickman()` or apply its wrist rebinding when playing them elsewhere.
+
+Firing from a lowered stance or an ordinary movement animation raises the weapon before emitting the shot.
+`fire()` returns `null` while that raise is queued, and returns the actual muzzle ray for immediate aimed or hip
+shots. Raising preserves the selected aimed or hip hold, follows playback time, and can be interrupted like a reload.
+Manual cycling retains the selected aimed or hip stance.
+`readyToFire` indicates that `fire()` can emit immediately; scripted bursts wait for it across hold transitions.
+Lethal reactions release the weapon before the death pose starts. The prop falls and settles on the floor,
+following playback speed; equipping, holstering, or resetting the scene clears the dropped prop.
+
 For regression checks, start the dev server, open and reload `/lab.html` in agent-browser, then run from the project root:
 
 ```sh
 agent-browser eval --stdin < scripts/check-lab-guns.js
+agent-browser eval --stdin < scripts/check-lab-gun-poses.js
+agent-browser eval --stdin < scripts/check-lab-scenarios.js
+agent-browser eval --stdin < scripts/check-lab-dropped-guns.js
 ```
 
-Use the same `--session` flag as the browser session if one was supplied. The script checks the real rig, effects,
-mechanisms, pause behavior, switching, and hand attachment using deterministic simulation steps. It restores the
+Use the same `--session` flag as the browser session if one was supplied. The scripts check the real rig, effects,
+mechanisms, pause behavior, switching, and hand attachment using deterministic simulation steps. The pose checks
+also sample weapon surfaces against body interiors, derive fist contact from the mesh, and track movement between
+animation frames. Scenario checks cover patrol, alert, burst timing, and interruption. The scripts restore the
 selected weapon, stance, playback speed and crossfade afterward. `npm run build` verifies TypeScript and the production bundle.
+
+For visual checks, capture the six weapons in lowered, aimed, and hip positions:
+
+```sh
+agent-browser eval --stdin < scripts/capture-lab-guns.js
+agent-browser screenshot /tmp/gun-poses.png --full
+```
+
+Reload the page to remove the contact sheet. Before running the capture script, set
+`window.__gunCaptureOptions` with `view: 'front' | 'side' | 'three' | 'back'`,
+`mode: 'stances' | 'reload' | 'fire' | 'auto'`, optional `names`, `times` (seconds), and
+`stance: 'hip'`. For example, `{ mode: 'fire', names: ['shotgun', 'sniper'], times: [0.04, 0.4, 0.7] }`
+shows recoil and manual cycling. Inspect multiple views: correct attachment coordinates alone cannot establish
+that the stock, receiver, wrists, and body have a convincing silhouette.

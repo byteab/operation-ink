@@ -54,7 +54,7 @@ export function buildPistol() {
     slide.add(box(0.007, 0.011, 0.014, [0.012, 0.118, -0.054], dark))
     slide.add(box(0.008, 0.014, 0.012, [0, 0.116, 0.153], dark))
     parts.slide = slide
-    slide.userData.grip = new THREE.Vector3(0, 0.112, -0.03)
+    slide.userData.grip = new THREE.Vector3(0.035, 0.142, -0.03)
     g.add(slide)
 
     // An open tube, front rim, and recessed bore avoid a solid plugged barrel.
@@ -108,7 +108,7 @@ export function buildRevolver() {
     }
     cylinder.add(tube(0.005, 0.011, [0, 0, 0.039], dark))
     parts.cylinder = cylinder
-    cylinder.userData.grip = new THREE.Vector3(-0.026, 0, 0)
+    cylinder.userData.grip = new THREE.Vector3(0.045, 0.015, 0)
     g.add(cylinder)
 
     g.add(box(0.026, 0.02, 0.129, [0, 0.076, 0.1435]))

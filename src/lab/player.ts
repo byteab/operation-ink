@@ -19,14 +19,23 @@ type RootTransition = {
   duration: number
 }
 
+type BoneTransition = {
+  from: Map<THREE.Bone, THREE.Quaternion>
+  elapsed: number
+  duration: number
+}
+
 // ponytail: single active action + crossfade. No additive layers; add when a feature needs one.
 export class Player {
   readonly mixer: THREE.AnimationMixer
   fade = 0.2
   current: THREE.AnimationAction | null = null
+  /** Changes on every playback command, including replaying the same cached action. */
+  revision = 0
   private finish: ((done: boolean) => void) | null = null
   private readonly hips: THREE.Bone | null
   private rootTransition: RootTransition | null = null
+  private boneTransition: BoneTransition | null = null
   private readonly adjustedBones = new Map<THREE.Bone, THREE.Quaternion>()
 
   constructor(root: THREE.Object3D) {
@@ -38,6 +47,8 @@ export class Player {
 
   /** Resolves `true` when a one-shot finishes (immediately for loops), `false` if interrupted by play/stop. */
   play(clip: THREE.AnimationClip, { fade = this.fade, once = false, loop = !once, speed = 1 }: PlayOpts = {}): Promise<boolean> {
+    this.revision++
+    const boneTransition = this.captureAdjustedPose(fade)
     this.restoreAdjustedBones()
     this.settle()
     const prev = this.current
@@ -54,6 +65,8 @@ export class Player {
       this.rootTransition = null
     }
     this.current = action
+    this.boneTransition = boneTransition
+    this.blendAdjustedPose(0)
     return loop ? Promise.resolve(true) : new Promise(resolve => { this.finish = resolve })
   }
 
@@ -63,11 +76,15 @@ export class Player {
   }
 
   stop(fade = this.fade) {
+    this.revision++
+    const boneTransition = this.captureAdjustedPose(fade)
     this.restoreAdjustedBones()
     if (fade > 0) this.current?.fadeOut(fade)
     else this.current?.stop()
     this.current = null
     this.rootTransition = null
+    this.boneTransition = boneTransition
+    this.blendAdjustedPose(0)
     this.settle()
   }
 
@@ -87,15 +104,38 @@ export class Player {
     this.restoreAdjustedBones()
     this.mixer.update(dt)
     const transition = this.rootTransition
-    if (!transition || !this.hips) return
+    if (transition && this.hips) {
+      // Hips position is the clip's foot-ground compensation. Letting the mixer
+      // blend two absolute hips tracks creates a third, usually too-low, height.
+      const t = Math.min(transition.action.time, transition.track.times[transition.track.times.length - 1])
+      const value = transition.interpolant.evaluate(Math.max(0, t))
+      this.hips.position.fromArray(value)
+      transition.elapsed += dt * this.mixer.timeScale
+      if (transition.elapsed >= transition.duration) this.rootTransition = null
+    }
+    this.blendAdjustedPose(dt)
+  }
 
-    // Hips position is the clip's foot-ground compensation. Letting the mixer
-    // blend two absolute hips tracks creates a third, usually too-low, height.
-    const t = Math.min(transition.action.time, transition.track.times[transition.track.times.length - 1])
-    const value = transition.interpolant.evaluate(Math.max(0, t))
-    this.hips.position.fromArray(value)
-    transition.elapsed += dt
-    if (transition.elapsed >= transition.duration) this.rootTransition = null
+  private captureAdjustedPose(duration: number): BoneTransition | null {
+    if (duration <= 0 || !this.adjustedBones.size) return null
+    return {
+      from: new Map([...this.adjustedBones.keys()].map(bone => [bone, bone.quaternion.clone()])),
+      elapsed: 0, duration,
+    }
+  }
+
+  private blendAdjustedPose(dt: number) {
+    const transition = this.boneTransition
+    if (!transition) return
+    transition.elapsed += dt * this.mixer.timeScale
+    const t = Math.min(1, transition.elapsed / transition.duration)
+    if (t >= 1) { this.boneTransition = null; return }
+    const weight = t * t * (3 - 2 * t)
+    // Crossfades only know animation tracks. Begin at the last rendered IK pose,
+    // so restoring the underlying arm keys cannot make a weapon jump on a clip change.
+    this.adjustBones([...transition.from.keys()], () => {
+      for (const [bone, from] of transition.from) bone.quaternion.slerp(from, 1 - weight)
+    })
   }
 
   private restoreAdjustedBones() {

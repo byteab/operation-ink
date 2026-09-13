@@ -165,6 +165,16 @@ export async function loadStickman(): Promise<Rig> {
   mesh.material = fill
   mesh.frustumCulled = false
 
+  // The source rig placed each wrist 8 cm before the visible hand end cap, inside the
+  // forearm. Move the joint to its base and rebind at rest: the silhouette is unchanged,
+  // but wrist rotation now bends the fist instead of the distal forearm.
+  for (const side of ['L', 'R']) {
+    const hand = root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(`hand.${side}`))
+    if (hand instanceof THREE.Bone) hand.position.y += 0.08
+  }
+  root.updateMatrixWorld(true)
+  mesh.skeleton.calculateInverses()
+
   const shell = new THREE.SkinnedMesh(mesh.geometry, outline)
   shell.bind(mesh.skeleton, mesh.bindMatrix)
   shell.frustumCulled = false

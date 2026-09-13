@@ -119,11 +119,31 @@
         assert(counts.flash - before.flash === 1 && counts.tracer - before.tracer === 1, 'Single shot emitted an incorrect number of muzzle effects.')
         assert(counts.shell - before.shell === (name === 'revolver' ? 0 : 1), 'Single shot/cycle emitted an incorrect number of shells.')
       })
-      await test(`${name}: same-frame equip and fire`, async () => {
+      await test(`${name}: same-frame equip, aim, and fire`, async () => {
         guns.equip(name)
+        guns.aim()
         checkRay(guns.fire(), guns.current)
         sampleEffects()
         await finish()
+      })
+      await test(`${name}: fire from lowered raises before emitting and respects pause`, async () => {
+        const model = await equip(name, 'down')
+        const before = { ...counts }
+        assert(guns.fire() === null, 'A lowered gun returned a ray before it was raised.')
+        assert(guns.busy, 'Raising for a shot did not mark the gun busy.')
+        sampleEffects()
+        assert(counts.flash === before.flash && counts.tracer === before.tracer, 'A lowered gun emitted effects before raising.')
+        await advance(0.08)
+        assert(counts.flash === before.flash, 'Raising emitted a shot prematurely.')
+        const clipTime = player.current.time, parts = partsState(model)
+        await step(10, 0)
+        assert(close(player.current.time, clipTime) && guns.busy, 'Pause advanced or finished the raise.')
+        assertParts(model, parts)
+        assert(counts.flash === before.flash, 'Paused raise emitted a shot.')
+        await finish()
+        assert(counts.flash - before.flash === 1 && counts.tracer - before.tracer === 1, 'Raising did not emit exactly one shot after resuming.')
+        assert(counts.shell - before.shell === (name === 'revolver' ? 0 : 1), 'Raised shot/cycle emitted the wrong shell count.')
+        assert(guns.stance === 'aim', 'Raised shot did not finish in aim stance.')
       })
       await test(`${name}: automatic-fire availability`, async () => {
         await equip(name)
@@ -132,6 +152,44 @@
         guns.toggleAuto()
         assert(guns.automatic === allowed, 'Automatic toggle accepted or rejected the wrong weapon.')
         if (allowed) guns.toggleAuto()
+      })
+    }
+
+    for (const name of ['pistol', 'sniper']) for (const cancel of ['lower', 'switch', 'holster']) {
+      await test(`${name}: ${cancel} cancels a pending raised shot`, async () => {
+        const old = await equip(name, 'down'), before = { ...counts }, rest = partsState(old)
+        guns.fire()
+        await advance(0.08)
+        if (cancel === 'switch') guns.equip('revolver')
+        else if (cancel === 'holster') guns.unequip()
+        else guns.lower()
+        await advance(1.5)
+        assert(!guns.busy, 'Canceled raise left the gun busy.')
+        assertParts(old, rest)
+        assert(counts.flash === before.flash && counts.shell === before.shell && counts.tracer === before.tracer, 'Canceled raise emitted a stale shot or shell.')
+        assert(guns.current?.userData.name === (cancel === 'switch' ? 'revolver' : cancel === 'holster' ? undefined : name), 'Canceled raise replaced a newer equipped weapon.')
+      })
+    }
+    for (const name of ['smg', 'ak']) {
+      await test(`${name}: automatic fire from lowered waits for the raise`, async () => {
+        await equip(name, 'down')
+        const before = counts.flash
+        guns.toggleAuto()
+        await advance(0.08)
+        assert(counts.flash === before, 'Automatic fire emitted before raising.')
+        await step(10, 0)
+        assert(counts.flash === before, 'Automatic raise emitted while paused.')
+        await advance(0.35)
+        assert(counts.flash > before && guns.automatic, 'Automatic fire did not begin after raising.')
+        guns.toggleAuto()
+        assert(!guns.automatic, 'Automatic fire did not stop.')
+        await equip(name, 'down')
+        const canceled = counts.flash
+        guns.toggleAuto()
+        await advance(0.08)
+        guns.lower()
+        await advance(0.8)
+        assert(counts.flash === canceled && !guns.automatic && !guns.busy, 'Canceled automatic raise emitted delayed shots.')
       })
     }
 
@@ -166,6 +224,7 @@
           const before = { ...counts }
           if (action === 'switch') {
             guns.equip('pistol')
+            guns.aim()
             checkRay(guns.fire(), guns.current)
             sampleEffects()
           } else guns.unequip()

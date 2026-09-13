@@ -31,11 +31,17 @@ function triggerGuard(rear: number, front: number, top: number, bottom: number) 
 }
 
 export function buildSmg(): Gun {
-  return gun('smg', 'pistol', false, [0, 0.061, 0.2325], [0.029, 0.073, 0.049], (g, parts) => {
+  const receiverLift = 0.025
+  return gun('smg', 'pistol', false, [0, 0.061 + receiverLift, 0.2325], [0.029, 0.073 + receiverLift, 0.049], (g, parts) => {
+    // Seat the receiver above the fist so its rear does not require a hooked wrist
+    // to clear the forearm. Barrel, sights, stock and charging handle move together.
+    const upper = new THREE.Group()
+    upper.position.y = receiverLift
+    g.add(upper)
     // A compact receiver with enough height and grip width to read beside the fist.
-    g.add(box(0.054, 0.067, 0.285, [0, 0.061, 0.039]))
-    g.add(box(0.049, 0.009, 0.226, [0, 0.099, 0.015], dark))
-    g.add(box(0.035, 0.1, 0.052, [0, -0.006, 0], dark, [-8, 0, 0]))
+    upper.add(box(0.054, 0.067, 0.285, [0, 0.061, 0.039]))
+    upper.add(box(0.049, 0.009, 0.226, [0, 0.099, 0.015], dark))
+    g.add(box(0.035, 0.125, 0.052, [0, 0.0065, 0], dark, [-8, 0, 0]))
     for (const x of [-0.019, 0.019]) {
       g.add(box(0.004, 0.054, 0.033, [x, -0.009, -0.002], metal, [-8, 0, 0]))
     }
@@ -52,38 +58,38 @@ export function buildSmg(): Gun {
     magazine.userData.grip = new THREE.Vector3(0, -0.1, 0)
     g.add(magazine)
 
-    g.add(triggerGuard(0.02, 0.092, 0.031, -0.023))
-    g.add(box(0.007, 0.027, 0.008, [0, 0.01, 0.043], metal, [-15, 0, 0]))
+    g.add(triggerGuard(0.02, 0.092, 0.056, -0.023))
+    g.add(box(0.007, 0.037, 0.008, [0, 0.025, 0.043], metal, [-15, 0, 0]))
 
     // Folded stock rails meet the rear hinge and receiver on both sides.
     for (const x of [-0.032, 0.032]) {
-      g.add(box(0.008, 0.009, 0.115, [x, 0.047, -0.06], dark))
-      g.add(box(0.009, 0.052, 0.012, [x, 0.065, -0.108], dark))
+      upper.add(box(0.008, 0.009, 0.115, [x, 0.047, -0.06], dark))
+      upper.add(box(0.009, 0.052, 0.012, [x, 0.065, -0.108], dark))
     }
-    g.add(box(0.068, 0.009, 0.012, [0, 0.089, -0.108], dark))
-    g.add(box(0.061, 0.02, 0.02, [0, 0.047, -0.012]))
+    upper.add(box(0.068, 0.009, 0.012, [0, 0.089, -0.108], dark))
+    upper.add(box(0.061, 0.02, 0.02, [0, 0.047, -0.012]))
 
-    g.add(tube(0.011, 0.076, [0, 0.061, 0.194], dark))
-    g.add(tube(0.017, 0.018, [0, 0.061, 0.185]))
-    g.add(tube(0.012, 0.013, [0, 0.061, 0.2255]))
-    g.add(tube(0.007, 0.001, [0, 0.061, 0.232], dark))
+    upper.add(tube(0.011, 0.076, [0, 0.061, 0.194], dark))
+    upper.add(tube(0.017, 0.018, [0, 0.061, 0.185]))
+    upper.add(tube(0.012, 0.013, [0, 0.061, 0.2255]))
+    upper.add(tube(0.007, 0.001, [0, 0.061, 0.232], dark))
 
     // Right-side port and top charging handle share the actual chamber location.
-    g.add(box(0.002, 0.025, 0.074, [0.0275, 0.073, 0.049], dark))
+    upper.add(box(0.002, 0.025, 0.074, [0.0275, 0.073, 0.049], dark))
     const bolt = new THREE.Group()
     bolt.position.set(0, 0.104, -0.01)
     bolt.add(box(0.011, 0.012, 0.02, [0, 0, 0]))
     bolt.add(box(0.029, 0.009, 0.025, [0, 0.009, 0], dark))
     parts.bolt = bolt
-    bolt.userData.grip = new THREE.Vector3(0, 0.009, 0)
-    g.add(bolt)
+    bolt.userData.grip = new THREE.Vector3(0.025, 0.044, 0)
+    upper.add(bolt)
     for (const z of [-0.081, 0.155]) {
-      g.add(box(0.024, 0.009, 0.019, [0, 0.103, z]))
+      upper.add(box(0.024, 0.009, 0.019, [0, 0.103, z]))
       for (const x of [-0.011, 0.011]) {
-        g.add(box(0.005, 0.022, 0.016, [x, 0.114, z], dark))
+        upper.add(box(0.005, 0.022, 0.016, [x, 0.114, z], dark))
       }
     }
-    g.add(box(0.006, 0.019, 0.008, [0, 0.112, 0.155]))
+    upper.add(box(0.006, 0.019, 0.008, [0, 0.112, 0.155]))
   })
 }
 
@@ -175,10 +181,10 @@ export function buildAk(): Gun {
     bolt.position.set(0.031, 0.089, 0.116)
     bolt.add(part(new THREE.CylinderGeometry(0.004, 0.004, 0.026, 8), metal, [0, 0, 0], [0, 0, 90]))
     bolt.add(box(0.012, 0.012, 0.02, [0.017, 0, 0], dark))
-    bolt.userData.grip = new THREE.Vector3(0.017, 0, 0)
+    bolt.userData.grip = new THREE.Vector3(0.035, 0.036, 0)
     parts.bolt = bolt
     g.add(bolt)
   })
-  result.userData.support = new THREE.Vector3(0, 0.033, 0.27)
+  result.userData.support = new THREE.Vector3(0, -0.005, 0.27)
   return result
 }

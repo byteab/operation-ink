@@ -66,13 +66,13 @@ export function buildShotgun() {
     g.add(box(0.006, 0.008, 0.009, [0, 0.101, 0.59]))
   })
   // Centre of the support palm just beneath the fore-end; follows the pump's Z offset.
-  g.userData.support = new THREE.Vector3(0, 0.007, 0.26)
+  g.userData.support = new THREE.Vector3(0, -0.005, 0.26)
   return g
 }
 
 export function buildSniper() {
   const muzzle: V = [0, 0.096, 0.8]
-  const g = gun('sniper', 'sniper', true, muzzle, [0.023, 0.1, 0.082], (g, parts) => {
+  const g = gun('sniper', 'sniper', true, muzzle, [-0.023, 0.1, 0.082], (g, parts) => {
     g.add(stock([
       [-0.25, -0.037], [-0.25, 0.07], [-0.176, 0.078], [-0.086, 0.067],
       [-0.045, 0.065], [0.01, 0.075], [0.105, 0.078], [0.307, 0.069],
@@ -86,7 +86,7 @@ export function buildSniper() {
     // Barrel shank overlaps the receiver and runs through the fore-end without a gap.
     g.add(tube(0.015, 0.067, [0, 0.096, 0.181], dark))
     barrel(g, 0.011, 0.179, muzzle[2], muzzle[1])
-    g.add(box(0.0015, 0.02, 0.065, [0.0225, 0.1, 0.082], dark))
+    g.add(box(0.0015, 0.02, 0.065, [-0.0225, 0.1, 0.082], dark))
     triggerGuard(g, 0.042, -0.006)
 
     const magazine = new THREE.Group()
@@ -116,12 +116,12 @@ export function buildSniper() {
     const bolt = new THREE.Group()
     bolt.position.set(0, 0.096, -0.025)
     bolt.add(tube(0.01, 0.15, [0, 0.002, 0.028]))
-    bolt.add(tube(0.005, 0.038, [0.029, 0, -0.012], metal, [0, 0, 90]))
-    bolt.add(part(new THREE.SphereGeometry(0.009, 10, 6), dark, [0.049, -0.004, -0.012]))
+    bolt.add(tube(0.005, 0.038, [-0.029, 0, -0.012], metal, [0, 0, 90]))
+    bolt.add(part(new THREE.SphereGeometry(0.009, 10, 6), dark, [-0.049, -0.004, -0.012]))
     parts.bolt = bolt
-    bolt.userData.grip = new THREE.Vector3(0.049, -0.004, -0.012)
+    bolt.userData.grip = new THREE.Vector3(-0.105, -0.002, -0.012)
     g.add(bolt)
   })
-  g.userData.support = new THREE.Vector3(0, 0.008, 0.26)
+  g.userData.support = new THREE.Vector3(0, -0.005, 0.26)
   return g
 }

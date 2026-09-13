@@ -182,6 +182,8 @@ export async function hitRegion(ctx: Ctx, region: Region, lethal: boolean) {
   const { player, clips: all } = ctx
   spray(ctx, hitBone[region], lethal ? (region === 'head' ? 1 : 0.7) : 0.2)
   if (lethal) {
+    // Release from the last visible hold before play() restores bones or starts the fall.
+    ctx.weapons.guns?.release?.()
     if (await player.play(deathOf[region], { once: true })) ctx.fx.blood?.pool?.(ctx.rig.bones.chest.getWorldPosition(new THREE.Vector3()), 6)
     return
   }
@@ -194,5 +196,9 @@ const regions: Region[] = ['head', 'body', 'arm', 'leg']
 export const actions: Action[] = [
   ...regions.map((r): Action => ({ group: 'Damage', label: `Flinch: ${r}`, run: ctx => hitRegion(ctx, r, false) })),
   ...regions.map((r, i): Action => ({ group: 'Damage', label: `Die: ${r}`, hotkey: String(i + 1), run: ctx => hitRegion(ctx, r, true) })),
-  { group: 'Damage', label: 'Die: from behind', hotkey: '5', run: async ctx => { spray(ctx, 'chest', 0.8); await ctx.player.play(dieBack, { once: true }) } },
+  { group: 'Damage', label: 'Die: from behind', hotkey: '5', run: async ctx => {
+    spray(ctx, 'chest', 0.8)
+    ctx.weapons.guns?.release?.()
+    await ctx.player.play(dieBack, { once: true })
+  } },
 ]
