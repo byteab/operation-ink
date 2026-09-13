@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import type { Action, Ctx } from '../registry'
+import { chooseStamp, createStampSurface, type StampKind } from './blood-stamps'
 
 /**
- * Flash-era stickman blood: thick droplets (one InstancedMesh + inverted-hull ink rim), persistent ground
- * decals (one InstancedMesh ring buffer, dark rim baked into vertex colours) and slowly growing pools.
+ * Airborne droplets, ink-on-paper ground splashes and slowly spreading pools.
+ * Ground marks share a procedural pigment atlas and one instanced ring buffer.
  * API lives on ctx.fx.blood (registered on first update / action).
  */
 export type Blood = {
@@ -14,7 +15,7 @@ export type Blood = {
   settings: { enabled: boolean; intensity: number; gore: 'low' | 'mid' | 'high' }
 }
 
-const MAX_DROPS = 800, MAX_DECALS = 400, MAX_POOLS = 32, POOL_BLOBS = 3
+const MAX_DROPS = 800, MAX_DECALS = 400, MAX_POOLS = 32
 const GRAVITY = 11, DRAG = 0.9, DROP_LIFE = 4
 const GORE = { low: 0.5, mid: 1, high: 1.8 } as const
 const DARK = new THREE.Color(0x5c0910), BRIGHT = new THREE.Color(0xd8141c), POOL = new THREE.Color(0x7d0d14)
@@ -30,36 +31,17 @@ let alive = 0
 const decalSerial = new Uint32Array(MAX_DECALS)
 let decalHead = 0, decalCount = 0, serial = 1
 
-// pools: [slot0..2, serial0..2, t, seconds, x, z, s0..2 target sizes, angle]
-type Pool = { slots: number[]; serials: number[]; t: number; seconds: number; x: number; z: number; sizes: number[]; angles: number[]; dx: number[]; dz: number[] }
+// A pool is one connected footprint, so growth never exposes overlapping oval rims.
+type Pool = { slot: number; serial: number; t: number; seconds: number; x: number; z: number; size: number; angle: number }
 const pools: Pool[] = []
 
 let drops: THREE.InstancedMesh | undefined, rim: THREE.InstancedMesh | undefined, decals: THREE.InstancedMesh | undefined
+let stamps: THREE.InstancedBufferAttribute
 
 // scratch — no per-frame allocation
 const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3()
 const v = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), c = new THREE.Color()
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
-
-function decalGeometry() {
-  // inner disc (vertex colour white → instance colour) + outer ring darkened (ink rim), lying flat on XZ
-  const inner = new THREE.CircleGeometry(0.8, 14), outer = new THREE.RingGeometry(0.78, 1, 14)
-  const g = new THREE.BufferGeometry()
-  const parts = [inner, outer], rimShade = [1, 0.42]
-  const positions: number[] = [], colors: number[] = [], index: number[] = []
-  let base = 0
-  parts.forEach((part, i) => {
-    const pa = part.getAttribute('position')
-    for (let k = 0; k < pa.count; k++) { positions.push(pa.getX(k), 0, -pa.getY(k)); colors.push(rimShade[i], rimShade[i], rimShade[i]) }
-    for (let k = 0; k < part.index!.count; k++) index.push(part.index!.getX(k) + base)
-    base += pa.count
-    part.dispose()
-  })
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-  g.setIndex(index)
-  return g
-}
 
 function init(ctx: Ctx) {
   if (drops) return
@@ -79,7 +61,9 @@ function init(ctx: Ctx) {
   rim.count = 0
   rim.frustumCulled = false
   rim.name = 'blood: droplet ink'
-  decals = instanced(decalGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, depthWrite: false, side: THREE.DoubleSide }), MAX_DECALS)
+  const surface = createStampSurface(MAX_DECALS)
+  stamps = surface.stamps
+  decals = instanced(surface.geometry, surface.material, MAX_DECALS)
   decals.renderOrder = 1
   decals.name = 'blood: decals'
   ctx.scene.add(drops, rim, decals)
@@ -98,11 +82,13 @@ function spawnDrop(x: number, y: number, z: number, vx: number, vy: number, vz: 
 }
 
 /** Write one decal into the ring buffer. Returns the slot. */
-function putDecal(x: number, z: number, sx: number, sz: number, angle: number, color: THREE.Color) {
+function putDecal(x: number, z: number, sx: number, sz: number, angle: number, color: THREE.Color, kind: StampKind = 'splash') {
   const slot = decalHead
   decalHead = (decalHead + 1) % MAX_DECALS
   decalCount = Math.min(decalCount + 1, MAX_DECALS)
   decalSerial[slot] = serial++
+  stamps.setXY(slot, chooseStamp(kind), Math.random() < 0.5 ? -1 : 1)
+  stamps.needsUpdate = true
   writeDecal(slot, x, z, sx, sz, angle)
   decals!.instanceColor!.setXYZ(slot, color.r, color.g, color.b)
   decals!.instanceColor!.needsUpdate = true
@@ -117,12 +103,13 @@ function writeDecal(slot: number, x: number, z: number, sx: number, sz: number, 
   decals!.instanceMatrix.needsUpdate = true
 }
 
-/** Main stain (optionally stretched along `angle`) plus a few satellite specks thrown around it. */
+/** Orient the footprint's long local Z axis along the incoming horizontal velocity. */
 function stain(x: number, z: number, r: number, streak: number, angle: number, color: THREE.Color, specks: number) {
-  putDecal(x, z, r * streak, r / Math.sqrt(streak), angle, color)
+  putDecal(x, z, r / Math.sqrt(streak), r * streak, angle, color)
   for (let i = 0; i < specks; i++) {
-    const a = angle + rand(-0.7, 0.7) + (Math.random() < 0.5 ? Math.PI : 0), d = r * rand(1.2, 2.6)
-    putDecal(x + Math.sin(a) * d, z + Math.cos(a) * d, r * rand(0.15, 0.4), r * rand(0.12, 0.3), a, color)
+    const a = streak > 1.15 ? angle + rand(-0.8, 0.8) : rand(0, Math.PI * 2)
+    const d = r * rand(1.6, 3) * Math.sqrt(streak), sr = r * rand(0.06, 0.19)
+    putDecal(x + Math.sin(a) * d, z + Math.cos(a) * d, sr, sr * rand(1, 1.8), a, color, 'drop')
   }
 }
 
@@ -147,22 +134,17 @@ const api: Blood = {
   },
   splat(worldPos, sz = 0.12) {
     if (!settings.enabled || !decals) return
-    c.copy(DARK).lerp(BRIGHT, rand(0.3, 0.9))
-    stain(worldPos.x, worldPos.z, sz, rand(1, 1.5), rand(0, Math.PI), c, 2 + Math.round(3 * GORE[settings.gore]))
+    c.copy(DARK).lerp(BRIGHT, rand(0.25, 0.6))
+    stain(worldPos.x, worldPos.z, sz, rand(1, 1.25), rand(0, Math.PI * 2), c, 2 + Math.round(3 * GORE[settings.gore]))
   },
   pool(worldPos, seconds) {
     if (!settings.enabled || !decals) return
     if (pools.length >= MAX_POOLS) pools.shift()
-    const pool: Pool = { slots: [], serials: [], t: 0, seconds, x: worldPos.x, z: worldPos.z, sizes: [], angles: [], dx: [], dz: [] }
-    const target = 0.22 * (0.7 + 0.3 * GORE[settings.gore]) * settings.intensity
-    for (let i = 0; i < POOL_BLOBS; i++) {
-      pool.sizes.push(target * (i === 0 ? 1 : rand(0.5, 0.8)))
-      pool.angles.push(rand(0, Math.PI))
-      pool.dx.push(i === 0 ? 0 : rand(-0.6, 0.6)); pool.dz.push(i === 0 ? 0 : rand(-0.6, 0.6))
-      pool.slots.push(putDecal(worldPos.x, worldPos.z, 0.01, 0.01, 0, POOL))
-      pool.serials.push(decalSerial[pool.slots[i]])
-    }
-    pools.push(pool)
+    const angle = rand(0, Math.PI * 2)
+    const slot = putDecal(worldPos.x, worldPos.z, 0.01, 0.01, angle, POOL, 'pool')
+    pools.push({ slot, serial: decalSerial[slot], t: 0, seconds: Math.max(0.001, seconds),
+      x: worldPos.x, z: worldPos.z, angle,
+      size: 0.3 * (0.7 + 0.3 * GORE[settings.gore]) * settings.intensity })
   },
   clear() {
     alive = 0; decalHead = 0; decalCount = 0; pools.length = 0
@@ -183,10 +165,11 @@ export function update(dt: number, ctx: Ctx) {
     age[i] += dt
     if (pos[i3 + 1] <= 0 || age[i] > DROP_LIFE) {
       if (pos[i3 + 1] <= 0) {
-        // stain: round drop, or a streak stretched along the horizontal velocity
+        // Glancing impacts stretch forward; harder vertical impacts spread wider.
         const hx = vel[i3], hz = vel[i3 + 2], h = Math.hypot(hx, hz)
-        const streak = THREE.MathUtils.clamp(1 + h * 0.45, 1, 3.2)
-        const r = size[i] * rand(2.8, 4.2)
+        const vertical = Math.abs(vel[i3 + 1])
+        const streak = THREE.MathUtils.clamp(1 + h / Math.max(1, vertical) * 0.85, 1, 2.6)
+        const r = size[i] * (2.4 + Math.min(vertical, 7) * 0.22) * rand(0.85, 1.15)
         c.setRGB(col[i3], col[i3 + 1], col[i3 + 2])
         stain(pos[i3], pos[i3 + 2], r, streak, h > 0.05 ? Math.atan2(hx, hz) : rand(0, Math.PI), c, Math.random() < 0.4 * GORE[settings.gore] ? 1 : 0)
       }
@@ -219,14 +202,9 @@ export function update(dt: number, ctx: Ctx) {
     const pool = pools[n]
     pool.t += dt
     const k = Math.min(1, pool.t / pool.seconds), grow = 0.1 + 0.9 * Math.sqrt(k)
-    let live = false
-    for (let i = 0; i < POOL_BLOBS; i++) {
-      const slot = pool.slots[i]
-      if (decalSerial[slot] !== pool.serials[i]) continue
-      live = true
-      const r = pool.sizes[i] * grow
-      writeDecal(slot, pool.x + pool.dx[i] * r, pool.z + pool.dz[i] * r, r * 1.25, r * 0.9, pool.angles[i])
-    }
+    const live = decalSerial[pool.slot] === pool.serial
+    const r = pool.size * grow
+    if (live) writeDecal(pool.slot, pool.x, pool.z, r * 1.1, r, pool.angle)
     if (k >= 1 || !live) pools.splice(n, 1)
     else n++
   }
@@ -243,6 +221,7 @@ const cycle = <T,>(list: readonly T[], cur: T) => list[(list.indexOf(cur) + 1) %
 export const actions: Action[] = [
   { group: 'Blood', label: 'Test spray (chest)', hotkey: 'b', run: ctx => { init(ctx); api.spray(bone(ctx, 'chest', 0.12), dir.set(1, 0.5, -0.4), 0.8) } },
   { group: 'Blood', label: 'Test spray (head)', hotkey: 'h', run: ctx => { init(ctx); api.spray(bone(ctx, 'head', 0.1), dir.set(0.4, 1, -0.3), 1) } },
+  { group: 'Blood', label: 'Ground splash test', run: ctx => { init(ctx); api.splat(hit.set(0.45, 0, 0.35), 0.2) } },
   { group: 'Blood', label: 'Pool test', run: ctx => { init(ctx); api.pool(bone(ctx, 'chest'), 4) } },
   { group: 'Blood', label: 'Clear blood', run: ctx => { init(ctx); api.clear() } },
   { group: 'Blood', get label() { return `Blood: ${settings.enabled ? 'on' : 'off'}` }, run() { settings.enabled = !settings.enabled; relabel('Blood:', this.label) } },
