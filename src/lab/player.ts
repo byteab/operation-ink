@@ -27,6 +27,7 @@ export class Player {
   private finish: ((done: boolean) => void) | null = null
   private readonly hips: THREE.Bone | null
   private rootTransition: RootTransition | null = null
+  private readonly adjustedBones = new Map<THREE.Bone, THREE.Quaternion>()
 
   constructor(root: THREE.Object3D) {
     this.mixer = new THREE.AnimationMixer(root)
@@ -37,6 +38,7 @@ export class Player {
 
   /** Resolves `true` when a one-shot finishes (immediately for loops), `false` if interrupted by play/stop. */
   play(clip: THREE.AnimationClip, { fade = this.fade, once = false, loop = !once, speed = 1 }: PlayOpts = {}): Promise<boolean> {
+    this.restoreAdjustedBones()
     this.settle()
     const prev = this.current
     const action = this.mixer.clipAction(clip)
@@ -61,6 +63,7 @@ export class Player {
   }
 
   stop(fade = this.fade) {
+    this.restoreAdjustedBones()
     if (fade > 0) this.current?.fadeOut(fade)
     else this.current?.stop()
     this.current = null
@@ -69,7 +72,19 @@ export class Player {
   }
 
   setSpeed(s: number) { this.mixer.timeScale = s }
+
+  /** Apply a temporary pose correction after animation, keeping the first unadjusted pose. */
+  adjustBones(bones: readonly THREE.Bone[], adjust: () => void) {
+    for (const bone of bones) {
+      if (!this.adjustedBones.has(bone)) this.adjustedBones.set(bone, bone.quaternion.clone())
+    }
+    adjust()
+  }
+
   update(dt: number) {
+    // The mixer skips writes when a track's value is unchanged. Restore its original
+    // output before evaluation so frame-local IK cannot become the next pose's input.
+    this.restoreAdjustedBones()
     this.mixer.update(dt)
     const transition = this.rootTransition
     if (!transition || !this.hips) return
@@ -81,6 +96,11 @@ export class Player {
     this.hips.position.fromArray(value)
     transition.elapsed += dt
     if (transition.elapsed >= transition.duration) this.rootTransition = null
+  }
+
+  private restoreAdjustedBones() {
+    for (const [bone, quaternion] of this.adjustedBones) bone.quaternion.copy(quaternion)
+    this.adjustedBones.clear()
   }
 
   private makeRootTransition(action: THREE.AnimationAction, duration: number): RootTransition | null {

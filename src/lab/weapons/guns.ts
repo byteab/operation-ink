@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { makeClip, type BoneVal, type Key, type Pose } from '../clip'
 import { hang } from '../clips/idle'
 import type { Action, Ctx } from '../registry'
-import { builders, type Gun, type GunClass, type GunName } from './models'
+import { builders, disposeGun, type Gun, type GunClass, type GunName } from './models'
+import { placeHand, supportHand } from './support'
 
 /*
  * Guns held in hand.R. Mount maps the gun frame (+Z barrel, +Y up, +X right side) into hand.R's rest-local
@@ -37,23 +38,23 @@ const recoil2: Pose = { chest: [1, -8, 0], head: [-2, 15, 0], 'upper_arm.R': [-4
 // Hip fire (AK): rifle at the waist, body bladed 20°.
 const hip2: Pose = {
   hips: [0, -20, 0], spine: [0, -4, 0], chest: [2, -6, 0], head: [4, 18, 0],
-  'upper_arm.R': [-73, 14, 50], 'forearm.R': [0, 14, 69], 'hand.R': [14, 0, 11],
-  'upper_arm.L': [-81, -58, -6], 'forearm.L': [0, -3, -15], 'hand.L': [0, 0, -45],
+  'upper_arm.R': [-80.82, -3.45, 45.94], 'forearm.R': [-4.13, 7.65, 123.26], 'hand.R': [23.79, 1.19, -24.78],
+  'upper_arm.L': [-86.51, -38.04, -2.75], 'forearm.L': [-1.07, -1.09, -77.04], 'hand.L': [4.16, 1.86, -3.06],
   'thigh.L': [-8, 0, 0], 'thigh.R': [6, 0, -6], 'shin.L': [8, 0, 0],
 }
-const recoilHip: Pose = { 'upper_arm.R': [-70, 14, 50], 'upper_arm.L': [-78, -58, -6], chest: [0, -6, 0] }
+const recoilHip: Pose = { 'upper_arm.R': [-78.32, -3.45, 45.94], 'upper_arm.L': [-84.01, -38.04, -2.75], chest: [0, -6, 0] }
 // Low ready: rifle held diagonally across the body, muzzle down-left.
 const lowReady: Pose = {
   chest: [2, -8, 0], head: [0, 8, 0],
-  'upper_arm.R': [-86, 12, 20], 'forearm.R': [0, -19, 46], 'hand.R': [-9, 0, 23],
-  'upper_arm.L': [-91, -37, 0], 'forearm.L': [0, -42, -23], 'hand.L': [-45, 0, -45],
+  'upper_arm.R': [-88.1, -1.24, 19.32], 'forearm.R': [-0.86, -20.99, 143.91], 'hand.R': [-34.08, -7.59, -56.23],
+  'upper_arm.L': [-92.73, -29.94, -0.28], 'forearm.L': [-1.13, -40.81, -74.5], 'hand.L': [-17.12, 14.15, -8.13],
 }
 
 // Reloads: the gun stays in hand.R; the left hand does the work. Left-arm keys were solved against gun-local
 // points (mag well, slide, charging handle...) so they land on the model.
 type Arm = [BoneVal, BoneVal, BoneVal]   // upper_arm, forearm, hand
 const armL = (base: Pose, [u, f, h]: Arm): Pose => ({ ...base, 'upper_arm.L': u, 'forearm.L': f, 'hand.L': h })
-const chestHold: Pose = { ...hang, chest: [6, 0, 0], head: [22, -6, 0], 'upper_arm.R': [-43, 47, 51], 'forearm.R': [0, 38, 70], 'hand.R': [17, 0, 12] }
+const chestHold: Pose = { ...hang, chest: [6, 0, 0], head: [22, -6, 0], 'upper_arm.R': [-124.47, 45.83, -9.6], 'forearm.R': [-137.96, 78.04, 29.95], 'hand.R': [106.42, 14.32, -113.77] }
 const reloadPistol: Key[] = [
   { t: 0, pose: chestHold },
   { t: 0.35, pose: armL(chestHold, [[-95, -61, -12], [0, -9, -37], [-33, 0, -45]]) },  // hand.L on the mag
@@ -62,6 +63,15 @@ const reloadPistol: Key[] = [
   { t: 1.35, pose: armL(chestHold, [[-97, -64, -24], [0, 17, -80], [-45, 0, 36]]) },   // hand.L over the slide
   { t: 1.55, pose: armL(chestHold, [[-97, -52, -30], [0, 11, -94], [-42, 0, 44]]) },   // rack back
   { t: 1.9, pose: chestHold },
+]
+// Load at the cylinder without the pistol's magazine swap and slide rack.
+const cylinderHold = armL(chestHold, [[-94, -64, -19], [0, 6, -53], [-25, 0, -30]])
+const reloadRevolver: Key[] = [
+  { t: 0, pose: chestHold }, { t: 0.35, pose: cylinderHold },
+  { t: 0.7, pose: cylinderHold },
+  { t: 1.1, pose: armL(chestHold, [[-79, 30, 15], [0, -79, -118], [45, 0, 45]]) },
+  { t: 1.5, pose: cylinderHold }, { t: 1.9, pose: cylinderHold },
+  { t: 2.2, pose: chestHold },
 ]
 const reloadAk: Key[] = [
   { t: 0, pose: lowReady },
@@ -106,6 +116,8 @@ const bolt: Key[] = [
 ]
 
 const still = (name: string, pose: Pose) => makeClip(name, [{ t: 0, pose }], { loop: true, duration: 1 })
+const hip1: Pose = { ...hang, chest: hip2.chest, spine: hip2.spine, hips: hip2.hips,
+  'upper_arm.R': hip2['upper_arm.R'], 'forearm.R': hip2['forearm.R'], 'hand.R': hip2['hand.R'] }
 const shot = (name: string, base: Pose, kick: Pose, dur: number, loop = false) =>
   makeClip(name, [{ t: 0, pose: base }, { t: 0.04, pose: { ...base, ...kick }, ease: 'linear' }, { t: dur, pose: base }], { loop, duration: dur })
 
@@ -113,33 +125,45 @@ export const clips = {
   gun_aim1: still('gun_aim1', aim1), gun_fire1: shot('gun_fire1', aim1, recoil1, 0.16), gun_auto1: shot('gun_auto1', aim1, recoil1, 0.08, true),
   gun_aim2: still('gun_aim2', aim2), gun_fire2: shot('gun_fire2', aim2, recoil2, 0.2), gun_auto2: shot('gun_auto2', aim2, recoil2, 0.1, true),
   gun_hip: still('gun_hip', hip2), gun_fireHip: shot('gun_fireHip', hip2, recoilHip, 0.2), gun_autoHip: shot('gun_autoHip', hip2, recoilHip, 0.1, true),
+  gun_hip1: still('gun_hip1', hip1), gun_fireHip1: shot('gun_fireHip1', hip1, { 'upper_arm.R': recoilHip['upper_arm.R'] }, 0.18),
+  gun_autoHip1: shot('gun_autoHip1', hip1, { 'upper_arm.R': recoilHip['upper_arm.R'] }, 60 / 900, true),
   gun_lowReady: still('gun_lowReady', lowReady),
   gun_pump: makeClip('gun_pump', pump), gun_bolt: makeClip('gun_bolt', bolt),
   gun_reload_pistol: makeClip('gun_reload_pistol', reloadPistol), gun_reload_ak: makeClip('gun_reload_ak', reloadAk),
+  gun_reload_revolver: makeClip('gun_reload_revolver', reloadRevolver),
   gun_reload_shotgun: makeClip('gun_reload_shotgun', reloadShotgun), gun_reload_sniper: makeClip('gun_reload_sniper', reloadSniper),
 }
 
 // ---------------------------------------------------------------- state
 type Stance = 'down' | 'aim' | 'hip'
+type Operation = { gun: Gun; clip: THREE.AnimationClip | null; supportPose?: THREE.Quaternion[] }
 let ctx: Ctx
 let gun: Gun | null = null
 let stance: Stance = 'down'
 let auto = false
 let nextShot = 0
-let busy: Promise<void> | null = null   // fire/pump/bolt/reload in progress
+let busy: Operation | null = null
+let autoClip: THREE.AnimationClip | null = null
+let time = 0 // Follows playback speed, including pause.
 const RPM: Partial<Record<GunName, number>> = { smg: 900, ak: 600 }
-const SHELL: Record<GunClass, 'shot' | 'cycle' | 'none'> = { pistol: 'shot', ak: 'shot', shotgun: 'cycle', sniper: 'cycle' }
+const SHELL: Record<GunClass, 'shot' | 'cycle'> = { pistol: 'shot', ak: 'shot', shotgun: 'cycle', sniper: 'cycle' }
 
 const fx = new THREE.Group()
-type Fade = { obj: THREE.Object3D; t0: number; dur: number; opacity?: THREE.Material }
+fx.name = 'gun effects'
+type Fade = { obj: THREE.Sprite | THREE.Line; t0: number; dur: number }
 const fades: Fade[] = []
 type Shell = { obj: THREE.Mesh; vel: THREE.Vector3; spin: THREE.Vector3; t0: number }
 const shells: Shell[] = []
-type Kick = { obj: THREE.Object3D; axis: 'x' | 'y' | 'z'; base: number; amp: number; t0: number; dur: number }
-const kicks: Kick[] = []
-const timers: { at: number; fn: () => void }[] = []
+type Motion = {
+  obj: THREE.Object3D; property: 'position' | 'rotation'; axis: 'x' | 'y' | 'z'
+  base: number; amp: number; t0: number; dur: number; shape: 'kick' | 'hold' | 'step'
+}
+const motions: Motion[] = []
+const timers: { at: number; op: Operation; fn: () => void }[] = []
 const shellGeom = new THREE.CylinderGeometry(0.005, 0.005, 0.02, 8)
 const shellMat = new THREE.MeshBasicMaterial({ color: 0xd9b23c })
+const shotgunShellGeom = new THREE.CylinderGeometry(0.007, 0.007, 0.028, 10)
+const shotgunShellMat = new THREE.MeshBasicMaterial({ color: 0xa94e38 })
 const flashTex = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 64
   const g = c.getContext('2d')!
@@ -152,81 +176,128 @@ const flashTex = (() => {
 function restClip() { return gun?.userData.twoHanded ? clips.gun_lowReady : ctx.clips.idle ?? clips.gun_lowReady }
 function stanceClip(s: Stance) {
   if (s === 'down') return restClip()
-  if (s === 'hip') return clips.gun_hip
+  if (s === 'hip') return gun?.userData.twoHanded ? clips.gun_hip : clips.gun_hip1
   return gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1
 }
-function setStance(s: Stance) { stance = s; auto = false; ctx.player.play(stanceClip(s)) }
-function remount() { gun && (ctx.rig.bones['hand.R'].add(gun), gun.position.copy(MOUNT_POS), gun.quaternion.copy(MOUNT_Q)) }
+function remount(g = gun) {
+  if (!g) return
+  ctx.rig.bones['hand.R'].add(g)
+  g.position.copy(MOUNT_POS); g.quaternion.copy(MOUNT_Q)
+}
+function resetMechanisms() {
+  for (const m of motions) m.obj[m.property][m.axis] = m.base
+  motions.length = 0
+}
+function cancel() {
+  busy = null; auto = false; autoClip = null
+  timers.length = 0
+  resetMechanisms()
+  remount()
+}
+function setStance(s: Stance) {
+  cancel(); stance = s
+  ctx.player.play(stanceClip(s))
+}
 
-/** Muzzle origin + barrel direction in world space. */
-function muzzle() {
-  const g = gun!
+/** Muzzle origin + barrel direction in world space, including the current rig pose. */
+function muzzle(g: Gun) {
   g.updateWorldMatrix(true, false)
   const origin = g.localToWorld(g.userData.muzzle.clone())
-  const direction = g.localToWorld(g.userData.muzzle.clone().add(new THREE.Vector3(0, 0, 1))).sub(origin).normalize()
+  const direction = new THREE.Vector3(0, 0, 1).transformDirection(g.matrixWorld)
   return { origin, direction }
 }
 
-/** Spawn one shot's effects (no animation). Returns the shot ray. */
-function bang() {
-  const ray = muzzle()
-  const g = gun!
-  const size = g.userData.twoHanded ? 0.16 : 0.09
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false }))
-  flash.scale.setScalar(size); flash.position.copy(ray.origin).addScaledVector(ray.direction, size * 0.3)
-  fx.add(flash); fades.push({ obj: flash, t0: ctx.time, dur: 0.035 })
-  const tracerMat = new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true })
-  const tracer = new THREE.Line(new THREE.BufferGeometry().setFromPoints([ray.origin, ray.origin.clone().addScaledVector(ray.direction, 8)]), tracerMat)
-  fx.add(tracer); fades.push({ obj: tracer, t0: ctx.time, dur: 0.08, opacity: tracerMat })
-  if (SHELL[g.userData.cls] === 'shot') eject()
-  if (g.userData.parts.slide) kick(g.userData.parts.slide, 'z', -0.025, 0.07)
-  return ray
+/** Stable rest points prevent repeated shots from accumulating slide drift. */
+function move(obj: THREE.Object3D | undefined, axis: Motion['axis'], amp: number, dur: number,
+  shape: Motion['shape'] = 'kick', property: Motion['property'] = 'position') {
+  if (!obj) return
+  const previous = motions.findIndex(m => m.obj === obj && m.axis === axis && m.property === property)
+  const base = previous < 0 ? obj[property][axis] : motions.splice(previous, 1)[0].base
+  motions.push({ obj, axis, property, base, amp, dur, shape, t0: time })
 }
-function eject() {
-  const g = gun!
-  if (g.userData.name === 'revolver') return
-  const obj = new THREE.Mesh(shellGeom, shellMat)
-  obj.position.copy(g.localToWorld(g.userData.eject.clone()))
-  const right = g.localToWorld(g.userData.eject.clone().add(new THREE.Vector3(1, 0, 0))).sub(obj.position).normalize()
-  const vel = right.multiplyScalar(1.6 + Math.random() * 0.6).add(new THREE.Vector3((Math.random() - 0.5) * 0.4, 1.8 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4))
+function eject(g: Gun, point = g.userData.eject, revolver = false) {
+  if (g !== gun || (g.userData.name === 'revolver' && !revolver)) return
+  const isShotgun = g.userData.cls === 'shotgun'
+  const obj = new THREE.Mesh(isShotgun ? shotgunShellGeom : shellGeom, isShotgun ? shotgunShellMat : shellMat)
+  g.updateWorldMatrix(true, false)
+  obj.position.copy(g.localToWorld(point.clone()))
+  const right = new THREE.Vector3(revolver ? -0.4 : 1, 0, revolver ? -1 : 0).transformDirection(g.matrixWorld)
+  const vel = right.multiplyScalar(1.4 + Math.random() * 0.5).add(new THREE.Vector3(0, revolver ? -0.3 : 1.8, 0))
   obj.quaternion.copy(g.getWorldQuaternion(new THREE.Quaternion()))
   fx.add(obj)
-  shells.push({ obj, vel, spin: new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(30), t0: ctx.time })
+  shells.push({ obj, vel, spin: new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(30), t0: time })
 }
-/** Move `obj[axis]` by `amp` and back over `dur` seconds (slide, pump, bolt). */
-function kick(obj: THREE.Object3D, axis: 'x' | 'y' | 'z', amp: number, dur: number) {
-  kicks.push({ obj, axis, base: obj.position[axis], amp, t0: ctx.time, dur })
+function bang(g: Gun) {
+  const ray = muzzle(g)
+  const size = g.userData.twoHanded ? 0.16 : 0.1
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false }))
+  flash.scale.setScalar(size); flash.position.copy(ray.origin).addScaledVector(ray.direction, size * 0.3)
+  fx.add(flash); fades.push({ obj: flash, t0: time, dur: 0.04 })
+  const tracer = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([ray.origin, ray.origin.clone().addScaledVector(ray.direction, 8)]),
+    new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true }))
+  fx.add(tracer); fades.push({ obj: tracer, t0: time, dur: 0.08 })
+  if (SHELL[g.userData.cls] === 'shot') eject(g)
+  move(g.userData.parts.slide, 'z', -0.03, 0.06)
+  if (RPM[g.userData.name]) move(g.userData.parts.bolt, 'z', -0.025, 0.055)
+  move(g.userData.parts.cylinder, 'z', Math.PI / 3, 0.1, 'step', 'rotation')
+  move(g.userData.parts.hammer, 'x', -0.4, 0.1, 'kick', 'rotation')
+  return ray
 }
 
-// ---------------------------------------------------------------- actions
-async function run(job: () => Promise<void>) {
-  if (busy) return
-  busy = job().finally(() => { busy = null })
-  await busy
+function later(op: Operation, delay: number, fn: () => void) { timers.push({ at: time + delay, op, fn }) }
+function active(op: Operation) { return busy === op && gun === op.gun }
+async function play(op: Operation, clip: THREE.AnimationClip, fade = 0.05) {
+  if (!active(op)) return false
+  op.clip = clip
+  return await ctx.player.play(clip, { once: true, fade }) && active(op)
+}
+function run(job: (op: Operation) => Promise<void>) {
+  if (!gun || busy) return
+  const op: Operation = { gun, clip: null }
+  busy = op
+  void job(op).finally(() => {
+    if (!active(op)) return
+    busy = null
+    for (let i = timers.length - 1; i >= 0; i--) if (timers[i].op === op) timers.splice(i, 1)
+    resetMechanisms()
+    remount(op.gun)
+  })
 }
 
-/** One shot: recoil clip + fx, then the per-class cycle (pump / bolt). Returns the shot ray (null if unarmed or mid-cycle/reload). */
-function fire() {
-  if (!gun || busy) return null
+/** One shot and the required manual cycle. Ray is returned immediately in world space. */
+function fire(): ReturnType<typeof muzzle> | null {
+  if (!gun || busy || auto) return null
   if (stance === 'down') stance = 'aim'
-  const two = gun.userData.twoHanded
-  const clip = stance === 'hip' ? clips.gun_fireHip : two ? clips.gun_fire2 : clips.gun_fire1
-  const ray = bang()
-  // play() resolves false when something else (a death, a flinch) took over: don't fight it for the rig
-  void run(async () => {
-    if (!await ctx.player.play(clip, { once: true, fade: 0.03 })) return
-    if (stance === 'aim' && gun?.userData.cls === 'shotgun') {
-      kick(gun.userData.parts.pump, 'z', -0.07, 0.4)
-      const p = ctx.player.play(clips.gun_pump, { once: true, fade: 0.05 })
-      later(0.18, eject)
-      if (!await p) return
-    } else if (stance === 'aim' && gun?.userData.cls === 'sniper') {
-      ctx.rig.bones['hand.L'].attach(gun)
-      kick(gun.userData.parts.bolt, 'z', -0.04, 0.5)
-      const p = ctx.player.play(clips.gun_bolt, { once: true, fade: 0.05 })
-      later(0.35, eject)
-      const done = await p
-      remount()
+  const g = gun, two = g.userData.twoHanded
+  const clip = stance === 'hip' ? (two ? clips.gun_fireHip : clips.gun_fireHip1) : two ? clips.gun_fire2 : clips.gun_fire1
+  let ray: ReturnType<typeof muzzle> | null = null
+  run(async op => {
+    // Sample the firing pose before emitting, including a shot from low-ready.
+    const recoil = play(op, clip, 0)
+    ctx.player.update(0)
+    alignSupport()
+    ray = bang(g)
+    if (!await recoil) return
+    if (g.userData.cls === 'shotgun') {
+      // Hip shots still need a pump cycle; shoulder briefly to cycle the action.
+      const cycle = play(op, clips.gun_pump)
+      move(g.userData.parts.pump, 'z', -0.07, clips.gun_pump.duration)
+      later(op, 0.2, () => eject(g))
+      if (!await cycle) return
+    } else if (g.userData.cls === 'sniper') {
+      // Establish the shoulder pose before handing the rifle to the support hand.
+      ctx.player.play(clips.gun_aim2, { fade: 0 }); ctx.player.update(0); alignSupport()
+      op.supportPose = supportBones.map(name => ctx.rig.bones[name].quaternion.clone())
+      ctx.rig.bones['hand.L'].attach(g)
+      const cycle = play(op, clips.gun_bolt)
+      holdSupport(op)
+      later(op, 0.25, () => move(g.userData.parts.bolt, 'z', -0.04, 0.45))
+      later(op, 0.45, () => eject(g))
+      const done = await cycle
+      if (!active(op)) return
+      op.supportPose = undefined
+      remount(g)
       if (!done) return
     }
     ctx.player.play(stanceClip(stance), { fade: 0.08 })
@@ -235,43 +306,61 @@ function fire() {
 }
 
 function equip(name: GunName) {
+  if (!Object.hasOwn(builders, name)) return
   unequip()
   gun = builders[name]()
   remount()
   setStance('down')
 }
 function unequip() {
-  if (!gun) return
-  gun.removeFromParent(); gun = null; stance = 'down'; auto = false
+  cancel()
+  if (gun) disposeGun(gun)
+  gun = null; stance = 'down'
   ctx.player.play(ctx.clips.idle ?? clips.gun_lowReady)
 }
 function toggleAuto() {
-  if (!gun) return
-  auto = !auto
-  if (!auto) return ctx.player.play(stanceClip(stance))
+  if (!gun || busy || !RPM[gun.userData.name]) return
+  if (auto) {
+    auto = false; autoClip = null; resetMechanisms()
+    ctx.player.play(stanceClip(stance))
+    return
+  }
   if (stance === 'down') stance = 'aim'
-  nextShot = ctx.time
-  const two = gun.userData.twoHanded
-  autoClip = stance === 'hip' ? clips.gun_autoHip : two ? clips.gun_auto2 : clips.gun_auto1
-  ctx.player.play(autoClip, { fade: 0.05 })
+  auto = true; nextShot = time
+  autoClip = stance === 'hip'
+    ? (gun.userData.twoHanded ? clips.gun_autoHip : clips.gun_autoHip1)
+    : gun.userData.twoHanded ? clips.gun_auto2 : clips.gun_auto1
+  ctx.player.play(autoClip, { fade: 0, speed: autoClip.duration / (60 / RPM[gun.userData.name]!) })
+  ctx.player.update(0)
 }
 function reload() {
-  if (!gun) return
-  auto = false
-  const cls = gun.userData.cls
-  void run(async () => {
-    if (cls === 'sniper') {
-      ctx.rig.bones['hand.L'].attach(gun!); kick(gun!.userData.parts.bolt, 'z', -0.04, 0.5)
-      const done = await ctx.player.play(clips.gun_bolt, { once: true }); remount()
-      if (!done) return
+  if (!gun || busy) return
+  auto = false; autoClip = null; resetMechanisms()
+  const g = gun, name = g.userData.name
+  run(async op => {
+    const clip = name === 'revolver' ? clips.gun_reload_revolver : clips[`gun_reload_${g.userData.cls}`]
+    const reloading = play(op, clip)
+    if (name === 'revolver') {
+      later(op, 0.3, () => move(g.userData.parts.cylinder, 'x', -0.065, 1.65, 'hold'))
+      later(op, 0.8, () => {
+        for (let i = 0; i < 6; i++) {
+          const a = i * Math.PI / 3
+          eject(g, g.userData.eject.clone().add(new THREE.Vector3(-0.065 + Math.sin(a) * 0.019, Math.cos(a) * 0.019, 0)), true)
+        }
+      })
+    } else {
+      const magStart = name === 'pistol' || name === 'smg' ? 0.35 : 0.4
+      const magDuration = name === 'pistol' || name === 'smg' ? 0.65 : 0.8
+      later(op, magStart, () => move(g.userData.parts.magazine, 'y', name === 'smg' ? -0.17 : -0.12, magDuration, 'hold'))
+      if (name === 'pistol') later(op, 1.35, () => move(g.userData.parts.slide, 'z', -0.03, 0.3))
+      if (name === 'smg' || name === 'ak') later(op, 1.55, () => move(g.userData.parts.bolt, 'z', -0.035, 0.3))
     }
-    if (!await ctx.player.play(clips[`gun_reload_${cls}`], { once: true })) return
-    if (gun?.userData.parts.slide) kick(gun.userData.parts.slide, 'z', -0.025, 0.2)
+    if (!await reloading) return
     ctx.player.play(stanceClip(stance))
   })
 }
 
-/** ctx.weapons.guns — equip(name) / unequip() / current / fire() → { origin, direction } in world space. */
+/** ctx.weapons.guns — equip / unequip / fire / reload, plus observable state for the lab. */
 function api(c: Ctx) {
   ctx = c
   return (c.weapons.guns ??= {
@@ -280,8 +369,10 @@ function api(c: Ctx) {
     aim: () => gun && setStance('aim'), hip: () => gun && setStance('hip'), lower: () => gun && setStance('down'),
     get current() { return gun },
     get stance() { return stance },
-    /** dev helper: hold an arbitrary pose */
-    pose: (p: Pose) => ctx.player.play(still('gun_dev', p)),
+    get automatic() { return auto },
+    get busy() { return busy !== null },
+    get canAuto() { return !!gun && !!RPM[gun.userData.name] },
+    pose: (p: Pose) => { cancel(); ctx.player.play(still('gun_dev', p)) },
   })
 }
 
@@ -291,40 +382,108 @@ export const actions: Action[] = [
   { group: 'Weapons', label: 'Holster', run: c => api(c).unequip() },
   { group: 'Shooting', label: 'Aim', hotkey: 'a', run: c => api(c).aim() },
   { group: 'Shooting', label: 'Fire', hotkey: 'f', run: c => { api(c).fire() } },
-  { group: 'Shooting', label: 'Auto fire (hold)', run: c => api(c).toggleAuto() },
+  { group: 'Shooting', label: 'Auto fire (SMG / AK)', run: c => api(c).toggleAuto() },
   { group: 'Shooting', label: 'Hip fire', run: c => api(c).hip() },
   { group: 'Shooting', label: 'Reload', hotkey: 'l', run: c => api(c).reload() },
   { group: 'Shooting', label: 'Lower gun', run: c => api(c).lower() },
 ]
 
+const supported = new Set([
+  clips.gun_aim2, clips.gun_fire2, clips.gun_auto2, clips.gun_hip, clips.gun_fireHip,
+  clips.gun_autoHip, clips.gun_lowReady, clips.gun_pump,
+])
+const supportBones = ['upper_arm.L', 'forearm.L', 'hand.L'] as const
+const triggerBones = ['upper_arm.R', 'forearm.R', 'hand.R'] as const
+function holdSupport(op: Operation) {
+  if (!op.supportPose) return
+  ctx.player.adjustBones(supportBones.map(name => ctx.rig.bones[name]), () =>
+    supportBones.forEach((name, i) => ctx.rig.bones[name].quaternion.copy(op.supportPose![i])))
+}
+function alignSupport() {
+  if (!gun || !supported.has(ctx.player.current?.getClip() as THREE.AnimationClip)) return
+  const anchor = gun.userData.support?.clone()
+  if (anchor && gun.userData.parts.pump) anchor.z += gun.userData.parts.pump.position.z - 0.26
+  ctx.player.adjustBones(supportBones.map(name => ctx.rig.bones[name]), () => supportHand(ctx.rig, gun!, anchor))
+}
+
+function contact(part: THREE.Object3D | undefined, side: 'L' | 'R', weight: number) {
+  const grip = part?.userData.grip as THREE.Vector3 | undefined
+  if (!part || !grip || weight <= 0) return
+  part.updateWorldMatrix(true, false)
+  const target = part.localToWorld(grip.clone())
+  ctx.player.adjustBones((side === 'L' ? supportBones : triggerBones).map(name => ctx.rig.bones[name]),
+    () => placeHand(ctx.rig, side, target, weight))
+}
+function alignMechanisms() {
+  if (!busy || !gun) return
+  const t = ctx.player.current?.time ?? 0
+  const reach = (start: number, hold: number, release: number, end: number) =>
+    THREE.MathUtils.smoothstep(t, start, hold) * (1 - THREE.MathUtils.smoothstep(t, release, end))
+  const parts = gun.userData.parts
+  if (busy.clip === clips.gun_bolt) {
+    contact(parts.bolt, 'R', reach(0.12, 0.25, 0.7, 0.98))
+  } else if (busy.clip?.name.startsWith('gun_reload_')) {
+    if (gun.userData.name === 'revolver') {
+      contact(parts.cylinder, 'L', Math.max(reach(0.15, 0.35, 0.8, 1), reach(1.2, 1.45, 1.95, 2.15)))
+    } else if (gun.userData.name === 'shotgun') {
+      contact(parts.loadingPort, 'L', Math.max(...[0, 0.5, 1].map(offset => reach(0.45 + offset, 0.65 + offset, 0.72 + offset, 0.88 + offset))))
+    } else {
+      const small = gun.userData.cls === 'pistol'
+      contact(parts.magazine, 'L', small ? reach(0.15, 0.35, 1, 1.2) : reach(0.2, 0.4, 1.2, 1.4))
+      if (gun.userData.name === 'pistol') contact(parts.slide, 'L', reach(1.15, 1.35, 1.65, 1.85))
+      if (RPM[gun.userData.name]) contact(parts.bolt, 'L', reach(1.3, 1.55, 1.8, small ? 1.9 : 2.1))
+    }
+  }
+}
+
 export function update(dt: number, c: Ctx) {
   api(c)
   if (!fx.parent) c.scene.add(fx)
-  const t = c.time
-  for (let i = timers.length - 1; i >= 0; i--) if (t >= timers[i].at) timers.splice(i, 1)[0].fn()
-  if (auto && c.player.current?.getClip() !== autoClip) auto = false   // something else took the rig: stop shooting
-  if (auto && gun && !busy) {
-    const period = 60 / (RPM[gun.userData.name] ?? 400)
-    while (t >= nextShot) { bang(); nextShot += period }
+  const delta = dt * c.player.mixer.timeScale
+  time += delta
+  // Invalidate before delayed effects if another animation took the rig.
+  if (busy?.clip && c.player.current?.getClip() !== busy.clip) cancel()
+  // Keep the solved support grip when the bolt clip writes its original arm keys.
+  if (busy) holdSupport(busy)
+  if (auto && c.player.current?.getClip() !== autoClip) { auto = false; resetMechanisms() }
+  for (let i = timers.length - 1; i >= 0; i--) {
+    if (time < timers[i].at) continue
+    const timer = timers.splice(i, 1)[0]
+    if (active(timer.op)) timer.fn()
+  }
+  if (auto && gun && !busy && delta > 0 && time >= nextShot) {
+    const period = 60 / RPM[gun.userData.name]!
+    // Skip missed intervals instead of accumulating a burst after a stall.
+    bang(gun)
+    nextShot += (Math.floor((time - nextShot) / period) + 1) * period
   }
   for (let i = fades.length - 1; i >= 0; i--) {
-    const f = fades[i], u = (t - f.t0) / f.dur
-    if (u >= 1) { f.obj.removeFromParent(); fades.splice(i, 1); continue }
-    if (f.opacity) f.opacity.opacity = 1 - u
+    const f = fades[i], u = (time - f.t0) / f.dur
+    if (u >= 1) {
+      f.obj.removeFromParent()
+      if (f.obj instanceof THREE.Line) f.obj.geometry.dispose()
+      ;(f.obj.material as THREE.Material).dispose()
+      fades.splice(i, 1)
+    } else (f.obj.material as THREE.Material).opacity = 1 - u
   }
   for (let i = shells.length - 1; i >= 0; i--) {
     const s = shells[i]
-    if (t - s.t0 > 2) { s.obj.removeFromParent(); shells.splice(i, 1); continue }
-    s.vel.y -= 9.8 * dt
-    s.obj.position.addScaledVector(s.vel, dt)
-    s.obj.rotation.x += s.spin.x * dt; s.obj.rotation.z += s.spin.z * dt
-    if (s.obj.position.y < 0.01 && s.vel.y < 0) { s.obj.position.y = 0.01; s.vel.y *= -0.35; s.vel.x *= 0.6; s.vel.z *= 0.6; s.spin.multiplyScalar(0.5) }
+    if (time - s.t0 > 2) { s.obj.removeFromParent(); shells.splice(i, 1); continue }
+    s.vel.y -= 9.8 * delta
+    s.obj.position.addScaledVector(s.vel, delta)
+    s.obj.rotation.x += s.spin.x * delta; s.obj.rotation.z += s.spin.z * delta
+    if (s.obj.position.y < 0.01 && s.vel.y < 0) {
+      s.obj.position.y = 0.01; s.vel.y *= -0.35; s.vel.x *= 0.6; s.vel.z *= 0.6; s.spin.multiplyScalar(0.5)
+    }
   }
-  for (let i = kicks.length - 1; i >= 0; i--) {
-    const k = kicks[i], u = Math.min(1, (t - k.t0) / k.dur)
-    k.obj.position[k.axis] = k.base + k.amp * Math.sin(u * Math.PI)
-    if (u >= 1) kicks.splice(i, 1)
+  for (let i = motions.length - 1; i >= 0; i--) {
+    const m = motions[i], u = Math.min(1, (time - m.t0) / m.dur)
+    const weight = m.shape === 'step' ? u * u * (3 - 2 * u)
+      : m.shape === 'hold' ? Math.min(1, u / 0.25, (1 - u) / 0.25)
+      : Math.sin(u * Math.PI)
+    m.obj[m.property][m.axis] = m.base + m.amp * weight
+    if (u >= 1) motions.splice(i, 1)
   }
+  alignSupport()
+  alignMechanisms()
 }
-const later = (delay: number, fn: () => void) => timers.push({ at: ctx.time + delay, fn })
-let autoClip: THREE.AnimationClip | null = null

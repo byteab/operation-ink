@@ -16,6 +16,9 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `actions/scenario.ts` | game-like combos (shot → flinch/death + blood, armed patrol, alert + burst, reset) and "Export clips JSON" |
 | `panel.tsx` | preact panel: camera presets, speed/crossfade, action buttons, bone inspector |
 | `main.ts` | renderer, scene, orbit camera, rAF loop, hotkeys |
+| `weapons/models/` | individual gun builders and shared ink primitives; grip origin and local muzzle/ejection markers |
+| `weapons/guns.ts` | gun clips, firing/reload operations, moving parts, effects, interruption cleanup |
+| `weapons/support.ts` | analytic arm positioning for support grips and moving mechanisms |
 
 ## Adding things (drop a file in, no edits to existing files)
 
@@ -102,3 +105,28 @@ Mirror rule (verified exact on arms and legs): swap `.L`/`.R`, keep x, negate y 
   flat `MeshBasicMaterial`, no lights in the scene.
 - No additive layering in `Player`: one active action plus crossfade.
 - Hotkeys are ignored while a text input is focused; buttons blur themselves after click.
+
+## Guns
+
+Pistol and revolver silhouettes are about 26 cm long, with grips fitted to the existing fist. Each builder uses +Z
+for the barrel, +Y for up, and a grip-centred origin. `userData.muzzle` and `eject` are local effect markers;
+`support` places the support fist on a long gun. Animated `parts` can expose a local `userData.grip` for hand contact.
+
+Only SMG and AK support the automatic-fire toggle. Shotgun and sniper cycle after both aimed and hip shots.
+Revolver reload opens the cylinder and ejects six cases; magazine-fed guns move their magazines and charging parts.
+The lab has unlimited ammunition. All gun effects and mechanisms follow the playback speed and pause control.
+Changing stance, holstering, switching weapons, or interrupting the action cancels pending weapon work.
+
+Arm corrections use `Player.adjustBones()` so the original animation pose is restored before the next mixer update.
+This is necessary even for static poses: Three's mixer can skip unchanged track writes. The sniper retains its
+solved support arm during the bolt cycle, while the free hand follows the bolt handle.
+
+For regression checks, start the dev server, open and reload `/lab.html` in agent-browser, then run from the project root:
+
+```sh
+agent-browser eval --stdin < scripts/check-lab-guns.js
+```
+
+Use the same `--session` flag as the browser session if one was supplied. The script checks the real rig, effects,
+mechanisms, pause behavior, switching, and hand attachment using deterministic simulation steps. It restores the
+selected weapon, stance, playback speed and crossfade afterward. `npm run build` verifies TypeScript and the production bundle.
