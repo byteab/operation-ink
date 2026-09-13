@@ -3,5 +3,6 @@ import preact from '@preact/preset-vite'
 
 export default defineConfig({
   plugins: [preact()],
+  build: { rollupOptions: { input: { main: 'index.html', lab: 'lab.html' } } },
 })
 

@@ -1,0 +1,206 @@
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { palette } from '../render/ink'
+
+/**
+ * BONE AXIS CONVENTIONS — verified empirically in the lab bone inspector (2026-09-13).
+ *
+ * Pose values are [x, y, z] DEGREES applied on top of the REST pose (T-pose) in the bone's rest-local
+ * frame: rotate about rest X first, then rest Y, then rest Z (Three Euler order 'ZYX' == Blender's
+ * "XYZ", so numbers from the Blender handoff port unchanged). [0,0,0] = rest. Bone-local +Y always
+ * points along the bone. Facing: the character faces world +Z; .L bones are at world +X (screen-right
+ * in the "front" camera). Feet at y=0, head top ~1.74. Hips node rests at (0, 0.82, 0).
+ *
+ *   bone            X                                   Y                                  Z
+ *   upper_arm.L/R   - lowers arm from T-pose            with arm hanging (X=-80):          -90 swings the straight T-pose
+ *                   (-80 = hanging at side),            -90 swings hand FORWARD (+Z),      arm forward (+Z) horizontally;
+ *                   + raises it overhead                +90 backward; at T-pose = twist    + = backward
+ *   forearm.L       (hanging) -90 bends hand inward     twist                              -90 bends elbow, hand FORWARD (+Z)
+ *                   across the body                                                        (.R: +90)
+ *   hand.L          - = tip toward the palm side        twist                              - = tip forward (+Z) (.R: +)
+ *                   (same frame as forearm)
+ *   shoulder.L/R    same frame as upper_arm; owns no vertices, leave at 0 and pose upper_arm instead
+ *   thigh.L/R       + swings leg BACKWARD (-Z),         twist about the leg                + swings leg inward toward the
+ *                   - swings FORWARD (knee lift)                                           other leg, - outward (.R mirror)
+ *   shin.L/R        + bends the knee (heel goes         twist                              sideways (don't)
+ *                   back, -Z); never negative
+ *   hips/spine/     + leans FORWARD (+Z),               + turns toward the character's     + leans sideways toward the
+ *   chest/neck      - backward                          LEFT (+X), - right                 character's RIGHT (-X)
+ *   head            + nods down (nose forward/down)     + turns head to the LEFT (+X)      + tilts ear toward RIGHT shoulder
+ *
+ * Deviates from doc/HANDOFF-stickman.md: the head TURN is Y, not Z (Z tilts it sideways).
+ * Mirror rule (verified exact): swap .L/.R and use [x, -y, -z]. See clip.ts mirrorPose().
+ * GLTFLoader strips the dot from node names ("upper_arm.L" -> "upper_armL"); rest[bone].node has the real name.
+ */
+
+export const BONE_NAMES = [
+  'hips', 'spine', 'chest', 'neck', 'head',
+  'shoulder.L', 'shoulder.R', 'upper_arm.L', 'upper_arm.R', 'forearm.L', 'forearm.R', 'hand.L', 'hand.R',
+  'thigh.L', 'thigh.R', 'shin.L', 'shin.R',
+] as const
+export type BoneName = (typeof BONE_NAMES)[number]
+/** Bones whose length a pose may scale (4th pose value): the child bone slides along the parent, the shader compresses the parent's mesh. */
+export const STRETCH_CHILD: Partial<Record<BoneName, BoneName>> = {
+  'upper_arm.L': 'forearm.L', 'upper_arm.R': 'forearm.R', 'forearm.L': 'hand.L', 'forearm.R': 'hand.R', 'thigh.L': 'shin.L', 'thigh.R': 'shin.R',
+}
+
+export type Rig = {
+  root: THREE.Group
+  mesh: THREE.SkinnedMesh
+  bones: Record<BoneName, THREE.Bone>
+  /** Rest transform per bone. `node` is the sanitized Object3D name GLTFLoader gave it ("upper_arm.L" -> "upper_armL"); use it in track names. */
+  rest: Record<BoneName, { quat: THREE.Quaternion; pos: THREE.Vector3; node: string }>
+  resetPose(): void
+}
+
+/** Rest pose of the loaded rig. Set by loadStickman(); clip.ts reads it, so build clips after the rig loads. */
+export let rest: Rig['rest'] | undefined
+
+const fill = new THREE.MeshBasicMaterial({ color: palette.concrete })
+
+// Dual-quaternion skinning (Blender "Preserve Volume"): glTF only carries weights and Three.js skins with linear blending,
+// which collapses the elbow/shoulder at 90 deg and candy-wraps the upper arm on twist. Rewrites the three skinning chunks.
+// ponytail: assumes rigid bones (no scale); add column normalisation in dqRotOf if a bone ever scales.
+/** Per-bone axial stretch (pose length factors): bind-space bone axis and origin, origin.w = current stretch. */
+const DQ_MAX_BONES = 32
+export const dqUniforms = {
+  boneAxis: { value: Array.from({ length: DQ_MAX_BONES }, () => new THREE.Vector4(0, 1, 0, 0)) },
+  boneOrigin: { value: Array.from({ length: DQ_MAX_BONES }, () => new THREE.Vector4(0, 0, 0, 1)) },
+}
+const DQ_FUNCS = /* glsl */ `
+  uniform vec4 boneAxis[${DQ_MAX_BONES}];
+  uniform vec4 boneOrigin[${DQ_MAX_BONES}];
+  vec3 dqStretch1(vec3 p, int i) { vec4 o = boneOrigin[i]; vec3 a = boneAxis[i].xyz; return p + (o.w - 1.0) * dot(p - o.xyz, a) * a; }
+  vec3 dqStretch(vec3 p) {
+    return dqStretch1(p, int(skinIndex.x)) * skinWeight.x + dqStretch1(p, int(skinIndex.y)) * skinWeight.y
+         + dqStretch1(p, int(skinIndex.z)) * skinWeight.z + dqStretch1(p, int(skinIndex.w)) * skinWeight.w;
+  }
+  vec4 dqMul(vec4 a, vec4 b) { return vec4(a.w * b.xyz + b.w * a.xyz + cross(a.xyz, b.xyz), a.w * b.w - dot(a.xyz, b.xyz)); }
+  vec4 dqRotOf(mat4 m) {
+    float t = m[0][0] + m[1][1] + m[2][2]; vec4 q;
+    if (t > 0.0) { float s = sqrt(t + 1.0) * 2.0; q = vec4((m[1][2] - m[2][1]) / s, (m[2][0] - m[0][2]) / s, (m[0][1] - m[1][0]) / s, 0.25 * s); }
+    else if (m[0][0] > m[1][1] && m[0][0] > m[2][2]) { float s = sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2.0; q = vec4(0.25 * s, (m[1][0] + m[0][1]) / s, (m[2][0] + m[0][2]) / s, (m[1][2] - m[2][1]) / s); }
+    else if (m[1][1] > m[2][2]) { float s = sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2.0; q = vec4((m[1][0] + m[0][1]) / s, 0.25 * s, (m[2][1] + m[1][2]) / s, (m[2][0] - m[0][2]) / s); }
+    else { float s = sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2.0; q = vec4((m[2][0] + m[0][2]) / s, (m[2][1] + m[1][2]) / s, 0.25 * s, (m[0][1] - m[1][0]) / s); }
+    return normalize(q);
+  }
+  void dqAcc(mat4 m, float w, vec4 ref, inout vec4 r, inout vec4 d) {
+    vec4 q = dqRotOf(m); if (dot(q, ref) < 0.0) q = -q;
+    r += w * q; d += w * 0.5 * dqMul(vec4(m[3].xyz, 0.0), q);
+  }
+  vec3 dqRot(vec4 q, vec3 v) { return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v); }
+`
+const DQ_BLEND = /* glsl */ `
+  #ifdef USE_SKINNING
+    vec4 dqR = vec4(0.0), dqD = vec4(0.0), dqRef = dqRotOf(boneMatX);
+    dqAcc(boneMatX, skinWeight.x, dqRef, dqR, dqD); dqAcc(boneMatY, skinWeight.y, dqRef, dqR, dqD);
+    dqAcc(boneMatZ, skinWeight.z, dqRef, dqR, dqD); dqAcc(boneMatW, skinWeight.w, dqRef, dqR, dqD);
+    float dqLen = length(dqR); dqR /= dqLen; dqD /= dqLen;
+  #endif
+`
+const DQ_NORMAL = /* glsl */ `
+  #ifdef USE_SKINNING
+    objectNormal = mat3(bindMatrixInverse) * dqRot(dqR, mat3(bindMatrix) * objectNormal);
+  #endif
+`
+const DQ_VERTEX = /* glsl */ `
+  #ifdef USE_SKINNING
+    vec3 dqP = dqRot(dqR, dqStretch((bindMatrix * vec4(transformed, 1.0)).xyz)) + 2.0 * (dqR.w * dqD.xyz - dqD.w * dqR.xyz + cross(dqR.xyz, dqD.xyz));
+    transformed = (bindMatrixInverse * vec4(dqP, 1.0)).xyz;
+  #endif
+`
+export function dualQuaternionSkinning(vertexShader: string): string {
+  return vertexShader
+    .replace('#include <common>', '#include <common>' + DQ_FUNCS)
+    .replace('#include <skinbase_vertex>', '#include <skinbase_vertex>' + DQ_BLEND)
+    .replace('#include <skinnormal_vertex>', DQ_NORMAL)
+    .replace('#include <skinning_vertex>', DQ_VERTEX)
+}
+fill.onBeforeCompile = (shader) => { shader.vertexShader = dualQuaternionSkinning(shader.vertexShader); Object.assign(shader.uniforms, dqUniforms) }
+
+// Inverted-hull outline: back faces pushed out by `width` px along the skinned normal (same idea as ink.ts, plus skinning).
+const outline = new THREE.ShaderMaterial({
+  uniforms: { ink: { value: new THREE.Color(palette.ink) }, resolution: { value: new THREE.Vector2(1, 1) }, width: { value: 1.2 }, ...dqUniforms },
+  vertexShader: dualQuaternionSkinning(`
+    #include <common>
+    #include <skinning_pars_vertex>
+    uniform vec2 resolution;
+    uniform float width;
+    void main() {
+      #include <beginnormal_vertex>
+      #include <skinbase_vertex>
+      #include <skinnormal_vertex>
+      #include <begin_vertex>
+      #include <skinning_vertex>
+      vec4 view = modelViewMatrix * vec4(transformed, 1.0);
+      vec4 clip = projectionMatrix * view;
+      vec3 n = normalize(normalMatrix * objectNormal);
+      vec4 tip = projectionMatrix * vec4(view.xyz + n, 1.0);
+      vec2 direction = (tip.xy * clip.w - clip.xy * tip.w) * resolution;
+      direction /= max(length(direction), 0.0001);
+      clip.xy += direction * width * 2.0 / resolution * clip.w;
+      gl_Position = clip;
+    }
+  `),
+  fragmentShader: `
+    uniform vec3 ink;
+    void main() {
+      gl_FragColor = vec4(ink, 1.0);
+      #include <colorspace_fragment>
+    }
+  `,
+  side: THREE.BackSide, depthWrite: false,
+})
+
+export function setOutlineResolution(width: number, height: number) {
+  outline.uniforms.resolution.value.set(width, height)
+}
+
+export async function loadStickman(): Promise<Rig> {
+  const gltf = await new GLTFLoader().loadAsync('/models/stickman.glb')
+  const root = gltf.scene
+  const mesh = root.getObjectByName('Stickman') as THREE.SkinnedMesh
+  if (!mesh?.isSkinnedMesh) throw new Error('stickman.glb: SkinnedMesh "Stickman" not found')
+  if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals()
+  mesh.material = fill
+  mesh.frustumCulled = false
+
+  const shell = new THREE.SkinnedMesh(mesh.geometry, outline)
+  shell.bind(mesh.skeleton, mesh.bindMatrix)
+  shell.frustumCulled = false
+  shell.renderOrder = 1
+  shell.name = 'Stickman outline'
+  mesh.parent!.add(shell)
+
+  const bones = {} as Rig['bones']
+  const restPose = {} as Rig['rest']
+  for (const name of BONE_NAMES) {
+    const node = THREE.PropertyBinding.sanitizeNodeName(name)
+    const bone = root.getObjectByName(node)
+    if (!(bone instanceof THREE.Bone)) throw new Error(`stickman.glb: bone "${name}" missing`)
+    bones[name] = bone
+    restPose[name] = { quat: bone.quaternion.clone(), pos: bone.position.clone(), node }
+  }
+  rest = restPose
+  // Stretch uniforms: bind-space axis/origin per skeleton bone; origin.w = |child.position| / rest length, refreshed before each render.
+  const bind = new THREE.Matrix4()
+  const stretch: { index: number; child: THREE.Bone; restLen: number }[] = []
+  mesh.skeleton.bones.forEach((bone, i) => {
+    bind.copy(mesh.skeleton.boneInverses[i]).invert()
+    dqUniforms.boneAxis.value[i].set(bind.elements[4], bind.elements[5], bind.elements[6], 0).normalize()
+    dqUniforms.boneOrigin.value[i].set(bind.elements[12], bind.elements[13], bind.elements[14], 1)
+    const name = BONE_NAMES.find(n => restPose[n].node === bone.name)
+    const child = name && STRETCH_CHILD[name]
+    if (child) stretch.push({ index: i, child: bones[child], restLen: restPose[child].pos.length() })
+  })
+  mesh.onBeforeRender = () => { for (const s of stretch) dqUniforms.boneOrigin.value[s.index].w = s.child.position.length() / s.restLen }
+  return {
+    root, mesh, bones, rest: restPose,
+    resetPose() {
+      for (const name of BONE_NAMES) {
+        bones[name].quaternion.copy(restPose[name].quat)
+        bones[name].position.copy(restPose[name].pos)
+      }
+    },
+  }
+}
