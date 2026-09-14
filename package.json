@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "test:player": "node scripts/check-player.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

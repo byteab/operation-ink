@@ -141,24 +141,25 @@ function vendingMachine(x: number, z: number, floor: number) {
   return g.finish()
 }
 
-/** Starting building: traversable mess hall, signals office and protected roof access. */
+/** Starting building: roof arrival, traversable rooms and a ground-level yard exit. */
 export function messHall(spec: BuildingSpec): THREE.Group {
   const { width: w, depth: d, height: h } = spec
   const floor = 0.28, eave = floor + h, roofY = eave + 0.3
   const halfW = w / 2, halfD = d / 2
+  const exitX = 0, exitWidth = 1.8, exitHeight = 2.5
   const g = new THREE.Group()
   g.name = spec.name
   g.position.set(spec.x, 0, spec.z)
   g.rotation.y = spec.angle ?? 0
   g.userData = {
     environment: true, kind: 'mess-hall', footprint: [w, d], floor, roofHeight: roofY,
-    accessible: true, flatRoof: true, roofWalkable: true, access: 'roof-only', groundEntrances: 0,
+    accessible: true, flatRoof: true, roofWalkable: true, access: 'roof-and-yard', groundEntrances: 1,
     rooms: [
       { name: 'Main mess hall', kind: 'restaurant', min: [-7.28, floor, -halfD + 0.12], max: [6.48, eave, halfD - 0.12] },
       { name: 'Signals office', kind: 'office', min: [-halfW + 0.12, floor, -3.88], max: [-7.52, eave, 3.88], workstations: 2 },
       { name: 'Entry vestibule', kind: 'vestibule', min: [6.72, floor, -halfD + 0.12], max: [halfW - 0.12, eave, -7.1] },
     ],
-    route: ['West exterior ladder', 'Flat roof', 'Rooftop access door', 'Interior stairs', 'Entry vestibule', 'Vestibule to mess hall door', 'Main mess hall', 'Signals office door'],
+    route: ['West exterior ladder', 'Flat roof', 'Rooftop access door', 'Interior stairs', 'Entry vestibule', 'Vestibule to mess hall door', 'Main mess hall', 'Mess hall yard exit', 'Compound yard'],
     inspection: { ladder: [-halfW - 0.59, floor + 1.7, -4.7], roof: [0, roofY + 1.7, 6], hall: [0, floor + 1.7, 5], office: [-9, floor + 1.7, 0], vestibule: [11.5, floor + 1.7, -8.6] },
   }
 
@@ -169,12 +170,39 @@ export function messHall(spec: BuildingSpec): THREE.Group {
   const windowOpening = (center: number): Opening => ({ center, width: 1.7, bottom: 1.4, height: 1.45, window: true })
   g.add(
     wall('Mess hall · south exterior wall', w, h, 0, halfD, floor, 0,
-      [-10.2, -5.2, 4.8, 10.2].map(windowOpening), true),
+      [...[-10.2, -5.2, 4.8, 10.2].map(windowOpening),
+        { center: exitX, width: exitWidth, bottom: 0, height: exitHeight }], true),
     wall('Mess hall · north exterior wall', w, h, 0, -halfD, floor, 0, [-10.2, -3.6, 3.5, 10.2].map(windowOpening), true),
     wall('Mess hall · west exterior wall', d, h, -halfW, 0, floor, Math.PI / 2, [-7.4, 6.8].map(windowOpening), true),
     wall('Mess hall · east exterior wall', d, h, halfW, 0, floor, Math.PI / 2,
       [-7.4, 2.4].map(windowOpening), true),
   )
+
+  // The central aisle leads south, beyond the service fence, into the compound.
+  // The leaf swings outward over a landing flush with the interior floor.
+  g.add(createDoor({ name: 'Mess hall yard exit', x: exitX, z: halfD, floor,
+    width: exitWidth, height: exitHeight }))
+  const exitLanding = new Draft('Mess hall · yard exit landing')
+  exitLanding.box(2.4, floor, 2.1, exitX, floor / 2, halfD + 1.05, 'concrete')
+  g.add(exitLanding.finish())
+
+  // Letter strokes keep the EXIT plaques in the scene's untextured ink style.
+  const exitLetters: [number, number][][] = [
+    [[-0.31, 0.13], [-0.51, 0.13], [-0.51, -0.13], [-0.31, -0.13]],
+    [[-0.51, 0], [-0.34, 0]],
+    [[-0.23, 0.13], [-0.03, -0.13]], [[-0.23, -0.13], [-0.03, 0.13]],
+    [[0.05, 0.13], [0.25, 0.13]], [[0.15, 0.13], [0.15, -0.13]], [[0.05, -0.13], [0.25, -0.13]],
+    [[0.33, 0.13], [0.53, 0.13]], [[0.43, 0.13], [0.43, -0.13]],
+  ]
+  for (const side of [-1, 1]) {
+    const sign = new Draft(`Mess hall · ${side < 0 ? 'interior' : 'exterior'} EXIT sign`,
+      exitX, halfD + side * 0.145, side < 0 ? Math.PI : 0)
+    sign.userData.cutaway = true
+    const y = floor + exitHeight + 0.42
+    sign.box(1.35, 0.5, 0.03, 0, y, 0, 'green', 'detail')
+    for (const stroke of exitLetters) sign.line(stroke.map(([x, dy]): Point => [x, y + dy, 0.025]))
+    g.add(sign.finish())
+  }
 
   // The left-hand office is a real enclosed room, with its door in the hall-facing wall.
   const officeWallX = -7.4, officeWidth = halfW + officeWallX

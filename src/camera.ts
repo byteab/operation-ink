@@ -15,7 +15,7 @@ export const views: Record<ViewName, { position: [number, number, number]; targe
   watch: { position: [-62, 15, 30], target: [-48.5, 7.8, 16.5] },
 }
 
-/** Inspection camera only: no player object, physics body, or gameplay state. */
+/** Inspection views share their perspective camera with the grounded player. */
 export class EnvironmentCamera {
   readonly perspective = new THREE.PerspectiveCamera(38, 1, 0.15, 1600)
   readonly orthographic = new THREE.OrthographicCamera(-120, 120, 80, -80, 0.15, 1600)
@@ -23,6 +23,8 @@ export class EnvironmentCamera {
   active: THREE.PerspectiveCamera | THREE.OrthographicCamera = this.perspective
   view: ViewName = 'overview'
   free = false
+  walking = false
+  onInspect = () => {}
   private pressed = new Set<string>()
   private dragging = false
   private dragId = -1
@@ -72,6 +74,8 @@ export class EnvironmentCamera {
   }
 
   setView(name: ViewName) {
+    this.onInspect()
+    this.walking = false
     this.pressed.clear()
     this.free = false
     this.canvas.dataset.camera = 'orbit'
@@ -87,6 +91,7 @@ export class EnvironmentCamera {
     this.active.up.set(0, 1, 0)
     if (this.active === this.orthographic) this.orthographic.zoom = 1
     this.perspective.fov = name === 'overview' ? 38 : 58
+    this.perspective.near = 0.15
     this.resize(this.width, this.height)
     this.orbit.target.fromArray(preset.target)
     this.orbit.update()
@@ -95,6 +100,19 @@ export class EnvironmentCamera {
       this.orbit.enabled = false
       this.canvas.dataset.camera = 'free'
     }
+    this.invalidate()
+  }
+
+  enterWalk() {
+    this.clearInput()
+    this.walking = true
+    this.free = false
+    this.orbit.enabled = false
+    this.active = this.perspective
+    this.perspective.fov = 75
+    this.perspective.near = 0.06
+    this.perspective.updateProjectionMatrix()
+    this.canvas.dataset.camera = 'walk'
     this.invalidate()
   }
 
@@ -113,11 +131,13 @@ export class EnvironmentCamera {
 
   private keyDown = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return
+    if (event.target instanceof HTMLElement && event.target.closest('button, summary, input, textarea, select, [contenteditable="true"]')) return
     const keys: Record<string, ViewName> = { Digit1: 'overview', Digit2: 'yard', Digit3: 'rail', Digit4: 'tanks', Digit5: 'plan',
       Digit6: 'roof', Digit7: 'mess', Digit8: 'office', Digit9: 'water', Digit0: 'watch' }
     if (keys[event.code]) { event.preventDefault(); this.setView(keys[event.code]); return }
+    if (this.walking) return
     if (event.code === 'KeyR') { this.setView(this.view); return }
-    if (event.code === 'KeyF' && !event.repeat) { this.toggleFree(); return }
+    if (event.code === 'KeyV' && !event.repeat) { this.toggleFree(); return }
     if (event.code === 'Escape' && this.free) { this.toggleFree(); return }
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ShiftLeft', 'ShiftRight'].includes(event.code)) {
       event.preventDefault()
@@ -151,6 +171,7 @@ export class EnvironmentCamera {
   }
 
   update(dt: number) {
+    if (this.walking) return false
     if (this.active.position.y < 0.3) {
       const lift = 0.3 - this.active.position.y
       this.active.position.y += lift

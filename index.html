@@ -5,15 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#fafbf9" />
     <link rel="icon" href="data:," />
-    <title>Compound — 3D environment study</title>
+    <title>Compound — Explore on foot</title>
   </head>
   <body>
-    <canvas id="world" tabindex="0" aria-label="Three-dimensional military compound. Drag to orbit, right-drag to pan, scroll to zoom. Click doors to open or close. F toggles free camera; WASD moves, Q and E change height. 6 roof, 7 mess hall, 8 office, 9 water tower, 0 watchtower. I toggles interior cutaway; O operates the door in the centre of the view. R resets the view."></canvas>
+    <canvas id="world" tabindex="0" aria-label="Explore the military compound in first person. Click Start walking, mouse to look, WASD to walk, Shift to sprint, Space to jump, F to open doors or climb nearby ladders, Escape to pause, R to return to the entrance. Inspect map switches to the inspection camera."></canvas>
+    <button id="walk-mode" class="mode-button" hidden>Walk the map <span>↗</span></button>
+    <section id="walk-hud" hidden aria-label="First-person controls">
+      <div class="walk-heading"><span class="walk-eyebrow">COMPOUND / EXPLORATION</span><span id="walk-status">On foot</span></div>
+      <button id="inspect-mode" class="mode-button">Inspect map <span>↗</span></button>
+      <div class="crosshair" aria-hidden="true"></div>
+      <div id="action-marker" aria-hidden="true" hidden></div>
+      <div id="action-prompt" role="status" hidden><kbd>F</kbd><div><strong id="action-label"></strong><span id="action-object"></span></div></div>
+      <div class="walk-controls"><span><kbd>W A S D</kbd> Walk</span><span><kbd>Shift</kbd> Sprint</span><span><kbd>Space</kbd> Jump</span><span><kbd>F</kbd> Interact</span><span><kbd>Esc</kbd> Pause</span></div>
+      <div id="walk-pause">
+        <div class="walk-card">
+          <span class="walk-eyebrow">A DIFFERENT PERSPECTIVE</span>
+          <h1>Boots on the ground.</h1>
+          <p>Take the ladder ahead to the mess hall roof and head downstairs. Follow the EXIT sign through the dining hall to reach the compound yard.</p>
+          <div class="walk-instructions"><span><kbd>W A S D</kbd> Walk</span><span><kbd>Mouse</kbd> Look around</span><span><kbd>Shift</kbd> Sprint</span><span><kbd>Space</kbd> Jump</span><span><kbd>F</kbd> Doors &amp; ladders</span><span><kbd>R</kbd> Back to entrance</span></div>
+          <button id="walk-start">Start walking <span>→</span></button>
+          <small>Look for the blinking symbol. Press F when you’re within reach.<br>Esc pauses and releases your mouse.</small>
+        </div>
+      </div>
+    </section>
     <details class="inspection-help">
       <summary>Explore the camp</summary>
       <p>Drag to orbit · right-drag to pan · scroll to zoom</p>
       <p>Click a door to open / close · <kbd>O</kbd> door ahead</p>
-      <p><kbd>F</kbd> free camera · <kbd>W A S D</kbd> move<br><kbd>Q / E</kbd> lower / raise · <kbd>Shift</kbd> faster</p>
+      <p><kbd>V</kbd> free camera · <kbd>W A S D</kbd> move<br><kbd>Q / E</kbd> lower / raise · <kbd>Shift</kbd> faster</p>
       <p><kbd>6</kbd> roof · <kbd>7</kbd> mess hall · <kbd>8</kbd> office<br><kbd>9</kbd> water tower · <kbd>0</kbd> watchtower</p>
       <p><kbd>I</kbd> interior cutaway · <kbd>1</kbd> overview<br><kbd>2–5</kbd> other views · <kbd>R</kbd> reset</p>
     </details>

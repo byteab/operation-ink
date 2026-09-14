@@ -3,6 +3,7 @@ import { EnvironmentCamera, views, type ViewName } from './camera'
 import { palette, resizeInk } from './render/ink'
 import { createCompound } from './world/compound'
 import { EnvironmentInteractions } from './interactions'
+import { FirstPersonController } from './player/controller'
 import './style.css'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#world')!
@@ -32,15 +33,16 @@ const invalidate = () => {
   }
 }
 const camera = new EnvironmentCamera(canvas, invalidate)
-const interactions = new EnvironmentInteractions(canvas, scene, () => camera.active, invalidate)
+const interactions = new EnvironmentInteractions(canvas, scene, () => camera.active, invalidate, () => camera.walking)
+const player = new FirstPersonController(canvas, scene, camera, interactions, invalidate)
 
 function render(now: number) {
   frame = 0
   rendering = true
   const dt = Math.min((now - lastTime) / 1000, 0.05)
   lastTime = now
-  const moving = camera.update(dt)
   const doorsMoving = interactions.update(dt)
+  const moving = player.update(dt) || camera.update(dt)
   renderer.render(scene, camera.active)
   canvas.dataset.ready = 'true'
   if (moving || doorsMoving) invalidate()
@@ -68,15 +70,16 @@ canvas.addEventListener('webglcontextrestored', () => {
   resize()
 })
 resize()
-const initialView = new URLSearchParams(location.search).get('view') ?? 'overview'
-camera.setView(initialView in views ? initialView as ViewName : 'overview')
+const initialView = new URLSearchParams(location.search).get('view')
+if (initialView && initialView in views) camera.setView(initialView as ViewName)
+else player.enable()
 
 // Development inspection surface, intentionally absent from production builds and the page UI.
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __environment: {
       scene, renderer, camera,
-      interactions,
+      interactions, player,
       setView: (name: ViewName) => camera.setView(name),
       invalidate,
       stats: () => ({
@@ -96,6 +99,7 @@ import.meta.hot?.dispose(() => {
   disposed = true
   cancelAnimationFrame(frame)
   window.removeEventListener('resize', resize)
+  player.dispose()
   camera.dispose()
   interactions.dispose()
   const materials = new Set<THREE.Material>()

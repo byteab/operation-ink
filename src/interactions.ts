@@ -19,7 +19,8 @@ export class EnvironmentInteractions {
   private lastProjection = new THREE.Matrix4()
 
   constructor(private canvas: HTMLCanvasElement, scene: THREE.Scene,
-    private camera: () => THREE.Camera, private invalidate: () => void) {
+    private camera: () => THREE.Camera, private invalidate: () => void,
+    private walking: () => boolean = () => false) {
     scene.traverse(object => {
       if (object.userData.kind === 'door') this.doors.push(object as THREE.Group)
       if (object.userData.cutaway) this.cutaways.push(object)
@@ -46,7 +47,7 @@ export class EnvironmentInteractions {
       this.activePointers.delete(event.pointerId)
       this.gesture = null
       // A drag stays a drag even when it returns to its starting position.
-      if (gesture && event.pointerId === gesture.pointerId && !gesture.moved &&
+      if (!this.walking() && gesture && event.pointerId === gesture.pointerId && !gesture.moved &&
         event.button === 0 && event.target === canvas &&
         Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 5) {
         const door = this.pick(event.clientX, event.clientY)
@@ -61,6 +62,7 @@ export class EnvironmentInteractions {
     window.addEventListener('blur', clearGesture, options)
     document.addEventListener('visibilitychange', () => { if (document.hidden) clearGesture() }, options)
     canvas.addEventListener('pointermove', event => {
+      if (this.walking()) { this.clearDoorHint(); return }
       if (event.buttons) { this.clearDoorHint(); return }
       const door = this.pick(event.clientX, event.clientY)
       canvas.dataset.door = String(!!door)
@@ -69,6 +71,7 @@ export class EnvironmentInteractions {
     }, options)
     canvas.addEventListener('pointerleave', () => this.clearDoorHint(), options)
     window.addEventListener('keydown', event => {
+      if (this.walking()) return
       if (event.ctrlKey || event.metaKey || event.altKey || event.repeat ||
         (event.target instanceof HTMLElement && event.target.closest('button, input, textarea, select'))) return
       if (event.code === 'KeyI') { event.preventDefault(); this.setCutaway(!this.cutaway) }

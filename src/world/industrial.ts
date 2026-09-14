@@ -9,6 +9,8 @@ export type PlanPoint = [number, number]
 export function fence(name: string, points: PlanPoint[], height = 2.5) {
   const g = new Draft(name)
   g.userData.kind = 'fence'
+  // Wire is rendered as ink; these panels give it a continuous collision surface.
+  g.userData.collisionPanels = points.slice(1).map((b, i) => ({ a: points[i], b, height }))
   const posted = new Set<string>()
   for (let n = 1; n < points.length; n++) {
     const [ax, az] = points[n - 1], [bx, bz] = points[n]
@@ -42,12 +44,16 @@ export function fence(name: string, points: PlanPoint[], height = 2.5) {
 
 export function gate(name: string, x: number, z: number, width: number, angle = 0, opened = true) {
   const g = new Draft(name, x, z, angle)
+  const panels: { a: PlanPoint; b: PlanPoint; height: number }[] = []
+  g.userData.collisionPanels = panels
   for (const side of [-1, 1]) {
     g.box(0.26, 3.15, 0.26, side * width / 2, 1.575, 0)
     const hinge = new THREE.Vector3(side * width / 2, 0, 0)
     const direction = new THREE.Vector3(-side, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), opened ? side * 1.3 : 0)
     const at = (u: number, y: number): Point => hinge.clone().addScaledVector(direction, u).setY(y).toArray()
     const w = width / 2 - 0.07
+    const end = at(w, 0)
+    panels.push({ a: [hinge.x, hinge.z], b: [end[0], end[2]], height: 2.65 })
     g.line([at(0, 0.22), at(w, 0.22), at(w, 2.65), at(0, 2.65)], 'edge', true)
     g.line([at(0, 0.22), at(w, 2.65)], 'detail')
     for (let u = 0.35; u < w; u += 0.42) g.line([at(u, 0.22), at(u, 2.65)], 'mesh')

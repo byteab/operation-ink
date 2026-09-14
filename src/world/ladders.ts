@@ -39,7 +39,7 @@ export function pipeLadder({ name, x, z, bottom, landingHeight, angle = 0,
     width, clearWidth: width - RAIL_DIAMETER, rungDiameter: RUNG_DIAMETER,
     railDiameter: RAIL_DIAMETER, rungThickness: RUNG_DIAMETER, railThickness: RAIL_DIAMETER,
     rungSpacing: RUNG_SPACING, rungCount: rungLevels.length, rungLevels,
-    bottom, deckHeight: landingHeight, landingHeight, position: [x, z],
+    bottom, bottomHeight: bottom, deckHeight: landingHeight, landingHeight, position: [x, z],
     handholdHeight: HANDHOLD_HEIGHT, landingDepth, topStepGap: RUNG_SPACING,
   }
 
