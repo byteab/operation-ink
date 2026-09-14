@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { EnvironmentCamera, views, type ViewName } from './camera'
 import { palette, resizeInk } from './render/ink'
 import { createCompound } from './world/compound'
+import { EnvironmentInteractions } from './interactions'
 import './style.css'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#world')!
@@ -31,6 +32,7 @@ const invalidate = () => {
   }
 }
 const camera = new EnvironmentCamera(canvas, invalidate)
+const interactions = new EnvironmentInteractions(canvas, scene, () => camera.active, invalidate)
 
 function render(now: number) {
   frame = 0
@@ -38,9 +40,10 @@ function render(now: number) {
   const dt = Math.min((now - lastTime) / 1000, 0.05)
   lastTime = now
   const moving = camera.update(dt)
+  const doorsMoving = interactions.update(dt)
   renderer.render(scene, camera.active)
   canvas.dataset.ready = 'true'
-  if (moving) invalidate()
+  if (moving || doorsMoving) invalidate()
   rendering = false
 }
 
@@ -73,6 +76,7 @@ if (import.meta.env.DEV) {
   Object.assign(window, {
     __environment: {
       scene, renderer, camera,
+      interactions,
       setView: (name: ViewName) => camera.setView(name),
       invalidate,
       stats: () => ({
@@ -93,6 +97,7 @@ import.meta.hot?.dispose(() => {
   cancelAnimationFrame(frame)
   window.removeEventListener('resize', resize)
   camera.dispose()
+  interactions.dispose()
   const materials = new Set<THREE.Material>()
   scene.traverse(object => {
     if (object instanceof THREE.Mesh) {

@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { Draft, palette, type Point } from '../render/ink'
 import { building, container, crates, platform, truck, workshop, type BuildingSpec } from './architecture'
-import { fence, fuelTank, gate, lamp, railway, railShelter, watchTower, waterTower, type PlanPoint } from './industrial'
+import { messHall } from './messHall'
+import { fence, fuelTank, gate, lamp, railway, railShelter, watchTower, waterTower, towerZipline, type PlanPoint } from './industrial'
 
 // Coordinates are traced from the supplied 1448 × 1086 plan, not randomly placed.
 // North is -Z, east is +X. One world unit is approximately one metre.
@@ -79,8 +80,8 @@ function accessRoad() {
   g.line(left, 'detail'); g.line(right, 'detail')
   g.line(shoulderA, 'landscape'); g.line(shoulderB, 'landscape')
 
-  // A short entrance drive links the public road to the service yard through two
-  // actual gate openings. It is the only small circulation inference beyond the plan.
+  // The entrance drive reaches the ladder forecourt through the open outer gate;
+  // the inner service-yard gate is closed across the drive farther south.
   const drive = new THREE.CatmullRomCurve3([[370, 87], [370, 114], [350, 175], [338, 220], [342, 278]].map(([x, z]) => {
     const [wx, wz] = mapPoint(x, z)
     return new THREE.Vector3(wx, 0.04, wz)
@@ -157,7 +158,8 @@ export function createCompound() {
     // Ridge lines follow each building's long axis; the rotated footprint remains
     // exactly the same as the plan and long-side entries face the adjoining yard.
     const vertical = spec.size[1] > spec.size[0]
-    root.add(building({ ...spec, x, z,
+    const build = spec.name === 'Northwest service building' ? messHall : building
+    root.add(build({ ...spec, x, z,
       width: spec.size[vertical ? 1 : 0] * MAP_SCALE,
       depth: spec.size[vertical ? 0 : 1] * MAP_SCALE,
       angle: vertical ? Math.PI / 2 : 0,
@@ -167,6 +169,7 @@ export function createCompound() {
   root.add(workshop(...mapPoint(1302, 481)), truck(...mapPoint(1305, 504)))
   for (const [i, y] of [319, 432, 548].entries()) root.add(fuelTank(i + 1, ...mapPoint(147, y)))
   root.add(waterTower(...mapPoint(823, 313)), watchTower(...mapPoint(414, 661)))
+  root.add(towerZipline(mapPoint(823, 313), mapPoint(414, 661)))
   root.add(railway(mapPoint(927, 0)[0], mapPoint(1530, 0)[0], mapPoint(0, 324)[1]))
   root.add(railShelter(...mapPoint(1408, 324)))
 
@@ -180,8 +183,9 @@ export function createCompound() {
   root.add(fence('Fuel annex · west', plan([[91, 274], [91, 727], [111, 727]])))
   root.add(fence('Fuel annex · north', plan([[91, 274], [115, 274]])))
   root.add(fence('North service enclosure · west', plan([[245, 220], [313, 220]])))
-  root.add(fence('North service enclosure · entry return', plan([[363, 220], [429.5, 220]])))
-  root.add(gate('North service yard gate · open', ...mapPoint(338, 220), 7.5))
+  // Set the terminal post just outside the thick wall so its shaft stays visible.
+  root.add(fence('North service enclosure · entry return', plan([[363, 220], [428.25, 220]])))
+  root.add(gate('North service yard gate · closed', ...mapPoint(338, 220), 7.5, 0, false))
   root.add(fence('North service enclosure · east', plan([[614.5, 220], [915, 220]])))
   root.add(fence('Inner yard · railway separation and west return', plan([[1410, 415], [730, 415], [730, 460], [667, 460], [667, 648]])))
   root.add(fence('Inner yard · south gate return', plan([[667, 700], [447, 700], [447, 779]])))

@@ -1,13 +1,18 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
-export type ViewName = 'overview' | 'yard' | 'rail' | 'tanks' | 'plan'
+export type ViewName = 'overview' | 'yard' | 'rail' | 'tanks' | 'plan' | 'roof' | 'mess' | 'office' | 'water' | 'watch'
 export const views: Record<ViewName, { position: [number, number, number]; target: [number, number, number] }> = {
   overview: { position: [-151, 155, 201], target: [-7, 0, 8] },
   yard: { position: [-39, 2.4, 4], target: [3, 2.1, -30] },
   rail: { position: [114, 3.5, -35.5], target: [26, 3, -32] },
   tanks: { position: [-62, 3.2, 26], target: [-91, 2.9, -17] },
   plan: { position: [-1, 240, 2], target: [-1, 0, 1.999] },
+  roof: { position: [-64, 28, -78], target: [-34.2, 5, -46.65] },
+  mess: { position: [-28.5, 2.05, -37.25], target: [-36.2, 1.45, -48.65] },
+  office: { position: [-42.9, 1.98, -43.95], target: [-47, 1.48, -46.65] },
+  water: { position: [24, 23, -19], target: [10.95, 13.3, -34.05] },
+  watch: { position: [-62, 15, 30], target: [-48.5, 7.8, 16.5] },
 }
 
 /** Inspection camera only: no player object, physics body, or gameplay state. */
@@ -85,6 +90,11 @@ export class EnvironmentCamera {
     this.resize(this.width, this.height)
     this.orbit.target.fromArray(preset.target)
     this.orbit.update()
+    if (name === 'mess' || name === 'office') {
+      this.free = true
+      this.orbit.enabled = false
+      this.canvas.dataset.camera = 'free'
+    }
     this.invalidate()
   }
 
@@ -103,7 +113,8 @@ export class EnvironmentCamera {
 
   private keyDown = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return
-    const keys: Record<string, ViewName> = { Digit1: 'overview', Digit2: 'yard', Digit3: 'rail', Digit4: 'tanks', Digit5: 'plan' }
+    const keys: Record<string, ViewName> = { Digit1: 'overview', Digit2: 'yard', Digit3: 'rail', Digit4: 'tanks', Digit5: 'plan',
+      Digit6: 'roof', Digit7: 'mess', Digit8: 'office', Digit9: 'water', Digit0: 'watch' }
     if (keys[event.code]) { event.preventDefault(); this.setView(keys[event.code]); return }
     if (event.code === 'KeyR') { this.setView(this.view); return }
     if (event.code === 'KeyF' && !event.repeat) { this.toggleFree(); return }
@@ -160,7 +171,7 @@ export class EnvironmentCamera {
     this.delta.y += y
     this.delta.normalize()
     const fast = this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight')
-    this.delta.multiplyScalar(dt * (fast ? 28 : 9))
+    this.delta.multiplyScalar(dt * (fast ? 28 : this.free ? 4.2 : 9))
     if (this.active.position.y + this.delta.y < 0.3) this.delta.y = 0.3 - this.active.position.y
     this.active.position.add(this.delta)
     if (!this.free) { this.orbit.target.add(this.delta); this.orbit.update() }

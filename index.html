@@ -8,7 +8,15 @@
     <title>Compound — 3D environment study</title>
   </head>
   <body>
-    <canvas id="world" tabindex="0" aria-label="Three-dimensional line-art military compound. Drag to orbit, right-drag to pan, scroll to zoom. Keys 1 through 5 select camera views. F toggles free camera; WASD moves, Q and E change height. R resets the view."></canvas>
+    <canvas id="world" tabindex="0" aria-label="Three-dimensional military compound. Drag to orbit, right-drag to pan, scroll to zoom. Click doors to open or close. F toggles free camera; WASD moves, Q and E change height. 6 roof, 7 mess hall, 8 office, 9 water tower, 0 watchtower. I toggles interior cutaway; O operates the door in the centre of the view. R resets the view."></canvas>
+    <details class="inspection-help">
+      <summary>Explore the camp</summary>
+      <p>Drag to orbit · right-drag to pan · scroll to zoom</p>
+      <p>Click a door to open / close · <kbd>O</kbd> door ahead</p>
+      <p><kbd>F</kbd> free camera · <kbd>W A S D</kbd> move<br><kbd>Q / E</kbd> lower / raise · <kbd>Shift</kbd> faster</p>
+      <p><kbd>6</kbd> roof · <kbd>7</kbd> mess hall · <kbd>8</kbd> office<br><kbd>9</kbd> water tower · <kbd>0</kbd> watchtower</p>
+      <p><kbd>I</kbd> interior cutaway · <kbd>1</kbd> overview<br><kbd>2–5</kbd> other views · <kbd>R</kbd> reset</p>
+    </details>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

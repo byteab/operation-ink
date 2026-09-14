@@ -1,5 +1,7 @@
 import { BoxGeometry, CylinderGeometry, Shape, ExtrudeGeometry } from 'three'
 import { Draft, type Fill, type Point } from '../render/ink'
+import { createDoor } from './doors'
+import { militaryInterior } from './interiors'
 
 export interface BuildingSpec {
   name: string
@@ -23,16 +25,36 @@ function windowFrame(g: Draft, x: number, y: number, z: number, w = 1.4, h = 1.3
   else g.box(w + 0.15, 0.09, 0.12, x, y - 0.025, z, 'paper', 'detail')
 }
 
-function door(g: Draft, x: number, floor: number, z: number, w = 1.05, h = 2.3, industrial = false) {
-  g.face([[x - w / 2, floor, z], [x + w / 2, floor, z],
-    [x + w / 2, floor + h, z], [x - w / 2, floor + h, z]], 'paper')
-  if (industrial) {
-    g.line([[x, floor, z + 0.01], [x, floor + h, z + 0.01]], 'detail')
-    for (let y = floor + 0.7; y < floor + h; y += 0.85) g.line([[x - w / 2 + 0.1, y, z + 0.01], [x + w / 2 - 0.1, y, z + 0.01]], 'detail')
-  } else {
-    g.line([[x + w * 0.23, floor + 1.05, z + 0.02], [x + w * 0.4, floor + 1.05, z + 0.02]], 'edge')
-    g.line([[x - w / 2 + 0.1, floor + 0.13, z + 0.01], [x - w / 2 + 0.1, floor + h - 0.1, z + 0.01],
-      [x + w / 2 - 0.1, floor + h - 0.1, z + 0.01]], 'detail')
+type WallOpening = { centre: number; width: number; bottom: number; height: number }
+
+/** Wall panels are omitted at openings, so entryways have real traversable space. */
+function piercedWall(g: Draft, length: number, h: number, floor: number, offset: number,
+  openings: WallOpening[], side = false) {
+  const thickness = 0.22
+  const xs = [...new Set([-length / 2, length / 2, ...openings.flatMap(o => [o.centre - o.width / 2, o.centre + o.width / 2])])].sort((a, b) => a - b)
+  const ys = [...new Set([0, h, ...openings.flatMap(o => [o.bottom, o.bottom + o.height])])].sort((a, b) => a - b)
+  for (let xi = 1; xi < xs.length; xi++) for (let yi = 1; yi < ys.length; yi++) {
+    const x = (xs[xi - 1] + xs[xi]) / 2, y = (ys[yi - 1] + ys[yi]) / 2
+    if (openings.some(o => x > o.centre - o.width / 2 && x < o.centre + o.width / 2 && y > o.bottom && y < o.bottom + o.height)) continue
+    const width = xs[xi] - xs[xi - 1], height = ys[yi] - ys[yi - 1]
+    if (width <= 0 || height <= 0) continue
+    if (side) g.box(thickness, height, width, offset, floor + y, x, 'paper', false)
+    else g.box(width, height, thickness, x, floor + y, offset, 'paper', false)
+  }
+  const exterior = offset + Math.sign(offset) * thickness / 2
+  const point = (x: number, y: number): Point => side ? [exterior, floor + y, x] : [x, floor + y, exterior]
+  // Draw only the architectural outline, never the construction grid of the panels.
+  g.line([point(-length / 2, 0), point(-length / 2, h), point(length / 2, h), point(length / 2, 0)], 'edge')
+  const floorCuts = openings.filter(o => o.bottom === 0).sort((a, b) => a.centre - b.centre)
+  let start = -length / 2
+  for (const o of floorCuts) {
+    g.line([point(start, 0), point(o.centre - o.width / 2, 0)], 'edge')
+    start = o.centre + o.width / 2
+  }
+  g.line([point(start, 0), point(length / 2, 0)], 'edge')
+  for (const o of openings) {
+    g.line([point(o.centre - o.width / 2, o.bottom), point(o.centre - o.width / 2, o.bottom + o.height),
+      point(o.centre + o.width / 2, o.bottom + o.height), point(o.centre + o.width / 2, o.bottom)], 'detail', o.bottom > 0)
   }
 }
 
@@ -69,50 +91,91 @@ export function building(spec: BuildingSpec) {
   const g = new Draft(spec.name, spec.x, spec.z, spec.angle)
   g.userData.footprint = [w, d]
   g.userData.kind = type
+  g.userData.enterable = true
   const floor = type === 'warehouse' ? 0.65 : 0.28
   g.box(w + 0.3, floor, d + 0.3, 0, floor / 2, 0, 'concrete', 'detail')
-  g.box(w, h, d, 0, floor + h / 2, 0)
-  roof(g, w, d, h + floor, Math.min(2.15, d * 0.17))
+  const walls = new Draft(`${spec.name} · exterior walls`)
+  walls.userData.cutaway = true
+  walls.userData.kind = 'exterior-walls'
+  const covering = new Draft(`${spec.name} · roof`)
+  covering.userData.cutaway = true
+  covering.userData.kind = 'roof'
+  roof(covering, w, d, h + floor, Math.min(2.15, d * 0.17))
   const front = d / 2 + 0.025
+  const frontOpenings: WallOpening[] = [], backOpenings: WallOpening[] = []
+  const sideOpenings: WallOpening[] = []
+  const windows = { front: 0, rear: 0, left: 0, right: 0 }
+  const entrances: { x: number; z: number; width: number; height: number; floor: number }[] = []
+  const addEntry = (x: number, width: number, height: number, industrial = false) => {
+    frontOpenings.push({ centre: x, width, bottom: 0, height })
+    entrances.push({ x, z: front, width, height, floor })
+    g.add(createDoor({ name: `${spec.name} · entry ${entrances.length}`, x, z: front + 0.02,
+      floor, width, height, industrial }))
+  }
   if (type === 'warehouse') {
-    for (const x of [-w * 0.31, 0, w * 0.31]) {
-      door(g, x, floor, front, 3.8, Math.min(3.8, h - 0.45), true)
-      g.box(4.35, 0.15, 0.5, x, floor + h - 0.15, front + 0.18, 'paper', 'detail')
+    const entries = w > 30 ? [-w * 0.31, 0, w * 0.31] : [-w * 0.22, w * 0.22]
+    for (const x of entries) {
+      addEntry(x, 3.4, Math.min(3.8, h - 0.45), true)
+      walls.box(3.85, 0.15, 0.5, x, floor + h - 0.15, front + 0.18, 'paper', 'detail')
     }
     g.box(w - 1.0, floor, 1.8, 0, floor / 2, front + 0.88, 'concrete')
     steps(g, -w / 2 + 1.7, front + 1.94, 2, floor, 3)
-    for (let x = -w / 2 + 1; x < w / 2; x += 4.5) {
-      windowFrame(g, x, floor + h - 1.35, -front, 2.2, 0.75)
+    const count = w > 30 ? 3 : 2
+    for (let i = 0; i < count; i++) {
+      const x = -w / 2 + w / count * (i + 0.5)
+      backOpenings.push({ centre: x, width: 2.2, bottom: h - 1.3, height: 0.75 })
+      windowFrame(walls, x, floor + h - 1.3, -front, 2.2, 0.75)
+      windows.rear++
     }
   } else {
     const entry = type === 'service' ? -w * 0.16 : 0
-    door(g, entry, floor, front, type === 'service' ? 1.8 : 1.05, 2.35, type === 'service')
+    addEntry(entry, type === 'service' ? 1.8 : 1.45, 2.35, type === 'service')
     steps(g, entry, front + 0.29, 1.8, floor, 2)
     if (type === 'service') {
-      g.box(3.5, 0.15, 1.5, entry, 3.2, front + 0.65, 'roof')
-      for (const x of [entry - 1.5, entry + 1.5]) g.beam([x, 0.28, front + 1.15], [x, 3.14, front + 1.15], 0.1)
+      covering.box(3.5, 0.15, 1.5, entry, 3.2, front + 0.65, 'roof')
+      for (const x of [entry - 1.5, entry + 1.5]) walls.beam([x, 0.28, front + 1.15], [x, 3.14, front + 1.15], 0.1)
     }
-    const count = Math.max(2, Math.floor(w / 3.5))
+    const count = w >= 22 ? 4 : w >= 14 ? 3 : 2
     for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
       const x = -w / 2 + w / count * (i + 0.5)
       if (side === 1 && Math.abs(x - entry) < 1.7) continue
-      windowFrame(g, x, floor + 1.3, side * front, type === 'utility' ? 1.15 : 1.65, 1.3)
+      const width = type === 'utility' ? 1.15 : 1.65
+      const bottom = type === 'utility' ? 1.15 : 1.3, height = type === 'utility' ? 1.15 : 1.3
+      ;(side > 0 ? frontOpenings : backOpenings).push({ centre: x, width, bottom, height })
+      windowFrame(walls, x, floor + bottom, side * front, width, height)
+      windows[side > 0 ? 'front' : 'rear']++
     }
   }
+  piercedWall(walls, w, h, floor, d / 2 - 0.11, frontOpenings)
+  piercedWall(walls, w, h, floor, -d / 2 + 0.11, backOpenings)
+  const sideCount = type === 'warehouse' ? 1 : d > 11 ? 2 : 1
+  for (let i = 0; i < sideCount; i++) {
+    sideOpenings.push({ centre: -d / 2 + d / sideCount * (i + 0.5),
+      width: type === 'warehouse' ? 1.75 : 1.3,
+      bottom: type === 'warehouse' ? h - 1.3 : 1.25,
+      height: type === 'warehouse' ? 0.75 : 1.15 })
+  }
   for (const side of [-1, 1]) {
-    const count = Math.max(1, Math.floor(d / 3.8))
-    for (let i = 0; i < count; i++) windowFrame(g, side * (w / 2 + 0.035), floor + 1.4,
-      -d / 2 + d / count * (i + 0.5), type === 'warehouse' ? 1.75 : 1.3, 1.25, true)
+    piercedWall(walls, d - 0.44, h, floor, side * (w / 2 - 0.11), sideOpenings, true)
+    for (const o of sideOpenings) windowFrame(walls, side * (w / 2 + 0.025), floor + o.bottom, o.centre, o.width, o.height, true)
+    windows[side > 0 ? 'right' : 'left'] = sideCount
   }
   if (type !== 'warehouse') {
     const x = w * 0.29, z = -d * 0.19, y = floor + h + Math.min(2.15, d * 0.17) * 0.62
-    g.box(0.55, 1.25, 0.65, x, y + 0.5, z, 'paper', 'detail')
-    g.box(0.75, 0.13, 0.82, x, y + 1.18, z, 'paper', 'detail')
+    covering.box(0.55, 1.25, 0.65, x, y + 0.5, z, 'paper', 'detail')
+    covering.box(0.75, 0.13, 0.82, x, y + 1.18, z, 'paper', 'detail')
   }
   // Gutters and downpipes terminate at the plinth, all on the building's actual faces.
   for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) {
-    g.line([[x, floor + h - 0.04, front + 0.32], [x, floor + h - 0.22, front + 0.12], [x, floor + 0.1, front + 0.12]], 'detail')
+    walls.line([[x, floor + h - 0.04, front + 0.32], [x, floor + h - 0.22, front + 0.12], [x, floor + 0.1, front + 0.12]], 'detail')
   }
+  const interior = militaryInterior(spec.name, type, w, d, floor)
+  g.userData.windowCounts = windows
+  g.userData.entrances = entrances
+  g.userData.interiorVariant = interior.userData.interiorVariant
+  g.userData.furnitureCounts = interior.userData.furnitureCounts
+  g.userData.walkableInterior = { width: w - 0.44, depth: d - 0.44, floor }
+  g.add(walls.finish(), covering.finish(), interior)
   return g.finish()
 }
 

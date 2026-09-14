@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Draft, type Point } from '../render/ink'
 import { crates, roof } from './architecture'
+import { pipe, pipeLadder } from './ladders'
 
 export type PlanPoint = [number, number]
 
@@ -54,10 +55,10 @@ export function gate(name: string, x: number, z: number, width: number, angle = 
   return g.finish()
 }
 
-function ladder(g: Draft, x: number, z: number, bottom: number, top: number, width = 0.62) {
-  for (const side of [-1, 1]) g.beam([x + side * width / 2, bottom, z], [x + side * width / 2, top + 0.5, z], 0.065, 'paper', 'detail')
-  for (let y = bottom + 0.3; y < top; y += 0.32) g.line([[x - width / 2, y, z], [x + width / 2, y, z]], 'detail')
-  for (let y = bottom + 0.6; y < top; y += 2.2) for (const side of [-1, 1]) g.line([[x + side * width / 2, y, z], [x + side * width / 2, y, z - 0.3]], 'detail')
+function ladder(g: Draft, x: number, z: number, bottom: number, top: number, width = 0.95, landingDepth = 0.6) {
+  const access = pipeLadder({ name: `${g.name} · solid access ladder`, x, z, bottom,
+    landingHeight: top, width, landingDepth })
+  g.add(access.finish())
 }
 
 export function fuelTank(index: number, x: number, z: number) {
@@ -82,21 +83,46 @@ export function fuelTank(index: number, x: number, z: number) {
     g.line([[Math.cos(a) * 0.6, floor + h + 0.805, Math.sin(a) * 0.6],
       [Math.cos(a) * r, floor + h + 0.012, Math.sin(a) * r]], 'mesh')
   }
-  for (const side of [-1, 1]) {
-    g.line([[side * 0.31, h + floor, r + 0.35], [side * 0.31, h + floor + 0.6, r + 0.35],
-      [side * 0.31, h + floor + 0.6, r - 0.3]], 'detail')
-  }
   g.beam([r, 1.1, 0], [9.6, 1.1, 0], 0.16, 'paper', 'detail')
   g.beam([9.6, 1.1, 0], [9.6, 0.6, 0], 0.16, 'paper', 'detail')
   g.box(0.55, 0.6, 0.55, 5.7, 0.3, 4.6, 'concrete', 'detail')
   return g.finish()
 }
 
-export function waterTower(x: number, z: number) {
+const WATER_DECK = 12.5
+const WATER_RADIUS = 4.7
+const WATER_TANK_RADIUS = 2.75
+const WATCH_DECK = 6.6
+const WATCH_HALF_WIDTH = 2.8
+const ZIP_PAD_HALF_WIDTH = 1.0
+const DEFAULT_WATER: PlanPoint = [10.95, -34.05]
+const DEFAULT_WATCH: PlanPoint = [-50.4, 18.15]
+
+function directionBetween(from: PlanPoint, to: PlanPoint): PlanPoint {
+  const length = Math.hypot(to[0] - from[0], to[1] - from[1])
+  return [(to[0] - from[0]) / length, (to[1] - from[1]) / length]
+}
+
+function guardrail(g: Draft, a: PlanPoint, b: PlanPoint, floor: number) {
+  for (const y of [floor + 0.12, floor + 0.6, floor + 1.1]) {
+    g.beam([a[0], y, a[1]], [b[0], y, b[1]], y < floor + 0.2 ? 0.1 : 0.065, 'paper', 'detail')
+  }
+  const sections = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.2)
+  for (let i = 0; i <= sections; i++) {
+    const t = i / sections, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t
+    g.beam([x, floor, z], [x, floor + 1.13, z], 0.075, 'paper', 'detail')
+  }
+}
+
+export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = DEFAULT_WATCH) {
   const g = new Draft('North water tower', x, z)
-  g.userData.kind = 'water-tower'
+  const floor = WATER_DECK + 0.11, railRadius = WATER_RADIUS - 0.1
+  const zipDirection = directionBetween([x, z], ziplineTarget)
+  g.userData = { environment: true, kind: 'water-tower', deckHeight: floor,
+    tankRadius: WATER_TANK_RADIUS, deckRadius: WATER_RADIUS, walkwayClearWidth: railRadius - 0.0375 - WATER_TANK_RADIUS,
+    ladderOpeningWidth: 1.2, ziplineDirection: zipDirection }
   g.box(15, 0.22, 14, 0, 0.11, 0, 'concrete', 'detail')
-  const foot = 2.75, top = 2.05, deck = 12.5
+  const foot = 2.75, top = 2.05, deck = WATER_DECK
   const corners: PlanPoint[] = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
   const at = (c: PlanPoint, y: number): Point => {
     const r = foot + (top - foot) * y / deck
@@ -115,26 +141,65 @@ export function waterTower(x: number, z: number) {
       g.beam(at(a, next), at(b, next), 0.1, 'paper', 'detail')
     }
   }
-  g.cylinder(3.15, 0.2, 0, deck, 0, 'paper')
-  g.cylinder(2.75, 4.3, 0, deck + 2.25, 0, 'paper')
-  g.cylinder(2.75, 0.65, 0, deck + 4.725, 0, 'paper', 0.35)
-  g.cylinder(0.2, 0.35, 0, deck + 5.15, 0)
-  g.ring(2.765, deck + 0.55, 0, 0, 'detail')
-  // Ring catwalk and guardrail wrap the vessel as actual 3D geometry.
-  for (const y of [deck + 0.15, deck + 1.0]) g.ring(3.15, y, 0, 0, 'detail')
-  for (let i = 0; i < 16; i++) {
-    const a = i / 16 * Math.PI * 2, sx = Math.cos(a) * 3.15, sz = Math.sin(a) * 3.15
-    g.line([[sx, deck + 0.1, sz], [sx, deck + 1, sz]], 'detail')
+  // The entire ring is a load-bearing solid deck; its clear width is over 1.8 m.
+  const walkway = new Draft('Water tower · wide continuous catwalk')
+  walkway.userData = { environment: true, kind: 'walkway', continuous: true, floorHeight: floor,
+    outerRadius: WATER_RADIUS, innerRadius: WATER_TANK_RADIUS, clearWidth: g.userData.walkwayClearWidth }
+  walkway.cylinder(WATER_RADIUS, 0.22, 0, deck, 0, 'paper')
+  walkway.box(1.2, 0.22, 0.65, 0, deck, WATER_RADIUS - 0.05, 'paper', 'detail')
+  // Radial under-deck brackets support the wider overhang without crossing the path.
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2
+    walkway.beam([Math.cos(a) * 2, deck - 1.15, Math.sin(a) * 2],
+      [Math.cos(a) * 4.35, deck - 0.13, Math.sin(a) * 4.35], 0.12, 'paper', 'detail')
   }
+  const normalize = (a: number) => (a + Math.PI * 2) % (Math.PI * 2)
+  const openings = [
+    { angle: Math.PI / 2, half: Math.asin(0.6 / railRadius) },
+    { angle: normalize(Math.atan2(zipDirection[1], zipDirection[0])), half: Math.asin(ZIP_PAD_HALF_WIDTH / railRadius) },
+  ]
+  const angles = Array.from({ length: 65 }, (_, i) => i / 64 * Math.PI * 2)
+  for (const opening of openings) angles.push(normalize(opening.angle - opening.half), normalize(opening.angle + opening.half))
+  angles.sort((a, b) => a - b)
+  const inOpening = (a: number) => openings.some(opening => Math.abs(Math.atan2(Math.sin(a - opening.angle), Math.cos(a - opening.angle))) < opening.half)
+  for (let i = 1; i < angles.length; i++) {
+    const a = angles[i - 1], b = angles[i]
+    if (inOpening((a + b) / 2)) continue
+    const start: PlanPoint = [Math.cos(a) * railRadius, Math.sin(a) * railRadius]
+    const end: PlanPoint = [Math.cos(b) * railRadius, Math.sin(b) * railRadius]
+    for (const y of [floor + 0.12, floor + 0.6, floor + 1.1]) {
+      walkway.beam([start[0], y, start[1]], [end[0], y, end[1]], y < floor + 0.2 ? 0.1 : 0.065, 'paper', 'detail')
+    }
+    // One post per two arc segments keeps the widened ring visually quiet.
+    if (i % 2 === 0 || openings.some(opening => Math.abs(normalize(opening.angle + opening.half) - a) < 0.001)) {
+      walkway.beam([start[0], floor, start[1]], [start[0], floor + 1.13, start[1]], 0.075, 'paper', 'detail')
+    }
+  }
+  for (const opening of openings) for (const side of [-1, 1]) {
+    const a = opening.angle + side * opening.half
+    walkway.beam([Math.cos(a) * railRadius, floor, Math.sin(a) * railRadius],
+      [Math.cos(a) * railRadius, floor + 1.13, Math.sin(a) * railRadius], 0.09, 'paper', 'detail')
+  }
+  g.add(walkway.finish())
+  g.cylinder(WATER_TANK_RADIUS, 4.3, 0, deck + 2.26, 0, 'paper')
+  g.cylinder(WATER_TANK_RADIUS, 0.65, 0, deck + 4.735, 0, 'paper', 0.35)
+  g.cylinder(0.2, 0.35, 0, deck + 5.16, 0)
+  g.ring(WATER_TANK_RADIUS + 0.015, deck + 0.56, 0, 0, 'detail')
   g.beam([0.7, 0.22, -0.7], [0.7, deck + 0.1, -0.7], 0.18, 'paper', 'detail')
-  ladder(g, 0, 3.08, 0.22, deck, 0.7)
+  ladder(g, 0, WATER_RADIUS + 0.4, 0.22, floor, 0.95, 0.9)
+  // Stand-off brackets reach the support frame behind the ladder, never its rungs.
+  for (const y of [3.5, 7.3, 10.9]) for (const side of [-1, 1]) {
+    pipe(g, [side * 0.475, y, WATER_RADIUS + 0.4], at([side, 1], y), 0.065)
+  }
   return g.finish()
 }
 
-export function watchTower(x: number, z: number) {
+export function watchTower(x: number, z: number, ziplineTarget: PlanPoint = DEFAULT_WATER) {
   const g = new Draft('West observation tower', x, z)
-  g.userData.kind = 'observation-tower'
-  const foot = 2.7, top = 1.95, deck = 6.6
+  const foot = 2.7, top = 1.95, deck = WATCH_DECK, floor = deck + 0.13
+  const zipDirection = directionBetween([x, z], ziplineTarget)
+  g.userData = { environment: true, kind: 'observation-tower', deckHeight: floor,
+    deckWidth: WATCH_HALF_WIDTH * 2, ladderOpeningWidth: 1.2, ziplineDirection: zipDirection }
   const corners: PlanPoint[] = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
   const at = (c: PlanPoint, y: number): Point => [c[0] * (foot + (top - foot) * y / deck), y, c[1] * (foot + (top - foot) * y / deck)]
   for (let i = 0; i < 4; i++) {
@@ -146,13 +211,108 @@ export function watchTower(x: number, z: number) {
       g.beam(at(b, y), at(a, y + 3), 0.15, 'paper', 'detail')
     }
   }
-  g.box(4.7, 0.26, 4.7, 0, deck, 0)
-  g.box(3.65, 0.9, 3.65, 0, deck + 0.58, 0)
-  for (const sx of [-1.75, 1.75]) for (const sz of [-1.75, 1.75]) g.beam([sx, deck + 0.9, sz], [sx, deck + 2.85, sz], 0.13)
+  g.box(WATCH_HALF_WIDTH * 2, 0.26, WATCH_HALF_WIDTH * 2, 0, deck, 0)
+  g.box(1.2, 0.26, 0.6, 0, deck, WATCH_HALF_WIDTH - 0.02, 'paper', 'detail')
+  const rails = new Draft('Observation tower · open deck and parapets')
+  rails.userData = { environment: true, kind: 'walkway', floorHeight: floor, ladderOpeningWidth: 1.2, ziplineOpeningWidth: 2 }
+  const edge = WATCH_HALF_WIDTH - 0.1
+  // Clip the parapets where the diagonal zipline landing meets the square deck.
+  const perp: PlanPoint = [zipDirection[1], -zipDirection[0]]
+  const inZipCorridor = ([px, pz]: PlanPoint) => px * zipDirection[0] + pz * zipDirection[1] > 0
+    && Math.abs(px * perp[0] + pz * perp[1]) < ZIP_PAD_HALF_WIDTH + 0.01
+  for (const [a, b] of [
+    [[-edge, -edge], [edge, -edge]], [[edge, -edge], [edge, edge]],
+    [[edge, edge], [-edge, edge]], [[-edge, edge], [-edge, -edge]],
+  ] as [PlanPoint, PlanPoint][]) {
+    const cuts = [0, 1]
+    const va = a[0] * perp[0] + a[1] * perp[1], vb = b[0] * perp[0] + b[1] * perp[1]
+    if (Math.abs(vb - va) > 0.001) for (const limit of [-ZIP_PAD_HALF_WIDTH, ZIP_PAD_HALF_WIDTH]) {
+      const t = (limit - va) / (vb - va)
+      if (t > 0 && t < 1) cuts.push(t)
+    }
+    if (a[1] === edge && b[1] === edge) for (const limit of [-0.6, 0.6]) cuts.push((limit - a[0]) / (b[0] - a[0]))
+    cuts.sort((left, right) => left - right)
+    for (let i = 1; i < cuts.length; i++) {
+      const point = (t: number): PlanPoint => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+      const mid = point((cuts[i - 1] + cuts[i]) / 2)
+      if (inZipCorridor(mid) || (mid[1] === edge && Math.abs(mid[0]) < 0.6)) continue
+      const start = point(cuts[i - 1]), end = point(cuts[i])
+      // Low perimeter panels enclose a genuinely empty observation cabin.
+      rails.beam([start[0], floor + 0.44, start[1]], [end[0], floor + 0.44, end[1]], 0.12, 'paper', 'detail')
+      const length = Math.hypot(end[0] - start[0], end[1] - start[1])
+      rails.box(length, 0.72, 0.12, (start[0] + end[0]) / 2, floor + 0.36, (start[1] + end[1]) / 2,
+        'paper', 'detail', [0, -Math.atan2(end[1] - start[1], end[0] - start[0]), 0])
+      guardrail(rails, start, end, floor)
+    }
+  }
+  g.add(rails.finish())
+  // Keep the northeast passage clear; the roof is supported to either side of it.
+  for (const [sx, sz] of [[-1.75, -1.75], [-1.75, 1.75], [1.75, 1.75], [0.25, -1.75], [1.75, 0.2]]) {
+    g.beam([sx, floor, sz], [sx, deck + 2.85, sz], 0.13)
+  }
   roof(g, 4.3, 4.3, deck + 2.85, 0.8, 0, 0, false)
-  for (let y = deck + 0.24; y < deck + 0.95; y += 0.28) for (const side of [-1, 1]) g.line([[-1.82, y, side * 1.84], [1.82, y, side * 1.84]], 'detail')
-  ladder(g, 0, 2.6, 0.1, deck, 0.85)
+  ladder(g, 0, WATCH_HALF_WIDTH + 0.4, 0.1, floor, 0.95, 0.9)
+  for (const y of [2.4, 5.4]) for (const side of [-1, 1]) {
+    pipe(g, [side * 0.475, y, WATCH_HALF_WIDTH + 0.4], at([side, 1], y), 0.065)
+  }
   return g.finish()
+}
+
+/** A descending cable with accessible, outward-facing landings on both towers. */
+export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
+  const root = new THREE.Group()
+  root.name = 'Tower-to-tower zipline'
+  const waterDirection = directionBetween(water, watch), watchDirection = directionBetween(watch, water)
+  const heightAboveDeck = 2.65, waterAnchor = 5.4, watchAnchor = 4.65
+  const from = new THREE.Vector3(water[0] + waterDirection[0] * waterAnchor, WATER_DECK + 0.11 + heightAboveDeck, water[1] + waterDirection[1] * waterAnchor)
+  const to = new THREE.Vector3(watch[0] + watchDirection[0] * watchAnchor, WATCH_DECK + 0.13 + heightAboveDeck, watch[1] + watchDirection[1] * watchAnchor)
+  const sag = 0.65, cableRadius = 0.045
+  const pointAt = (t: number) => from.clone().lerp(to, t).add(new THREE.Vector3(0, -4 * sag * t * (1 - t), 0))
+  root.userData = { environment: true, kind: 'zipline', start: from.toArray(), end: to.toArray(),
+    horizontalSpan: Math.hypot(to.x - from.x, to.z - from.z), sag, cableRadius, landingWidth: 2,
+    anchorHeightAboveDeck: heightAboveDeck, direction: 'water-to-observation', gameplay: false }
+  for (const [name, center, direction, floor, anchor, waterSide] of [
+    ['Water tower launch landing', water, waterDirection, WATER_DECK + 0.11, waterAnchor, true],
+    ['Observation tower arrival landing', watch, watchDirection, WATCH_DECK + 0.13, watchAnchor, false],
+  ] as [string, PlanPoint, PlanPoint, number, number, boolean][]) {
+    const landing = new Draft(name, center[0], center[1], Math.atan2(direction[0], direction[1]))
+    const inner = waterSide ? 3.3 : 1.8, outer = anchor + 0.4
+    landing.userData = { environment: true, kind: 'zipline-landing', clearWidth: 1.8, floorHeight: floor + 0.006, anchorDistance: anchor }
+    // A 6 mm landing plate overlaps the deck without coplanar surface flicker.
+    landing.box(2, 0.206, outer - inner, 0, floor - 0.097, (inner + outer) / 2, 'paper', 'detail')
+    for (const side of [-1, 1]) {
+      const v = side * ZIP_PAD_HALF_WIDTH
+      let railStart: number
+      if (waterSide) railStart = Math.sqrt((WATER_RADIUS - 0.1) ** 2 - v * v)
+      else {
+        const perpendicular: PlanPoint = [direction[1], -direction[0]]
+        const candidates = [0, 1].map(axis => ((WATCH_HALF_WIDTH - 0.1) * Math.sign(direction[axis]) - perpendicular[axis] * v) / direction[axis])
+        railStart = Math.min(...candidates)
+      }
+      guardrail(landing, [v, railStart], [v, outer], floor)
+      landing.beam([v, floor - 1.15, inner], [v, floor - 0.12, outer], 0.15, 'paper', 'detail')
+      landing.beam([v, floor - 1.15, inner], [v, floor - 0.12, inner], 0.15, 'paper', 'detail')
+      landing.box(0.32, 0.1, 0.32, v, floor + 0.05, anchor, 'concrete', 'detail')
+      landing.beam([v, floor, anchor], [v, floor + heightAboveDeck + 0.16, anchor], 0.15)
+      landing.beam([v, floor + 0.1, anchor - 0.65], [v, floor + heightAboveDeck + 0.12, anchor], 0.1, 'paper', 'detail')
+    }
+    landing.beam([-1.08, floor + heightAboveDeck + 0.12, anchor], [1.08, floor + heightAboveDeck + 0.12, anchor], 0.18)
+    // Short hanging eye secures the cable beneath the steel crossbar.
+    landing.beam([0, floor + heightAboveDeck + 0.12, anchor], [0, floor + heightAboveDeck, anchor], 0.1, 'paper', 'detail')
+    root.add(landing.finish())
+  }
+  const cable = new Draft('Zipline · solid steel cable and trolley')
+  cable.userData = { environment: true, kind: 'zipline-cable', radius: cableRadius, start: from.toArray(), end: to.toArray() }
+  const curve = new THREE.CatmullRomCurve3(Array.from({ length: 25 }, (_, i) => pointAt(i / 24)))
+  cable.solid(new THREE.TubeGeometry(curve, 128, cableRadius, 8, false), [0, 0, 0], 'roof', false, [0, 0, 0], true)
+  cable.line(Array.from({ length: 65 }, (_, i) => pointAt(i / 64).toArray()), 'edge')
+  const trolleyPoint = pointAt(0.003), transverse = new THREE.Vector3(waterDirection[1], 0, -waterDirection[0])
+  cable.box(0.3, 0.18, 0.27, trolleyPoint.x, trolleyPoint.y + 0.02, trolleyPoint.z, 'concrete', 'detail')
+  const handle = trolleyPoint.clone().add(new THREE.Vector3(0, -0.86, 0))
+  cable.beam(trolleyPoint.toArray(), handle.toArray(), 0.065, 'paper', 'detail')
+  cable.beam(handle.clone().addScaledVector(transverse, -0.32).toArray(), handle.clone().addScaledVector(transverse, 0.32).toArray(), 0.085, 'paper', 'detail')
+  root.add(cable.finish())
+  return root
 }
 
 export function railway(startX: number, endX: number, z: number) {

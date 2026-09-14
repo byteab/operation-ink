@@ -4,3 +4,9 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 #world { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: grab; }
 #world:active { cursor: grabbing; }
 #world[data-camera="free"] { cursor: crosshair; }
+#world[data-door="true"] { cursor: pointer; }
+.inspection-help { position: fixed; left: 18px; bottom: 18px; max-width: calc(100vw - 36px); padding: 10px 13px; border: 1px solid #cdd3cd; border-radius: 4px; background: #fafbf9ee; color: #4b5555; font: 12px/1.6 system-ui, sans-serif; }
+.inspection-help summary { cursor: pointer; font-weight: 500; }
+.inspection-help p { margin: 9px 0 0; }
+kbd { font: inherit; color: #263b3b; }
+.door-hint { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 7px 12px; border: 1px solid #cdd3cd; border-radius: 4px; background: #fafbf9ee; color: #3e4951; font: 12px/1.5 system-ui, sans-serif; pointer-events: none; max-width: 60vw; text-align: center; }
