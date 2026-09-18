@@ -1,0 +1,24 @@
+{
+  "walk": {
+    "after": [
+      -48.97500999932944,
+      0.46005597700203943,
+      -51.35
+    ],
+    "before": [
+      -51.90499999999999,
+      0.121999997317791,
+      -51.35
+    ],
+    "distance": 2.949427613865051,
+    "mission": null,
+    "mode": "explore",
+    "playing": true
+  },
+  "pause": {
+    "button": "Resume walk",
+    "pausedDistance": 0,
+    "playing": false
+  },
+  "input": "Trusted Start walking click, keyboard events holding W 1.4 seconds, browser Escape press."
+}

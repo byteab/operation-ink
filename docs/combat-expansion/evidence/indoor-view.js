@@ -1,0 +1,2 @@
+(()=>{const e=window.__environment,m=e.mission,p=e.player;window.originalAIUpdate=m.ai.update.bind(m.ai);m.ai.update=()=>{};
+const guard=m.ai.enemies.find(g=>g.spec.id==='mess-west-aisle');p.body.teleport(guard.position.clone().add(p.body.position.clone().set(0,0,-2.2)));p.actions.syncCamera(e.camera.perspective);e.camera.perspective.lookAt(guard.position.clone().add(p.body.position.clone().set(0,1.1,0)));e.invalidate();return {guard:guard.spec.id,position:guard.position.toArray(),view:p.body.position.toArray()}})()

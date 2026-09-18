@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "aliveGunVisible": true,
+      "deadHidden": true,
+      "flashHidden": true,
+      "kick": 0,
+      "mode": "idle",
+      "reaction": 0,
+      "state": "guard"
+    },
+    {
+      "aliveGunVisible": true,
+      "deadHidden": true,
+      "flashHidden": true,
+      "kick": 0,
+      "mode": "idle",
+      "reaction": 0,
+      "state": "combat"
+    },
+    {
+      "aliveGunVisible": true,
+      "deadHidden": true,
+      "flashHidden": true,
+      "kick": 0,
+      "mode": "idle",
+      "reaction": 0,
+      "state": "patrol"
+    }
+  ]
+}

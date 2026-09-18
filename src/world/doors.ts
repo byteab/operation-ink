@@ -11,11 +11,12 @@ export interface DoorOptions {
   angle?: number
   open?: boolean
   industrial?: boolean
+  barred?: boolean
 }
 
 /** A separate hinged leaf, mounted in an opening supplied by the building. */
 export function createDoor({ name, x, z, floor, width = 1.35, height = 2.35,
-  angle = 0, open = false, industrial = false }: DoorOptions) {
+  angle = 0, open = false, industrial = false, barred = false }: DoorOptions) {
   const root = new Group()
   root.name = name
   root.position.set(x, floor, z)
@@ -32,8 +33,12 @@ export function createDoor({ name, x, z, floor, width = 1.35, height = 2.35,
   hinge.position.x = -width / 2
   hinge.userData.doorHinge = true
   const leaf = new Draft(`${name} leaf`)
-  leaf.box(width - 0.045, height - 0.035, 0.085, width / 2, height / 2, 0, 'roof')
-  for (const side of [-1, 1]) {
+  if (barred) {
+    for (let x = 0.08; x < width; x += 0.18) leaf.box(0.045, height - 0.035, 0.06, x, height / 2, 0, 'roof', 'detail')
+    for (const y of [0.08, 1.05, height - 0.08]) leaf.box(width - 0.045, 0.07, 0.075, width / 2, y, 0, 'roof', 'detail')
+    leaf.box(0.23, 0.24, 0.1, width - 0.22, 1.05, 0, 'concrete', 'detail')
+  } else leaf.box(width - 0.045, height - 0.035, 0.085, width / 2, height / 2, 0, 'roof')
+  for (const side of barred ? [] : [-1, 1]) {
     const z = side * 0.055
     leaf.line([[0.12, 0.16, z], [width - 0.12, 0.16, z],
       [width - 0.12, height - 0.16, z], [0.12, height - 0.16, z]], 'detail', true)

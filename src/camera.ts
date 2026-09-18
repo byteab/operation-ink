@@ -24,6 +24,7 @@ export class EnvironmentCamera {
   view: ViewName = 'overview'
   free = false
   walking = false
+  immersive = false
   onInspect = () => {}
   private pressed = new Set<string>()
   private dragging = false
@@ -74,6 +75,7 @@ export class EnvironmentCamera {
   }
 
   setView(name: ViewName) {
+    if (this.immersive) return
     this.onInspect()
     this.walking = false
     this.pressed.clear()
@@ -130,10 +132,11 @@ export class EnvironmentCamera {
   }
 
   private keyDown = (event: KeyboardEvent) => {
-    if (event.ctrlKey || event.metaKey || event.altKey) return
+    if (this.immersive || event.ctrlKey || event.metaKey || event.altKey) return
     if (event.target instanceof HTMLElement && event.target.closest('button, summary, input, textarea, select, [contenteditable="true"]')) return
     const keys: Record<string, ViewName> = { Digit1: 'overview', Digit2: 'yard', Digit3: 'rail', Digit4: 'tanks', Digit5: 'plan',
       Digit6: 'roof', Digit7: 'mess', Digit8: 'office', Digit9: 'water', Digit0: 'watch' }
+    if (this.walking && document.body.dataset.mission === 'true') return
     if (keys[event.code]) { event.preventDefault(); this.setView(keys[event.code]); return }
     if (this.walking) return
     if (event.code === 'KeyR') { this.setView(this.view); return }

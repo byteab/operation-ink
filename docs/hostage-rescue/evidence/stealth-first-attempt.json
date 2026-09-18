@@ -1,0 +1,198 @@
+{
+  "error": null,
+  "index": 11,
+  "log": [
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -45.04515712838029,
+        6.382000114440918,
+        -40.217330991221786
+      ],
+      "step": {
+        "move": [
+          -45,
+          -40
+        ]
+      },
+      "time": 11.25819999998808
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -25.233414010104877,
+        6.382000114440918,
+        -39.99940858512415
+      ],
+      "step": {
+        "move": [
+          -25,
+          -40
+        ]
+      },
+      "time": 16.04919999998808
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -24.9991773874169,
+        6.382000114440918,
+        -43.17464060181247
+      ],
+      "step": {
+        "move": [
+          -25,
+          -43.4
+        ]
+      },
+      "time": 16.863
+    },
+    {
+      "event": "step",
+      "health": 80,
+      "position": [
+        -25.000858883679204,
+        0.2820000011920929,
+        -54.68921664114372
+      ],
+      "step": {
+        "move": [
+          -25,
+          -54.9
+        ]
+      },
+      "time": 19.61309999999404
+    },
+    {
+      "event": "step",
+      "health": 80,
+      "position": [
+        -28.595323285415105,
+        0.2820000011920929,
+        -54.902033859907654
+      ],
+      "step": {
+        "move": [
+          -28.8,
+          -54.9
+        ]
+      },
+      "time": 20.54080000001192
+    },
+    {
+      "event": "step",
+      "health": 66,
+      "position": [
+        -28.80170377375342,
+        0.2820000011920929,
+        -49.23986420439937
+      ],
+      "step": {
+        "move": [
+          -28.8,
+          -49
+        ]
+      },
+      "time": 21.95559999999404
+    },
+    {
+      "event": "step",
+      "health": 46,
+      "position": [
+        -33.970643118283576,
+        0.2820000011920929,
+        -48.99948380196712
+      ],
+      "step": {
+        "move": [
+          -34.2,
+          -49
+        ]
+      },
+      "time": 23.25280000001192
+    },
+    {
+      "elapsed": 31.266799999999822,
+      "event": "end",
+      "phase": "dead"
+    }
+  ],
+  "mission": {
+    "alarm": "inactive",
+    "alarmElapsed": 0,
+    "alarmPosition": null,
+    "camerasActive": true,
+    "cellsReached": false,
+    "detections": 0,
+    "detentionFound": false,
+    "distractionUntil": 0,
+    "elapsed": 31.266799999999822,
+    "escapeProgress": 0,
+    "gateOpen": false,
+    "health": 0,
+    "hostages": [
+      {
+        "id": "hostage-1",
+        "position": [
+          110.5,
+          -4.2,
+          -21
+        ],
+        "routeIndex": 1,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-2",
+        "position": [
+          123.5,
+          -4.2,
+          -21
+        ],
+        "routeIndex": 1,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-3",
+        "position": [
+          110.5,
+          -4.2,
+          -26
+        ],
+        "routeIndex": 0,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-4",
+        "position": [
+          123.5,
+          -4.2,
+          -26
+        ],
+        "routeIndex": 0,
+        "status": "captive"
+      }
+    ],
+    "jeep": "waiting",
+    "kills": 0,
+    "phase": "dead",
+    "reservesDispatched": 0,
+    "shots": 0,
+    "silencedElapsed": 0,
+    "supplies": []
+  },
+  "position": [
+    -34.20293532162934,
+    0.2820000011920929,
+    -36.20072986066993
+  ],
+  "running": false,
+  "step": {
+    "move": [
+      -34.2,
+      -31
+    ]
+  }
+}

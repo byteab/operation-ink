@@ -1,0 +1,533 @@
+{
+  "sourceArchive": "project-igi-files/pc/common/sounds/sounds.res",
+  "sourceSha256": "0aafa3d790ff0d3fe121d1abbf562ee234de0747937c1b9027405ad82d804e56",
+  "extractedCount": 333,
+  "assets": [
+    {
+      "file": "glock_shot_1.wav",
+      "source": "LOCAL:common/sounds/glock_shot_1.wav",
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 47158,
+      "duration": 1.069342,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "59eb9ab34ba1b09d7937e190bb4e14dd10e3037c9b7ce6e73eb810f84f0d9cc3"
+    },
+    {
+      "file": "glock_shot_2.wav",
+      "source": "LOCAL:common/sounds/glock_shot_2.wav",
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 63544,
+      "duration": 1.440907,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "3e58aab71e738539ca00287991df0623b7736cd724c19d7457a70a8e964d87e5"
+    },
+    {
+      "file": "svddrag_shot_1.wav",
+      "source": "LOCAL:common/sounds/svddrag_shot_1.wav",
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 49962,
+      "duration": 1.132925,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "eb4aa13d6b2bc697d7ed7780b56965f745b9bf93ff5d8299085a369e03ebf35b"
+    },
+    {
+      "file": "door_open_1.wav",
+      "source": "LOCAL:common/sounds/door_open_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10356,
+      "duration": 0.46966,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "f1fd3fea816109f50fcc185561689f9ec322367d54f8c79ddef5fe3ee3ba191e"
+    },
+    {
+      "file": "weaponpickup_1.wav",
+      "source": "LOCAL:common/sounds/weaponpickup_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9586,
+      "duration": 0.434739,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "9b6bb03094a866f19a0f26e907e52aa178beeba69387f229e48bebc59674f2b7"
+    },
+    {
+      "file": "new_gun.wav",
+      "source": "LOCAL:common/sounds/new_gun.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11295,
+      "duration": 0.512245,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "39ed6b0a8b5995bc9f3daa857b2cc886b1d6b4486584b1dddebd4a9cee196794"
+    },
+    {
+      "file": "guns_dry_1.wav",
+      "source": "LOCAL:common/sounds/guns_dry_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 3622,
+      "duration": 0.164263,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "d185bda3414b58eafb9cb12513dd926a8d5ddd191193c4b60d035515861be72c"
+    },
+    {
+      "file": "ak47_reload_1.wav",
+      "source": "LOCAL:common/sounds/ak47_reload_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 5412,
+      "duration": 0.245442,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "f177a5ac369b7a2bed8268a9b16a2d51fa5a908edcc66d5a22c27de92e973626"
+    },
+    {
+      "file": "ak47_reload_3.wav",
+      "source": "LOCAL:common/sounds/ak47_reload_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9165,
+      "duration": 0.415646,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "7c4283d0a6cfaf74564c116bff8de69bf774224a9192253cc84775de6934b7ac"
+    },
+    {
+      "file": "walk_gravel_1.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 13715,
+      "duration": 0.621995,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "d5b180f5bac3fcce8775d3a922d0dea4f9f06fcd0b1305845bb683235f1f086a"
+    },
+    {
+      "file": "walk_gravel_2.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 14318,
+      "duration": 0.649342,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "9db2f96634483f50a9b5737bf11a81595f5ef6e37dc2147b8ebdbb6d7990c81b"
+    },
+    {
+      "file": "walk_gravel_3.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 14944,
+      "duration": 0.677732,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "aeb14d7425a8a38bdb302e86ba6195dd3b4170c0b20f9a9c1c3f98f68fba5f7f"
+    },
+    {
+      "file": "walk_gravel_4.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12031,
+      "duration": 0.545624,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "62f14625a82d055b4f2f35d3a45584f65dae1c0c6cf140296b65bf54f67239bc"
+    },
+    {
+      "file": "walk_gravel_5.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_5.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 14337,
+      "duration": 0.650204,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "31af0b962b107398b59bd94a7b5e4f08c931c4a66b89af28aafeeac2bc8f398a"
+    },
+    {
+      "file": "walk_gravel_6.wav",
+      "source": "LOCAL:common/sounds/walk_gravel_6.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 13645,
+      "duration": 0.618821,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "665250b49d300395bc22df9f589a496bd65e02f951d618b47b0c1e9c56628da2"
+    },
+    {
+      "file": "walk_ladder_1.wav",
+      "source": "LOCAL:common/sounds/walk_ladder_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 7626,
+      "duration": 0.34585,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "122cf14d2cd86c9208b8188bd58104326407828c1ec05a438d07af10a11a8320"
+    },
+    {
+      "file": "walk_ladder_2.wav",
+      "source": "LOCAL:common/sounds/walk_ladder_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9630,
+      "duration": 0.436735,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "41da2aeeef86f0cc5ffe9604b5db4e52b912d22e2a904ee9138668fc814a7333"
+    },
+    {
+      "file": "walk_ladder_3.wav",
+      "source": "LOCAL:common/sounds/walk_ladder_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 8181,
+      "duration": 0.37102,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "84aeffe75d9ea9c328310a26924185fdcab2fcb443b9e4803a4f49a955b8ec4f"
+    },
+    {
+      "file": "walk_ladder_4.wav",
+      "source": "LOCAL:common/sounds/walk_ladder_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10448,
+      "duration": 0.473832,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "5f2f8818a902657b68c6d1ed9f6296e9b5a4f8d721287c59f0f4fa93e0be8936"
+    },
+    {
+      "file": "detected_01.wav",
+      "source": "LOCAL:common/sounds/detected_01.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 13435,
+      "duration": 0.609297,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "db2cf985bf299cfb8e25e7ede96c465eb3fd4e029237ac5ec1ae4029febe66ec"
+    },
+    {
+      "file": "detected_02.wav",
+      "source": "LOCAL:common/sounds/detected_02.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 17244,
+      "duration": 0.782041,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "071cde925870ae252be58bbbf77e31e0ebaa384b198d882f028bd541e119bafe"
+    },
+    {
+      "file": "detected_03.wav",
+      "source": "LOCAL:common/sounds/detected_03.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 19558,
+      "duration": 0.886984,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "648b3f45d4688d95886ced403edce4801c5af8ee8f818f7761b65bac98e6e907"
+    },
+    {
+      "file": "detected_04.wav",
+      "source": "LOCAL:common/sounds/detected_04.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11225,
+      "duration": 0.50907,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "11eb80c76c38b4107e0d078fcbc57f03f29fe5c4f4867c14f6ae5c49a32b6f7a"
+    },
+    {
+      "file": "detected_05.wav",
+      "source": "LOCAL:common/sounds/detected_05.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10906,
+      "duration": 0.494603,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "35da94df7fe99e184cd9a58c9bba8b2b9ac553bcebb5c106e20b0abeb9212ef0"
+    },
+    {
+      "file": "detected_06.wav",
+      "source": "LOCAL:common/sounds/detected_06.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11024,
+      "duration": 0.499955,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "aa4d6c5b05fd5efa85b76c18774b2e72c84c8cb1603dd5b3486db68799026798"
+    },
+    {
+      "file": "bul_concrete_1.wav",
+      "source": "LOCAL:common/sounds/bul_concrete_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 2033,
+      "duration": 0.0922,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "4e30d22a05887e8e93cf9396af15c11248763fb4f38aad104cdc261807629b6b"
+    },
+    {
+      "file": "bul_concrete_2.wav",
+      "source": "LOCAL:common/sounds/bul_concrete_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 4065,
+      "duration": 0.184354,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "f5198d8c28222e65b1664442dc2e7ee378c55c51143a58306c01f7f32d8394f0"
+    },
+    {
+      "file": "bul_flesh_1.wav",
+      "source": "LOCAL:common/sounds/bul_flesh_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 6201,
+      "duration": 0.281224,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "9c596fe5a818680ff0c7aa489fb1cc75ef377bd2e71783c08b9408ae918b8218"
+    },
+    {
+      "file": "bul_flesh_2.wav",
+      "source": "LOCAL:common/sounds/bul_flesh_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 2912,
+      "duration": 0.132063,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "a9d8bb7d44b5662dbe1babd359308ff522e475607b5cab7b556c4a05968037ac"
+    },
+    {
+      "file": "bul_flesh_3.wav",
+      "source": "LOCAL:common/sounds/bul_flesh_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 4536,
+      "duration": 0.205714,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "0748e21df334cc8345456934aaaa5bd9f2761ce08e0a713b33b8294d4310f449"
+    },
+    {
+      "file": "bul_flesh_4.wav",
+      "source": "LOCAL:common/sounds/bul_flesh_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 5022,
+      "duration": 0.227755,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "dd7ed10d3d28236183d3d4a81f1e711799503b0af1dc738424b8c7fb5dbd0028"
+    },
+    {
+      "file": "bul_flesh_5.wav",
+      "source": "LOCAL:common/sounds/bul_flesh_5.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 3800,
+      "duration": 0.172336,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "66f06bd117c75594b8f5c7241489d2ef43ac469fe5be24a2e4562631679555de"
+    },
+    {
+      "file": "bodyfall_1.wav",
+      "source": "LOCAL:common/sounds/bodyfall_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9691,
+      "duration": 0.439501,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "2541a63866a3abd0265f82bb1da9edc526710da77c9b7527035b4329d8c2b676"
+    },
+    {
+      "file": "bodyfall_2.wav",
+      "source": "LOCAL:common/sounds/bodyfall_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12571,
+      "duration": 0.570113,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "a6400515f3dc0b5d40115534c93e9aa4ec959b84700a63e7d3af520b21cbfe69"
+    },
+    {
+      "file": "bodyfall_3.wav",
+      "source": "LOCAL:common/sounds/bodyfall_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10678,
+      "duration": 0.484263,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "1ff12f62729a561200e295e46ef65f8f19e183242c859046fe30918c109d017e"
+    },
+    {
+      "file": "bodyfall_4.wav",
+      "source": "LOCAL:common/sounds/bodyfall_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11814,
+      "duration": 0.535782,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "e9e4cd4ed2121b7911bea8899a2220bba087aa507ebf67102ea7f329b5e3ddfe"
+    },
+    {
+      "file": "bodyfall_5.wav",
+      "source": "LOCAL:common/sounds/bodyfall_5.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9993,
+      "duration": 0.453197,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "ad55dd3bb66d3e1f24b6a80f05976b6c02bf49c31a73cf08448d10ddf7b261c9"
+    },
+    {
+      "file": "bodyfall_6.wav",
+      "source": "LOCAL:common/sounds/bodyfall_6.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 7783,
+      "duration": 0.352971,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "c5da54aa5666062b68c484b5f4ac56205eacca209872e4680f8ff182488f4d6d"
+    },
+    {
+      "file": "bodyfall_7.wav",
+      "source": "LOCAL:common/sounds/bodyfall_7.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 13792,
+      "duration": 0.625488,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "0513ec218b0a4f152b025ab54fb6d069644e4aa1c26ff07a8346ec63ec105b4a"
+    },
+    {
+      "file": "bodyfall_8.wav",
+      "source": "LOCAL:common/sounds/bodyfall_8.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 13026,
+      "duration": 0.590748,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "bb1f74f4ddea5069f03004c74276883efe22657b38355c084c8ede0e198d8556"
+    },
+    {
+      "file": "bodyfall_9.wav",
+      "source": "LOCAL:common/sounds/bodyfall_9.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 18324,
+      "duration": 0.83102,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "ef46f8e0a678e32873d350b668280ff9f1991d52bf84718837b88644de02fefb"
+    },
+    {
+      "file": "ai_hit_01.wav",
+      "source": "LOCAL:common/sounds/ai_hit_01.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 8232,
+      "duration": 0.373333,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "90d6812a16f7813dc984274ce5f0ddd6d938e30cd118eb6c9b0c557eaf7de72b"
+    },
+    {
+      "file": "ai_hit_02.wav",
+      "source": "LOCAL:common/sounds/ai_hit_02.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10478,
+      "duration": 0.475193,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "cbc4eea669e5b1b9adfce4ba28f9097897d93183f08785df47fe524a8077f27d"
+    },
+    {
+      "file": "ai_hit_03.wav",
+      "source": "LOCAL:common/sounds/ai_hit_03.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9336,
+      "duration": 0.423401,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "9f02fed79f9d0fb97f550923c82d7f9dd522434df0e972c3ba3a99ec82111609"
+    },
+    {
+      "file": "player_hit_1.wav",
+      "source": "LOCAL:common/sounds/player_hit_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12632,
+      "duration": 0.57288,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "350f4965eedd55c8e17a8810037dc227cc73c1e3b74b4eeebc6f57f4af399664"
+    },
+    {
+      "file": "player_hit_2.wav",
+      "source": "LOCAL:common/sounds/player_hit_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 4479,
+      "duration": 0.203129,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "9a3fa74e68c5b611bdb4d4fb63cfbe65685e61ffd76a1c7ee3600352c7f93876"
+    },
+    {
+      "file": "player_hit_3.wav",
+      "source": "LOCAL:common/sounds/player_hit_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11549,
+      "duration": 0.523764,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "6aa46671c375203b78f736c70f49df908d3840200837ceffece4f184a14d61d2"
+    },
+    {
+      "file": "player_hit_4.wav",
+      "source": "LOCAL:common/sounds/player_hit_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11900,
+      "duration": 0.539683,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "a3a59109c86e6b2c04ab89bdf6f6c8c4c67cd35db4b7196a12627bcc89b461e6"
+    },
+    {
+      "file": "weapondrop_01.wav",
+      "source": "LOCAL:common/sounds/weapondrop_01.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10604,
+      "duration": 0.480907,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "8271dc4c2f025ba184f492cd0bb4e2605d492cd486ea52c50f23dc2c5aba8327"
+    },
+    {
+      "file": "weapondrop_02.wav",
+      "source": "LOCAL:common/sounds/weapondrop_02.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10530,
+      "duration": 0.477551,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "2e2bd4fe20bdab88fe224209082c86fa3c84a428e7699a49f6942ece8ec2c12d"
+    },
+    {
+      "file": "ak47_single.wav",
+      "source": [
+        "LOCAL:common/sounds/ak47_loop.wav",
+        "LOCAL:common/sounds/ak47_loop_e.wav"
+      ],
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 37762,
+      "duration": 0.856281,
+      "edit": "First 0.085s of burst; 8ms crossfade into decay; 1ms/5ms boundary fades",
+      "sha256": "3874cf897c18d6dbb0f98e82432db45503e1b80ed73a6d6cf596d2f9dbe42f59"
+    },
+    {
+      "file": "mp5sd_single.wav",
+      "source": [
+        "LOCAL:common/sounds/mp5sd_loop.wav",
+        "LOCAL:common/sounds/mp5sd_loop_e.wav"
+      ],
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 30841,
+      "duration": 0.699342,
+      "edit": "First 0.05s of burst; 8ms crossfade into decay; 1ms/5ms boundary fades",
+      "sha256": "f86de1fe7db55112873ad609a23a61fc88bba5a2190ff46c7514aecc2e4d7f2e"
+    }
+  ]
+}

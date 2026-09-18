@@ -1,0 +1,41 @@
+[
+  {
+    "damage": 30,
+    "firstShot": 0.21666666666666667,
+    "scenario": "first-contact",
+    "shots": 3,
+    "travel": 0,
+    "weapon": "pistol"
+  },
+  {
+    "damage": 36,
+    "firstShot": 0.2,
+    "scenario": "first-contact",
+    "shots": 5,
+    "travel": 0,
+    "weapon": "ak"
+  },
+  {
+    "damage": 49,
+    "firstShot": 0.18333333333333332,
+    "scenario": "first-contact",
+    "shots": 7,
+    "travel": 0,
+    "weapon": "smg"
+  },
+  {
+    "damage": 0,
+    "firstShot": 0.4166666666666667,
+    "scenario": "first-contact",
+    "shots": 1,
+    "travel": 0,
+    "weapon": "sniper"
+  },
+  {
+    "damage": 153,
+    "firstShot": 0.2,
+    "lastShot": 3.3333333333333335,
+    "scenario": "moving-target",
+    "shots": 20
+  }
+]

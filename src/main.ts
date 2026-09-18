@@ -4,6 +4,9 @@ import { palette, resizeInk } from './render/ink'
 import { createCompound } from './world/compound'
 import { EnvironmentInteractions } from './interactions'
 import { FirstPersonController } from './player/controller'
+import { VRWalkthrough } from './vr/walkthrough'
+import { createMissionWorld, prepareCompound } from './game/world'
+import { MissionRuntime } from './game/runtime'
 import './style.css'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#world')!
@@ -19,7 +22,11 @@ renderer.shadowMap.enabled = false
 const scene = new THREE.Scene()
 scene.name = 'Line-art environment study'
 scene.background = new THREE.Color(palette.paper)
-scene.add(createCompound())
+const compound = createCompound()
+const missionWorld = new URLSearchParams(location.search).get('explore') === '1' ? null : createMissionWorld()
+if (missionWorld) prepareCompound(compound)
+scene.add(compound)
+if (missionWorld) scene.add(missionWorld.root)
 
 let frame = 0
 let lastTime = performance.now()
@@ -27,7 +34,7 @@ let rendering = false
 let contextLost = false
 let disposed = false
 const invalidate = () => {
-  if (!frame && !contextLost && !disposed) {
+  if (!frame && !renderer.xr.isPresenting && !contextLost && !disposed) {
     if (!rendering) lastTime = performance.now()
     frame = requestAnimationFrame(render)
   }
@@ -35,21 +42,42 @@ const invalidate = () => {
 const camera = new EnvironmentCamera(canvas, invalidate)
 const interactions = new EnvironmentInteractions(canvas, scene, () => camera.active, invalidate, () => camera.walking)
 const player = new FirstPersonController(canvas, scene, camera, interactions, invalidate)
+const vr = new VRWalkthrough(renderer, scene, camera, player, invalidate)
+const mission = missionWorld ? new MissionRuntime(scene, camera, player, missionWorld, invalidate) : null
+const frameTimes: number[] = []
 
-function render(now: number) {
+renderer.xr.addEventListener('sessionstart', () => {
+  cancelAnimationFrame(frame)
+  frame = 0
+  lastTime = performance.now()
+  renderer.setAnimationLoop(render)
+})
+renderer.xr.addEventListener('sessionend', () => {
+  renderer.setAnimationLoop(null)
+  if (!disposed) resize()
+})
+
+function render(now: number, xrFrame?: XRFrame) {
+  if (disposed || contextLost) return
   frame = 0
   rendering = true
-  const dt = Math.min((now - lastTime) / 1000, 0.05)
+  const elapsed = (now - lastTime) / 1000
+  const dt = Math.min(elapsed, 0.05)
+  if (player.playing && elapsed < 1) { frameTimes.push(elapsed * 1000); if (frameTimes.length > 600) frameTimes.shift() }
   lastTime = now
   const doorsMoving = interactions.update(dt)
-  const moving = player.update(dt) || camera.update(dt)
-  renderer.render(scene, camera.active)
+  let moving = false
+  if (vr.active && xrFrame) vr.update(dt, xrFrame)
+  else moving = player.update(dt) || camera.update(dt)
+  const missionMoving = mission?.update(dt) ?? false
+  renderer.render(scene, vr.active ? vr.rig.camera : camera.active)
   canvas.dataset.ready = 'true'
-  if (moving || doorsMoving) invalidate()
+  if (moving || doorsMoving || missionMoving) invalidate()
   rendering = false
 }
 
 function resize() {
+  if (renderer.xr.isPresenting) return
   const width = window.innerWidth, height = window.innerHeight
   renderer.setPixelRatio(pixelRatio())
   renderer.setSize(width, height, false)
@@ -63,6 +91,8 @@ canvas.addEventListener('webglcontextlost', event => {
   contextLost = true
   cancelAnimationFrame(frame)
   frame = 0
+  renderer.setAnimationLoop(null)
+  void vr.exit().catch(() => {})
   canvas.dataset.ready = 'false'
 })
 canvas.addEventListener('webglcontextrestored', () => {
@@ -79,7 +109,7 @@ if (import.meta.env.DEV) {
   Object.assign(window, {
     __environment: {
       scene, renderer, camera,
-      interactions, player,
+      interactions, player, vr, mission,
       setView: (name: ViewName) => camera.setView(name),
       invalidate,
       stats: () => ({
@@ -88,6 +118,8 @@ if (import.meta.env.DEV) {
         geometries: renderer.info.memory.geometries,
         textures: renderer.info.memory.textures,
         view: camera.view,
+        fps: frameTimes.length ? 1000 / (frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length) : null,
+        frameP95: frameTimes.length ? [...frameTimes].sort((a,b)=>a-b)[Math.floor(frameTimes.length*0.95)] : null,
         camera: camera.active.position.toArray(),
         objects: scene.children[0].children.map(object => ({ name: object.name, kind: object.userData.kind ?? 'environment' })),
       }),
@@ -98,7 +130,10 @@ if (import.meta.env.DEV) {
 import.meta.hot?.dispose(() => {
   disposed = true
   cancelAnimationFrame(frame)
+  renderer.setAnimationLoop(null)
   window.removeEventListener('resize', resize)
+  vr.dispose()
+  mission?.dispose()
   player.dispose()
   camera.dispose()
   interactions.dispose()

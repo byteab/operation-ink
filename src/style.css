@@ -11,6 +11,16 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 kbd { font: inherit; color: #263b3b; }
 .door-hint { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 7px 12px; border: 1px solid #cdd3cd; border-radius: 4px; background: #fafbf9ee; color: #3e4951; font: 12px/1.5 system-ui, sans-serif; pointer-events: none; max-width: 60vw; text-align: center; }
 [hidden] { display: none !important; }
+#vr-panel { position: fixed; z-index: 4; right: 25px; bottom: 22px; width: 310px; max-width: calc(100vw - 36px); padding: 16px; border: 1px solid #b8c3b9; border-radius: 4px; background: #fafbf9f5; color: #67756f; font: 11px/1.6 system-ui, sans-serif; }
+#vr-enter { display: block; width: 100%; margin-top: 10px; padding: 12px; border: 1px solid #334a40; border-radius: 3px; color: #fafbf9; background: #334a40; font-size: 13px; }
+#vr-enter:disabled { cursor: default; color: #67756f; background: #e8ede5; border-color: #b8c3b9; }
+#vr-panel p { margin: 10px 0 0; }
+body:has(#walk-hud[data-playing="true"]) #vr-panel { display: none; }
+body[data-vr="active"] #walk-hud, body[data-vr="active"] .inspection-help, body[data-vr="active"] .mode-button, body[data-vr="active"] .door-hint { display: none; }
+@media (max-width: 900px), (max-height: 700px) {
+  body[data-mode="walk"] #walk-pause { padding-bottom: 270px; }
+  #vr-panel { right: 18px; bottom: 16px; }
+}
 button { font: inherit; cursor: pointer; }
 button:focus-visible { outline: 2px solid #31574d; outline-offset: 4px; }
 body[data-mode="walk"] .inspection-help { display: none; }

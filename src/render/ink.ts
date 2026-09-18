@@ -170,6 +170,13 @@ export class Draft extends THREE.Group {
       const mesh = new THREE.Mesh(merged, silhouette)
       mesh.name = `${this.name}: smooth silhouettes`
       mesh.renderOrder = 1
+      mesh.onBeforeRender = (renderer, _scene, camera) => {
+        const viewport = (camera as THREE.PerspectiveCamera).viewport
+        if (renderer.xr.isPresenting && viewport) {
+          silhouette.uniforms.resolution.value.set(viewport.z, viewport.w)
+          silhouette.uniformsNeedUpdate = true
+        }
+      }
       this.add(mesh)
       this.shells.forEach(g => g.dispose())
     }
@@ -179,6 +186,15 @@ export class Draft extends THREE.Group {
       const ink = new LineSegments2(geometry, strokes[stroke])
       ink.name = `${this.name}: ${stroke} ink`
       ink.renderOrder = 2
+      const updateResolution = ink.onBeforeRender
+      ;(ink as THREE.Mesh).onBeforeRender = (renderer, _scene, camera) => {
+        updateResolution.call(ink, renderer)
+        const viewport = (camera as THREE.PerspectiveCamera).viewport
+        if (renderer.xr.isPresenting && viewport) {
+          ink.material.resolution.set(viewport.z, viewport.w)
+          ink.material.uniformsNeedUpdate = true
+        }
+      }
       this.add(ink)
     }
     this.surfaces.clear()

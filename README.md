@@ -1,3 +1,52 @@
+# Operation Safe Return
+
+A playable first-person hostage rescue in the paper-and-ink military compound. Reach the underground detention cells, release the green prisoner seated in cell 01, escort him to the jeep, open the east gate, and escape together. Prepare the route by disabling surveillance in the security cabin or opening the gate early. Alarms activate a finite four-soldier barracks response.
+
+```sh
+npm install
+npm run dev
+```
+
+Open the local URL shown by Vite. Click **Begin mission**. You start behind the mess hall, sheltered by its rear wall. For the quieter approach, follow the wall west and open the service gate to bypass the occupied mess hall. The roof ladder and interior stairs provide the northern railway approach. **M** pauses and opens your field map. Both routes lead to detention in the eastern annex.
+
+**Controls:** WASD move, mouse look, Shift sprint, Space jump, left click fire, right click hold aim, F use/pick up, R reload, 1–4 select weapon slot, G drop, Esc pause. Pause includes retry checkpoint, full restart, volume/mute, and reduced motion. You start with 1 pistol, 2 pump shotgun, 3 AK and 4 SMG, with ammunition for each. No starting sniper. Four slots; a pickup swaps the selected weapon onto the ground when full. The shotgun fires eight pellets with short-range damage falloff, pumps between shots, and reloads one shell at a time; firing interrupts its reload while preserving loaded shells. Ammunition stays with each weapon. Retry restores the insertion checkpoint, including enemies, doors, hostages, cameras, alarm, gate and jeep.
+
+The single hostage uses the same skinned stickman model as enemies, colored green and unarmed. He waits on a chair behind the barred door in cell 01, stands before following, and takes cover during nearby gunfire. Lead him along the marked stair and surface route; walk back or use the regroup panel if he falls behind. He boards the passenger side of the Willys-inspired jeep and sits down. Once he is aboard and the gate is open, **F Board jeep** at the driver's side starts a short scripted drive outside the compound. No kill quota is required. See the [single-hostage revision and visual checks](docs/hostage-rescue/REVISION-SINGLE-HOSTAGE.md).
+
+- [Rescue design and agent architecture](docs/hostage-rescue/DESIGN.md)
+- [Rescue map and geometry](docs/hostage-rescue/MAP.md)
+- [Rescue verification and remaining limitations](docs/hostage-rescue/VERIFICATION.md)
+
+The original exploration/experimental Quest walkthrough remains at **`/?explore=1`**. The character/animation lab remains at **`/lab.html`**.
+
+Gameplay polish adds forward walk/run tactics, stop-and-shoot enemies, marksmen on the water and observation towers, occupied dispatch/maintenance houses, regional hit reactions and tuned damage. Find the five-round sniper rifle beside the maintenance supplies or pick one up from a defeated tower marksman. Hold right click for a 4× scope; release to exit. Reloading, climbing, switching, pause and restart clear zoom. Single-pellet/pistol/automatic headshots cannot kill a healthy guard outright; a sniper headshot is lethal. Health is shown at the lower left. The existing volume/mute control also covers the quiet original level music.
+
+The compound now has 37 active guards and four inspection reserves, including 17 indoor guards in the opening mess hall, homes, barracks, warehouses and utility rooms. The three guards closest to the starting ladder were removed; authored spawns and patrols stay at least 12 metres away. Enemies must aim for at least 800 ms after acquiring or reacquiring the player before firing. Nearby guards coordinate one flanker with a teammate holding the firing lane, avoid occupied cover, and seek shelter when wounded or reloading. Search teams check separate points. Guards who see a fallen teammate investigate its location and remember the discovery across checkpoints; bodies do not reveal the player's hidden position. Wire fences and wire gates block movement but let bullets and enemy sight pass; solid posts, walls and closed doors still provide cover. A nearby missed shot makes an unaware guard scan the area before investigating the bullet's path. `npm run test:ai` checks patrol navigation and squad tactics; `npm run test:expansion` checks the expanded combat and traversal features.
+
+Confirmed hits produce larger blood sprays and immediate pigment splashes; lethal hits leave a spreading pool. Effects are bounded and restore with checkpoints. Local body/head impact cues and a distinct kill confirmation remain audible at long range and obey the volume, mute and pause controls. Guards vary their idle looks, keep weapons ready while searching, and visibly scan after a near miss.
+
+- [Gameplay polish implementation and balance](docs/gameplay-polish/IMPLEMENTATION.md)
+- [Gameplay polish verification and evidence](docs/gameplay-polish/VERIFICATION.md)
+
+- [Original rail-mission design (historical)](docs/first-level/DESIGN.md)
+- [Original implementation and handoffs (historical)](docs/first-level/STATUS.md)
+- [Original mission verification (historical)](docs/first-level/VERIFICATION.md)
+- [Sound provenance](docs/first-level/AUDIO.md)
+
+```sh
+npm run build
+npm run test:player
+npm run test:vr
+npm run test:mission
+npm run test:rescue
+npm run test:weapons
+npm run test:map
+npm run test:ai
+npm run test:polish
+```
+
+The 15–30-minute first-time pacing goal is provisional pending human playtesting. Browser verification uses agent-browser; input-only route automation and staged edge-case checks are distinguished in the evidence report.
+
 # Compound environment
 
 A fully 3D military rail compound with first-person exploration, drawn with unlit paper surfaces and fine, depth-tested outlines. The supplied map determines the building footprints, tank farm, railway, workshop, towers and connected fence boundaries. The original prototype is preserved at `doc/helpers-assets/index.html`.
@@ -9,6 +58,8 @@ Run `npm install`, then `npm run dev`. Open the local Vite URL (normally http://
 The scene uses geometry, opaque paper surfaces and ink outlines without lights, shadows or textures. Buildings have furnished military interiors and hinged doors. The workshop truck is a stationary geometry prop.
 
 ## First-person exploration
+
+**Quest VR experiment:** the `experiment/quest-webxr` branch adds immersive headset exploration with Touch controller movement and interactions. See [the Quest testing guide](docs/quest-vr.md) for USB setup, the HTTPS alternative, controls, and limitations. Start the fixed-port test server with `npm run dev:vr`, forward port 5173 with ADB, then open `http://localhost:5173/` in Meta Quest Browser and choose **Enter VR**.
 
 The default view starts beside the mess hall's west ladder. Click **Start walking** to capture the mouse. Walk toward the ladder, look for the blinking symbol, and press **F** to climb onto the roof. The rooftop door leads to the stairs and furnished interior. Follow the central dining aisle to the **EXIT** sign on the south wall, then press **F** to open the ground-level door into the compound yard.
 
@@ -25,7 +76,9 @@ The default view starts beside the mess hall's west ladder. Click **Start walkin
 
 The player collides with walls, closed doors, furniture, tanks, and wire fences; stairs and low steps can be walked normally. Gravity handles jumps and falls. All six ladders support automatic climbing in both directions. Interactions require a nearby, visible target in front of the player; F prompts update as doors move and respect reduced-motion preferences. If mouse capture is unavailable, hold the left mouse button and drag to look while using the same keyboard controls. **Walk the map** returns from inspection to the starting point. `?view=walk` also opens first-person mode.
 
-Run `npm run test:player` for movement, jump, collision, staircase, all-ladder, and door interaction regression checks against the actual map geometry.
+Run `npm run test:player` for movement, jump, collision, staircase, all-ladder, and door interaction regression checks against the actual map geometry. Stair descent uses a continuous camera incline, and ladder boarding preserves your view. Ladder climbing plays varied original IGI rung sounds. `npm run test:traversal-audio` covers camera continuity and sound routing.
+
+Guards have spotting, searching and combat dialogue, immediate bounded pain reactions, and separate body-impact feedback. The imported Project IGI sound bank supplies weapon reports, footsteps, ladder climbing, guard detection barks, impacts, pain, and mechanical cues, with the previous sounds as fallbacks. Character vocals now use only IGI recordings; other dialogue remains caption-only. See [sound credits](public/sounds/CREDITS.md) and [extraction details](docs/igi-audio/README.md).
 
 ## Camera inspection
 
@@ -53,7 +106,7 @@ Run `npm run test:player` for movement, jump, collision, staircase, all-ladder, 
 | I | Toggle building cutaway to inspect interiors |
 | R | Reset the current view |
 
-Bookmarks are also available through `?view=overview`, `?view=yard`, `?view=rail`, `?view=tanks`, `?view=plan`, `?view=roof`, `?view=mess`, `?view=office`, `?view=water`, and `?view=watch`. Interior bookmarks enter free camera mode, with slower movement for room inspection. Inspection cameras move freely without collision. The zipline remains a static prop. In development, `window.__environment` provides the player, scene inspection, door state, cutaway control, camera bookmarks and render statistics.
+Bookmarks are also available through `?view=overview`, `?view=yard`, `?view=rail`, `?view=tanks`, `?view=plan`, `?view=roof`, `?view=mess`, `?view=office`, `?view=water`, and `?view=watch`. Interior bookmarks enter free camera mode, with slower movement for room inspection. Inspection cameras move freely without collision. At the water tower's cable landing, look at the grip and press F to ride down to the observation tower. The observation landing is arrival-only. Weapons are lowered during transit; pause freezes the ride. VR uses a blink from the water tower to the observation landing. In development, `window.__environment` provides the player, scene inspection, door state, cutaway control, camera bookmarks and render statistics.
 
 ## Implementation
 

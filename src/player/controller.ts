@@ -13,9 +13,15 @@ export class FirstPersonController {
   readonly actions: PlayerActions
   enabled = false
   playing = false
+  immersive = false
+  missionMode = false
+  movementLocked = false
+  canPlay: () => boolean = () => true
+  lookSensitivity: () => number = () => 1
   private fallback = false
   private dragging = false
   private started = false
+  private walkRotation = new THREE.Quaternion()
   private pressed = new Set<string>()
   private abort = new AbortController()
   private direction = new THREE.Vector3()
@@ -38,12 +44,12 @@ export class FirstPersonController {
     this.body = new PlayerBody(this.world)
     this.actions = new PlayerActions(scene, this.body)
     const options = { signal: this.abort.signal }
-    this.camera.onInspect = () => this.stop()
+    this.camera.onInspect = () => { this.walkRotation.copy(camera.active.quaternion); this.stop() }
     this.startButton.addEventListener('click', () => this.requestControl(), options)
     this.walkButton.addEventListener('click', () => { this.enable(); this.requestControl() }, options)
     document.querySelector('#inspect-mode')!.addEventListener('click', () => camera.setView('overview'), options)
     canvas.addEventListener('pointerdown', event => {
-      if (!this.enabled || event.button !== 0) return
+      if (!this.enabled || this.immersive || event.button !== 0) return
       if (!this.playing) this.requestControl()
       this.dragging = true
       if (this.fallback) canvas.setPointerCapture(event.pointerId)
@@ -69,7 +75,10 @@ export class FirstPersonController {
     document.body.dataset.mode = 'walk'
     this.hud.hidden = false
     this.walkButton.hidden = true
-    this.respawn()
+    if (this.missionMode && this.started) {
+      this.actions.syncCamera(this.camera.active)
+      this.camera.active.quaternion.copy(this.walkRotation)
+    } else this.respawn()
     this.pause()
   }
 
@@ -93,8 +102,8 @@ export class FirstPersonController {
     this.invalidate()
   }
 
-  private requestControl() {
-    if (!this.enabled) return
+  requestControl() {
+    if (!this.enabled || this.immersive || !this.canPlay()) return
     this.canvas.focus({ preventScroll: true })
     if (!this.canvas.requestPointerLock || this.fallback) { this.useFallback(); return }
     try {
@@ -104,12 +113,13 @@ export class FirstPersonController {
   }
 
   private useFallback = () => {
-    if (!this.enabled) return
+    if (!this.enabled || this.immersive) return
     this.fallback = true
     this.resume()
   }
 
   private resume() {
+    if (this.immersive || !this.canPlay()) return
     this.playing = true
     this.started = true
     this.panel.hidden = true
@@ -118,7 +128,7 @@ export class FirstPersonController {
     this.invalidate()
   }
 
-  private pause = () => {
+  pause = () => {
     this.pressed.clear()
     this.dragging = false
     this.playing = false
@@ -129,38 +139,44 @@ export class FirstPersonController {
     this.marker.hidden = true
     this.hud.dataset.playing = 'false'
     this.panel.hidden = !this.enabled
-    this.startButton.textContent = this.started ? 'Resume walk' : 'Start walking'
+    this.startButton.textContent = this.missionMode ? (this.started ? 'Resume mission' : 'Begin mission') : this.started ? 'Resume walk' : 'Start walking'
     this.invalidate()
   }
 
   private look = (event: MouseEvent) => {
     if (!this.enabled || !this.playing || (document.pointerLockElement !== this.canvas && !(this.fallback && this.dragging))) return
     this.rotation.setFromQuaternion(this.camera.active.quaternion, 'YXZ')
-    this.rotation.y -= event.movementX * 0.0022
-    this.rotation.x = THREE.MathUtils.clamp(this.rotation.x - event.movementY * 0.0022, -1.5, 1.5)
+    const sensitivity = 0.0022 * this.lookSensitivity()
+    this.rotation.y -= event.movementX * sensitivity
+    this.rotation.x = THREE.MathUtils.clamp(this.rotation.x - event.movementY * sensitivity, -1.5, 1.5)
     this.camera.active.quaternion.setFromEuler(this.rotation)
     this.invalidate()
   }
 
   private keyDown = (event: KeyboardEvent) => {
-    if (!this.enabled || event.ctrlKey || event.metaKey || event.altKey) return
+    if (!this.enabled || this.immersive || event.ctrlKey || event.metaKey || event.altKey) return
     if (event.target instanceof HTMLElement && event.target.closest('button, summary, input, textarea, select, [contenteditable="true"]')) return
     if (event.code === 'Escape') { this.pause(); return }
     if (!this.playing) return
+    if (this.movementLocked) return
     if (movementKeys.includes(event.code)) {
       event.preventDefault()
       this.pressed.add(event.code)
-      if (event.code === 'Space' && !event.repeat && !this.actions.climbing) this.body.jump()
+      if (event.code === 'Space' && !event.repeat && !this.actions.traversing) this.body.jump()
     }
     if (event.code === 'KeyF' && !event.repeat) { event.preventDefault(); this.actions.activate(this.camera.active) }
-    if (event.code === 'KeyR' && !event.repeat) { event.preventDefault(); this.respawn() }
+    if (event.code === 'KeyR' && !event.repeat && !this.missionMode) { event.preventDefault(); this.respawn() }
     this.invalidate()
   }
 
   update(dt: number) {
-    if (!this.enabled || !this.playing) return false
+    if (!this.enabled || this.immersive || !this.playing) return false
+    if (this.movementLocked) {
+      this.prompt.hidden = true; this.marker.hidden = true; this.status.textContent = 'Escaping by jeep'
+      return true
+    }
     this.world.refresh()
-    if (!this.actions.updateClimb(dt)) {
+    if (!this.actions.updateTraversal(dt)) {
       const x = Number(this.pressed.has('KeyD') || this.pressed.has('ArrowRight')) - Number(this.pressed.has('KeyA') || this.pressed.has('ArrowLeft'))
       const z = Number(this.pressed.has('KeyW') || this.pressed.has('ArrowUp')) - Number(this.pressed.has('KeyS') || this.pressed.has('ArrowDown'))
       this.camera.active.getWorldDirection(this.forward)
@@ -170,24 +186,37 @@ export class FirstPersonController {
       this.body.update(dt, this.direction, this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'))
     }
     if (this.body.position.y < -20 || Math.max(Math.abs(this.body.position.x), Math.abs(this.body.position.z)) > 1150) this.respawn()
-    this.actions.syncCamera(this.camera.active)
+    this.actions.syncCamera(this.camera.active, dt)
     const target = this.actions.findTarget(this.camera.active)
     this.prompt.hidden = !target
     this.marker.hidden = !target
     if (target) {
       this.actionLabel.textContent = target.label
       this.objectLabel.textContent = target.object.name
-      this.marker.textContent = target.kind === 'door' ? '◇' : target.descending ? '↓' : '↑'
+      this.marker.textContent = target.kind === 'door' ? '▯' : target.kind === 'ladder' ? '☷' : target.kind === 'zipline' ? '↘' : target.kind === 'pickup' ? '+' : '⚙'
+      this.prompt.dataset.kind = target.kind
       this.projected.copy(target.point).project(this.camera.active)
       this.marker.hidden = Math.abs(this.projected.x) > 0.95 || Math.abs(this.projected.y) > 0.9 || this.projected.z > 1
       this.marker.style.left = `${(this.projected.x + 1) * 50}%`
       this.marker.style.top = `${(1 - this.projected.y) * 50}%`
     }
-    const state = this.actions.climbing ? (this.actions.climbing.descending ? 'Climbing down' : 'Climbing up') :
+    const ride = this.actions.riding
+    const state = ride ? `Riding to ${ride.destination} · ${Math.round((1 - ride.remaining / ride.distance) * 100)}%` :
+      this.actions.climbing ? (this.actions.climbing.descending ? 'Climbing down' : 'Climbing up') :
       !this.body.grounded ? 'In the air' : this.direction.lengthSq() > 0 ?
         (this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight') ? 'Sprinting' : 'Walking') : 'On foot'
     this.status.textContent = this.fallback ? `${state} · drag to look` : state
     return true
+  }
+
+  setImmersive(active: boolean) {
+    if (active && !this.enabled) this.enable()
+    this.immersive = active
+    this.camera.immersive = active
+    this.actions.reset()
+    this.body.velocity.set(0, 0, 0)
+    this.pause()
+    this.actions.syncCamera(this.camera.active)
   }
 
   stop() {

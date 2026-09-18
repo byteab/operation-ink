@@ -1,0 +1,10 @@
+{
+  "coldFirstEmissionMs": 4,
+  "playing": false,
+  "subsequentEmissionMs": [
+    1.2000000029802322,
+    0.8999999910593033,
+    1.7000000029802322,
+    0.7000000029802322
+  ]
+}

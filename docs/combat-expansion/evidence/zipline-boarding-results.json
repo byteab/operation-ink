@@ -1,0 +1,34 @@
+{
+  "blocked": [
+    {
+      "activated": false,
+      "position": [
+        6.208478136630216,
+        12.634999656677246,
+        -32.73667577395432
+      ],
+      "target": null
+    },
+    {
+      "activated": false,
+      "position": [
+        6.458478136630216,
+        12.634999656677246,
+        -31.98667577395431
+      ],
+      "target": null
+    }
+  ],
+  "endpoints": [
+    {
+      "activated": true,
+      "end": false,
+      "target": "zipline"
+    },
+    {
+      "activated": true,
+      "end": true,
+      "target": "zipline"
+    }
+  ]
+}

@@ -8,11 +8,11 @@ const temporary = await mkdtemp(join(tmpdir(), 'stickman-player-'))
 try {
   const output = join(temporary, 'checks.mjs')
   await build({
-    input: 'scripts/player-checks.ts', platform: 'node',
+    input: process.argv[2] ?? 'scripts/player-checks.ts', platform: 'node',
     plugins: [{ name: 'shared-three', resolveId(id) {
       if (id === 'three' || id.startsWith('three/')) return { id: import.meta.resolve(id), external: true }
     } }],
-    output: { file: output, format: 'esm' },
+    output: { dir: temporary, entryFileNames: 'checks.mjs', format: 'esm' },
   })
   await import(pathToFileURL(output).href)
 } finally { await rm(temporary, { recursive: true, force: true }) }

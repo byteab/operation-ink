@@ -1,0 +1,25 @@
+{
+  "afterScan": {
+    "health": 100,
+    "scanTimer": 0,
+    "state": "search"
+  },
+  "afterShot": {
+    "health": 100,
+    "lastKnown": [
+      129.3,
+      0,
+      60
+    ],
+    "muzzleDistance": 10.060318086422516,
+    "scanTimer": 1.5845333304139786,
+    "state": "suspicious"
+  },
+  "scanned": {
+    "health": 100,
+    "moved": 0,
+    "scanTimer": 1.0845333304139804,
+    "state": "suspicious",
+    "yawDelta": -0.9293331981376832
+  }
+}

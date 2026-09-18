@@ -1,0 +1,209 @@
+{
+  "error": "Mission paused or pointer lock lost",
+  "index": 19,
+  "log": [
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -34.005711956412554,
+        0.2820000011920929,
+        -48.998367171393554
+      ],
+      "step": {
+        "move": [
+          -34.2,
+          -49
+        ]
+      },
+      "time": 23.79069999998808
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -34.20140178541119,
+        0.006999999888241291,
+        -31.230642115413485
+      ],
+      "step": {
+        "move": [
+          -34.2,
+          -31
+        ]
+      },
+      "time": 30.035799999982117
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -34.012921520720504,
+        0.2820000011920929,
+        -33.79501101543955
+      ],
+      "step": {
+        "move": [
+          -34,
+          -34
+        ]
+      },
+      "time": 30.76259999999404
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -49.79257606921757,
+        0.0069999998882412946,
+        -30.052844249714443
+      ],
+      "step": {
+        "move": [
+          -50,
+          -30
+        ]
+      },
+      "time": 34.7045
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -49.99931138996971,
+        0.0069999998882412946,
+        3.766083749238337
+      ],
+      "step": {
+        "move": [
+          -50,
+          4
+        ]
+      },
+      "time": 42.94369999998808
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -20.224076929154528,
+        0.006999999888241291,
+        4.000814258414791
+      ],
+      "step": {
+        "move": [
+          -20,
+          4
+        ]
+      },
+      "time": 50.10029999998212
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -19.999328398444412,
+        0.0069999998882412946,
+        19.8811761816037
+      ],
+      "step": {
+        "move": [
+          -20,
+          20.1
+        ]
+      },
+      "time": 53.9515
+    },
+    {
+      "event": "step",
+      "health": 100,
+      "position": [
+        -11.95937576092793,
+        0.0069999998882412946,
+        20.10078274235836
+      ],
+      "step": {
+        "move": [
+          -11.75,
+          20.1
+        ]
+      },
+      "time": 55.92709999999404
+    }
+  ],
+  "mission": {
+    "alarm": "inactive",
+    "alarmElapsed": 0,
+    "alarmPosition": null,
+    "camerasActive": true,
+    "cellsReached": false,
+    "detections": 0,
+    "detentionFound": false,
+    "distractionUntil": 0,
+    "elapsed": 61.174099999997416,
+    "escapeProgress": 0,
+    "gateOpen": false,
+    "health": 100,
+    "hostages": [
+      {
+        "id": "hostage-1",
+        "position": [
+          110.5,
+          -4.2,
+          -21
+        ],
+        "routeIndex": 1,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-2",
+        "position": [
+          123.5,
+          -4.2,
+          -21
+        ],
+        "routeIndex": 1,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-3",
+        "position": [
+          110.5,
+          -4.2,
+          -26
+        ],
+        "routeIndex": 0,
+        "status": "captive"
+      },
+      {
+        "id": "hostage-4",
+        "position": [
+          123.5,
+          -4.2,
+          -26
+        ],
+        "routeIndex": 0,
+        "status": "captive"
+      }
+    ],
+    "jeep": "waiting",
+    "kills": 11,
+    "phase": "active",
+    "reservesDispatched": 0,
+    "shots": 23,
+    "silencedElapsed": 0,
+    "supplies": []
+  },
+  "position": [
+    -11.745704974579956,
+    0.006999999888241291,
+    15.000585081068028
+  ],
+  "running": false,
+  "step": {
+    "move": [
+      -11.75,
+      14
+    ]
+  }
+}

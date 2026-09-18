@@ -19,7 +19,7 @@ const buildingPlan: (Omit<BuildingSpec, 'x' | 'z' | 'width' | 'depth'> & {
   { name: 'South barracks B · long wing', at: [1116, 773], size: [74, 115], height: 3.45 },
   { name: 'South barracks B · west wing', at: [1044, 743], size: [70, 55], height: 3.45 },
   { name: 'West administration wing', at: [549, 738], size: [185, 51], height: 3.45 },
-  { name: 'West utility building', at: [531, 668], size: [46, 76], height: 3.3, type: 'utility' },
+  { name: 'West utility building', at: [531, 648], size: [46, 76], height: 3.3, type: 'utility' },
   { name: 'Inner gatehouse', at: [709, 695], size: [66, 102], height: 3.6, type: 'utility' },
   { name: 'Southwest service shed', at: [186, 889], size: [58, 132], height: 3.5, type: 'utility' },
   { name: 'Southwest stores', at: [363, 970], size: [166, 74], height: 4.6, type: 'warehouse' },
@@ -105,7 +105,7 @@ function landscaping() {
   const trees = [
     [105, 209, 9], [57, 251, 7], [78, 640, 8], [155, 684, 10], [176, 730, 7],
     [304, 825, 8.5], [447, 815, 9], [503, 800, 7], [569, 843, 8.5], [583, 899, 7.5],
-    [553, 590, 6], [386, 580, 5], [671, 397, 6.5], [803, 612, 4.5],
+    [386, 580, 5], [671, 397, 6.5], [803, 612, 4.5],
     [358, 410, 5], [270, 414, 4.5], [968, 183, 7], [853, 192, 5],
     [276, 27, 8.5], [653, 34, 9], [931, 73, 8], [990, 55, 6], [1210, 103, 8], [1390, 22, 11],
     [1445, 403, 9], [1436, 661, 7.5], [1409, 914, 8.5], [1346, 934, 7],
@@ -187,11 +187,17 @@ export function createCompound() {
   root.add(fence('North service enclosure · entry return', plan([[363, 220], [428.25, 220]])))
   root.add(gate('North service yard gate · closed', ...mapPoint(338, 220), 7.5, 0, false))
   root.add(fence('North service enclosure · east', plan([[614.5, 220], [915, 220]])))
-  root.add(fence('Inner yard · railway separation and west return', plan([[1410, 415], [730, 415], [730, 460], [667, 460], [667, 648]])))
-  root.add(fence('Inner yard · south gate return', plan([[667, 700], [447, 700], [447, 779]])))
+  // Close the shortcut around the loading platform's western end by the water tower.
+  root.add(fence('Rail yard · water tower return', plan([[915, 290], [915, 415]])))
+  root.add(fence('Inner yard · railway separation and west return', plan([[1410, 415], [730, 415], [730, 460], [667, 460], [667, 529]])))
+  // Entry now faces the open yard instead of the narrow gatehouse passage.
+  root.add(fence('Inner yard · south gate return', plan([[667, 581], [667, 700], [447, 700], [447, 779], [456.5, 779], [456.5, 763.5]])))
+  // Join the cross fence to the observation tower's southeast foot, leaving its
+  // south-facing ladder approachable from the service yard.
+  root.add(fence('Observation tower · yard closure', plan([[447, 700], [432, 700], [432, 679]])))
   root.add(fence('West cross fence', plan([[245, 681], [311, 681]])))
   root.add(gate('West service gate · open', ...mapPoint(347, 681), 10.8))
-  root.add(gate('Inner yard gate · open', ...mapPoint(667, 674), 7.8, Math.PI / 2))
+  root.add(gate('Inner yard gate · open', ...mapPoint(667, 555), 7.8, -Math.PI / 2))
 
   const storage = [[321, 326, 5.6], [321, 372, 5.6], [535, 600, 4.8], [874, 390, 4.8], [1360, 845, 4.8]]
   for (const [i, [px, pz, w]] of storage.entries()) root.add(container(`Equipment container ${i + 1}`, ...mapPoint(px, pz), w))

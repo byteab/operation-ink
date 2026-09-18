@@ -1,0 +1,52 @@
+{
+  "ladders": [
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "Mess hall · west exterior roof ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "West fuel storage 1 · solid access ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "West fuel storage 2 · solid access ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "West fuel storage 3 · solid access ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "North water tower · solid access ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04500000000000037,
+      "name": "West observation tower · solid access ladder"
+    },
+    {
+      "angularChange": 0,
+      "grounded": true,
+      "maxStep": 0.04499999999994997,
+      "name": "Maintenance shelter · west roof ladder"
+    }
+  ],
+  "stairs": {
+    "bodyMax": 0.1967744827270508,
+    "cameraMax": 0.0459139784946192,
+    "changeMax": 5.033499008710862e-6,
+    "count": 86
+  }
+}

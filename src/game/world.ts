@@ -1,0 +1,488 @@
+import * as THREE from 'three'
+import { Draft, type Point } from '../render/ink'
+import { crates, steps } from '../world/architecture'
+import { createDoor } from '../world/doors'
+import { fence, gate, type PlanPoint } from '../world/industrial'
+import { pipeLadder } from '../world/ladders'
+import type { EnemySpec, MissionWorld, Station, StationKind, Vec3 } from './types'
+import { DETENTION_STAIR_HOLE, RESCUE_LAYOUT } from './rescue-layout'
+import { createRescueJeep } from './rescue-jeep'
+
+const FLOOR = 0.12
+const DOOR_WIDTH = 2.1
+const DOOR_HEIGHT = 2.65
+const ROOF = 4.2
+
+/** A small number of readable signs; text meshes never become collision walls. */
+function sign(text: string, position: Point, width = 3.8, angle = 0, subtitle = '') {
+  const root = new THREE.Group()
+  root.name = `Sign · ${text}`
+  root.position.set(...position)
+  root.rotation.y = angle
+  root.userData = { noCollision: true, decorative: true, text, subtitle }
+  if (typeof document === 'undefined') return root
+  const canvas = document.createElement('canvas')
+  canvas.width = 768
+  canvas.height = 192
+  const context = canvas.getContext('2d')
+  if (!context) return root
+  context.fillStyle = '#f1f3ee'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.strokeStyle = '#3e4951'
+  context.lineWidth = 5
+  context.strokeRect(8, 8, 752, 176)
+  context.fillStyle = '#26343b'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.font = `600 ${text.length > 20 ? 41 : 53}px monospace`
+  context.fillText(text, 384, subtitle ? 71 : 98, 722)
+  if (subtitle) {
+    context.font = '27px monospace'
+    context.fillText(subtitle, 384, 137, 712)
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(width, width / 4),
+    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false }))
+  board.name = `${text} lettering`
+  root.add(board)
+  return root
+}
+
+type HouseSpec = { name: string; x: number; z: number; width: number; depth: number; role: 'relay' | 'dispatch' | 'crew' | 'maintenance' }
+
+/** Purpose-built through rooms. A two-metre central aisle stays clear at both doors. */
+function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
+  const root = new THREE.Group()
+  root.name = name
+  root.position.set(x, 0, z)
+  root.userData = {
+    environment: true, kind: 'mission-house', role, enterable: true, floor: FLOOR,
+    footprint: [w, d], roofHeight: ROOF, roofWalkable: role === 'maintenance',
+    entrances: [{ x: 0, z: d / 2 + 0.05, width: DOOR_WIDTH, floor: FLOOR },
+      { x: 0, z: -d / 2 - 0.05, width: DOOR_WIDTH, floor: FLOOR }],
+    route: [[0, FLOOR, d / 2 + 1], [0, FLOOR, 0], [0, FLOOR, -d / 2 - 1]],
+  }
+  const floor = new Draft(`${name} · floor`)
+  floor.box(w + 0.25, FLOOR, d + 0.25, 0, FLOOR / 2, 0, 'concrete', 'detail')
+  root.add(floor.finish())
+  const walls = new Draft(`${name} · walls`)
+  walls.userData.cutaway = true
+  const height = ROOF - FLOOR - 0.16
+  const sideWidth = (w - DOOR_WIDTH) / 2
+  for (const side of [-1, 1]) {
+    for (const direction of [-1, 1]) walls.box(sideWidth, height, 0.22,
+      direction * (DOOR_WIDTH / 2 + sideWidth / 2), FLOOR + height / 2, side * d / 2, 'paper', false)
+    walls.box(DOOR_WIDTH, height - DOOR_HEIGHT, 0.22, 0,
+      FLOOR + DOOR_HEIGHT + (height - DOOR_HEIGHT) / 2, side * d / 2, 'paper', false)
+    walls.line([[-w / 2, FLOOR, side * (d / 2 + 0.115)], [-w / 2, ROOF - 0.16, side * (d / 2 + 0.115)],
+      [w / 2, ROOF - 0.16, side * (d / 2 + 0.115)], [w / 2, FLOOR, side * (d / 2 + 0.115)]])
+    const door = createDoor({ name: `${name} · ${side > 0 ? 'south' : 'north'} door`,
+      x: 0, z: side * (d / 2 + 0.035), floor: FLOOR, width: DOOR_WIDTH,
+      height: DOOR_HEIGHT, angle: side > 0 ? 0 : Math.PI, open: false })
+    root.add(door)
+    // Small windows beside the doors are indicated as filled glazing, so sight
+    // and bullets follow the same solid wall geometry they visibly belong to.
+    for (const direction of [-1, 1]) {
+      const wx = direction * (w / 2 - 1.65)
+      walls.box(1.6, 1.0, 0.035, wx, 2.1, side * (d / 2 + 0.13), 'glass', 'detail')
+      walls.line([[wx, 1.6, side * (d / 2 + 0.153)], [wx, 2.6, side * (d / 2 + 0.153)]], 'mesh')
+    }
+  }
+  for (const side of [-1, 1]) {
+    walls.box(0.22, height, d, side * w / 2, FLOOR + height / 2, 0, 'paper', false)
+    walls.line([[side * (w / 2 + 0.115), FLOOR, -d / 2], [side * (w / 2 + 0.115), ROOF - 0.16, -d / 2],
+      [side * (w / 2 + 0.115), ROOF - 0.16, d / 2], [side * (w / 2 + 0.115), FLOOR, d / 2]])
+  }
+  root.add(walls.finish())
+  const roof = new Draft(`${name} · flat roof`)
+  roof.userData.cutaway = true
+  roof.box(w + 0.45, 0.2, d + 0.45, 0, ROOF - 0.1, 0, 'roof')
+  // Maintenance roof has a safe observation edge and a real ladder gap.
+  if (role === 'maintenance') {
+    for (const side of [-1, 1]) roof.box(w + 0.2, 0.72, 0.16, 0, ROOF + 0.36, side * (d / 2 + 0.05), 'paper', 'detail')
+    roof.box(0.16, 0.72, d, w / 2 + 0.05, ROOF + 0.36, 0, 'paper', 'detail')
+    for (const side of [-1, 1]) roof.box(0.16, 0.72, (d - 1.6) / 2,
+      -w / 2 - 0.05, ROOF + 0.36, side * (d + 1.6) / 4, 'paper', 'detail')
+    const ladder = pipeLadder({ name: `${name} · west roof ladder`, x: -w / 2 - 0.59,
+      z: 0, bottom: 0.03, landingHeight: ROOF, angle: -Math.PI / 2, landingDepth: 1.1 })
+    root.add(ladder.finish())
+  }
+  root.add(roof.finish())
+  const interior = new Draft(`${name} · furnishings`)
+  if (role === 'crew') {
+    // Wall-side bunks leave both the central aisle and the reserve muster areas free.
+    for (const side of [-1, 1]) for (const bz of [-2.2, 2.2]) {
+      const bx = side * (w / 2 - 1.1)
+      interior.box(1.5, 0.18, 2.4, bx, FLOOR + 0.48, bz, 'concrete', 'detail')
+      interior.box(1.38, 0.15, 2.26, bx, FLOOR + 0.64, bz, 'roof', 'detail')
+      interior.box(1.22, 0.12, 0.45, bx, FLOOR + 0.76, bz - 0.74, 'paper', 'detail')
+      for (const dx of [-0.58, 0.58]) for (const dz of [-1.0, 1.0]) interior.box(0.075, 0.45, 0.075,
+        bx + dx, FLOOR + 0.225, bz + dz, 'roof', 'detail')
+    }
+    // A partial partition suggests two rooms while retaining a broad interior passage.
+    for (const side of [-1, 1]) interior.box(w / 2 - 2.1, 2.6, 0.12,
+      side * (w / 4 + 1.05), FLOOR + 1.3, 0, 'paper', 'detail')
+  } else {
+    const bx = -w / 2 + 1.05
+    interior.box(1.3, 0.14, 3, bx, FLOOR + 0.91, -0.4, 'roof', 'detail')
+    for (const dx of [-0.5, 0.5]) for (const dz of [-1.2, 1.2]) interior.box(0.075, 0.84, 0.075,
+      bx + dx, FLOOR + 0.42, -0.4 + dz, 'paper', 'detail')
+    interior.box(1.3, 1.5, 0.65, w / 2 - 1.15, FLOOR + 0.75, d / 2 - 1.25, 'concrete', 'detail')
+    if (role === 'maintenance') crates(interior, -w / 2 + 0.8, -d / 2 + 1.1, 2, 'paper', FLOOR)
+  }
+  root.add(interior.finish())
+  const names = { relay: 'DETENTION', dispatch: 'SECURITY / CAMERAS', crew: 'CREW QUARTERS', maintenance: 'FIELD MAINTENANCE' }
+  root.add(sign(names[role], [0, 3.38, d / 2 + 0.14], Math.min(w - 1, 5.7)))
+  root.add(sign(names[role], [0, 3.38, -d / 2 - 0.14], Math.min(w - 1, 5.7), Math.PI))
+  return root
+}
+
+/** Change only named fence runs; visual mesh and collision proxy share every cut. */
+function fenceOpening(compound: THREE.Group, name: string, axis: 0 | 1, fixed: number,
+  start: number, end: number, title: string) {
+  const original = compound.getObjectByName(name)
+  if (!original || original.userData.missionOpening) return
+  const replacement = new THREE.Group()
+  replacement.name = name
+  replacement.userData = { environment: true, kind: 'fence', missionOpening: true }
+  const panels = original.userData.collisionPanels as { a: PlanPoint; b: PlanPoint; height: number }[]
+  if (!panels) return
+  let index = 0
+  for (const { a, b, height } of panels) {
+    const cross = 1 - axis
+    const cut = Math.abs(a[cross] - fixed) < 0.001 && Math.abs(b[cross] - fixed) < 0.001 &&
+      Math.min(a[axis], b[axis]) < start && Math.max(a[axis], b[axis]) > end
+    if (!cut) {
+      replacement.add(fence(`${name} · run ${++index}`, [a, b], height))
+      continue
+    }
+    const first = a[axis] < b[axis] ? start : end
+    const second = a[axis] < b[axis] ? end : start
+    const p: PlanPoint = [0, 0], q: PlanPoint = [0, 0]
+    p[axis] = first; q[axis] = second; p[cross] = fixed; q[cross] = fixed
+    replacement.add(fence(`${name} · run ${++index}`, [a, p], height),
+      fence(`${name} · run ${++index}`, [q, b], height))
+  }
+  const centre = (start + end) / 2
+  replacement.add(gate(title, axis === 0 ? centre : fixed, axis === 0 ? fixed : centre,
+    end - start, axis === 0 ? 0 : Math.PI / 2, true))
+  original.parent?.add(replacement)
+  original.removeFromParent()
+  original.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose() })
+}
+
+/** Call after createCompound(), before constructing CollisionWorld/interactions. */
+export function prepareCompound(compound: THREE.Group) {
+  const serviceGate = compound.getObjectByName('North service yard gate · closed')
+  if (serviceGate) {
+    const entry = createDoor({ name: 'West service entrance', x: serviceGate.position.x,
+      z: serviceGate.position.z, floor: 0, width: 7.5, height: 2.65,
+      angle: serviceGate.rotation.y, industrial: true })
+    entry.add(sign('SERVICE ENTRY', [0, 3.15, -0.12], 5, Math.PI, 'WEST PERIMETER ROUTE'))
+    serviceGate.parent?.add(entry)
+    serviceGate.removeFromParent()
+    serviceGate.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose() })
+  }
+  const ground = compound.getObjectByName('Unlit paper ground')
+  if (ground instanceof THREE.Mesh && !ground.userData.detentionOpening) {
+    const shape = new THREE.Shape()
+    shape.moveTo(-1200, -1200); shape.lineTo(1200, -1200)
+    shape.lineTo(1200, 1200); shape.lineTo(-1200, 1200); shape.closePath()
+    const hole = new THREE.Path(), h = DETENTION_STAIR_HOLE
+    hole.moveTo(h.minX, -h.minZ); hole.lineTo(h.maxX, -h.minZ)
+    hole.lineTo(h.maxX, -h.maxZ); hole.lineTo(h.minX, -h.maxZ); hole.closePath()
+    shape.holes.push(hole)
+    ground.geometry.dispose()
+    ground.geometry = new THREE.ShapeGeometry(shape)
+    ground.userData.detentionOpening = true
+  }
+  fenceOpening(compound, 'Inner yard · railway separation and west return', 0, -18.75, 54, 60,
+    'Rail maintenance gate · open')
+  fenceOpening(compound, 'Perimeter · east, south and west', 1, 99, 8, 14,
+    'East annex service gate · open')
+  compound.updateMatrixWorld(true)
+}
+
+function control(kind: StationKind, id: string, label: string, position: Point, angle = 0): Station {
+  const object = new Draft(label, position[0], position[2], angle)
+  object.position.y = position[1]
+  object.userData = { environment: true, kind: 'mission-station', stationKind: kind, stationId: id }
+  const isSupply = kind === 'supply', isBell = kind === 'distraction'
+  object.box(isSupply ? 0.85 : 0.56, isSupply ? 0.6 : 0.86, 0.28, 0,
+    isSupply ? 0.7 : 1.15, 0, 'concrete', 'detail')
+  object.box(0.12, 0.74, 0.12, 0, 0.37, 0, 'roof', 'detail')
+  object.box(0.8, 0.1, 0.65, 0, 0.05, 0, 'concrete', 'detail')
+  if (isBell) {
+    object.beam([0, 1.56, 0], [0, 2.3, 0], 0.08)
+    object.cylinder(0.25, 0.34, 0, 2.13, 0, 'roof', 0.1)
+  } else if (kind === 'brake') {
+    object.beam([0, 0.98, 0.18], [0.12, 1.64, 0.26], 0.085)
+    object.beam([-0.13, 1.64, 0.26], [0.37, 1.64, 0.26], 0.08)
+  } else if (isSupply) {
+    object.box(0.34, 0.08, 0.015, 0, 0.7, 0.15, 'paper', false)
+    object.box(0.08, 0.34, 0.015, 0, 0.7, 0.16, 'paper', false)
+  } else {
+    object.box(0.37, 0.24, 0.035, 0, 1.29, 0.15, 'roof', 'detail')
+    for (const x of [-0.14, 0.14]) object.box(0.07, 0.07, 0.04, x, 0.94, 0.15, 'paper', 'detail')
+  }
+  object.finish()
+  const text = { radio: 'RADIO LINK', release: 'ISOLATE RELEASE', brake: 'LOCK BRAKE', signal: 'STOP DISPATCH',
+    extract: 'EXTRACT', supply: 'FIELD SUPPLIES', distraction: 'SERVICE BELL',
+    hostage: 'CELL RELEASE', cameras: 'SURVEILLANCE', alarm: 'ALARM SHUTOFF', gate: 'EXIT GATE',
+    jeep: 'RESCUE TRANSPORT', rally: 'ESCORT RALLY' }[kind]
+  object.add(sign(text, [0, 1.93, 0.08], 2.2, 0, kind === 'signal' ? 'HORN CALLS INSPECTION' : ''))
+  const point = new THREE.Vector3(0, isSupply ? 0.8 : 1.3, 0.24)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(new THREE.Vector3(...position))
+  return { id, kind, object, point, label }
+}
+
+function enemy(id: string, name: string, patrol: Vec3[], weapon: EnemySpec['weapon'] = 'ak', reserve = false): EnemySpec {
+  return { id, name, position: [...patrol[0]], patrol, weapon, reserve }
+}
+
+/** A surface guardroom and a connected four-cell basement share a real stairwell. */
+function detentionBlock() {
+  const root = new THREE.Group()
+  root.name = 'Detention block and underground cells'
+  const shell = new Draft('Detention masonry and stairwell')
+  const h = DETENTION_STAIR_HOLE
+  // Four slabs leave the same opening as the compound ground and annex apron.
+  for (const [x0, x1, z0, z1] of [[108, h.minX, -29, -5], [h.maxX, 126, -29, -5],
+    [h.minX, h.maxX, -29, h.minZ], [h.minX, h.maxX, h.maxZ, -5]]) {
+    shell.box(x1 - x0, FLOOR, z1 - z0, (x0 + x1) / 2, FLOOR / 2, (z0 + z1) / 2, 'concrete', 'detail')
+  }
+  shell.box(18.3, 0.2, 24.3, 117, -4.3, -17, 'concrete', 'detail')
+  for (const x of [108, 126]) shell.box(0.25, 8.2, 24, x, -0.1, -17, 'paper', 'detail')
+  shell.box(18, 8.2, 0.25, 117, -0.1, -29, 'paper', 'detail')
+  shell.box(18, 4.2, 0.25, 117, -2.1, -5, 'paper', 'detail')
+  for (const x of [111.625, 122.375]) shell.box(7.25, 3.88, 0.25, x, 2.06, -5, 'paper', 'detail')
+  shell.box(3.5, 1.05, 0.25, 117, 3.475, -5, 'paper', 'detail')
+  shell.box(18.4, 0.2, 24.4, 117, 4.1, -17, 'roof', 'detail')
+  // Side walls keep the upper guardroom separate from the stair opening.
+  for (const x of [115.3, 118.7]) shell.box(0.14, 1.05, 11.1, x, 0.645, -14.55, 'roof', 'detail')
+  for (let i = 0; i < 18; i++) {
+    const height = (i + 1) * 0.24
+    shell.box(3.2, height, 0.6, 117, -4.2 + height / 2, -19.5 + i * 0.6, 'concrete', 'detail')
+  }
+  root.add(shell.finish())
+  const entrance = createDoor({ name: 'Detention entrance', x: 117, z: -4.96,
+    floor: FLOOR, width: 3.5, height: 2.8, open: true })
+  root.add(entrance)
+  const cells = new Draft('Holding cells bars, partitions and bunks')
+  for (const x of [110.5, 123.5]) {
+    cells.box(5, 3.4, 0.16, x, -2.5, -23.5, 'paper', 'detail')
+    cells.box(5, 3.4, 0.16, x, -2.5, -18.5, 'paper', 'detail')
+    for (const z of [-21, -26]) {
+      cells.box(1.05, 0.2, 2.2, x + (x < 117 ? -1.25 : 1.25), -3.6, z, 'roof', 'detail')
+      cells.box(1, 0.12, 0.45, x + (x < 117 ? -1.25 : 1.25), -3.44, z - 0.65, 'paper', 'detail')
+    }
+  }
+  const cellDoors: THREE.Group[] = []
+  for (let index = 0; index < 4; index++) {
+    const left = index % 2 === 0, x = left ? 113 : 121, z = index < 2 ? -21 : -26
+    // Solid wall strips enclose each broad door opening; bars are visual accents.
+    for (const dz of [-1.825, 1.825]) cells.box(0.16, 3.4, 1.35, x, -2.5, z + dz, 'paper', 'detail')
+    cells.box(0.16, 0.7, 2.3, x, -1.15, z, 'concrete', 'detail')
+    const door = createDoor({ name: `Cell ${index + 1} locked door`, x, z, floor: -4.2,
+      width: 2.3, height: 2.7, angle: left ? Math.PI / 2 : -Math.PI / 2, industrial: true, barred: true })
+    door.userData.missionLocked = true
+    door.userData.hostageId = `hostage-${index + 1}`
+    if (index === 0) cellDoors.push(door)
+    root.add(door, sign(`CELL 0${index + 1}`, [x + (left ? 0.12 : -0.12), -1.08, z], 2,
+      left ? Math.PI / 2 : -Math.PI / 2))
+  }
+  root.add(cells.finish())
+  const chair = new Draft('Hostage chair')
+  chair.userData = { noCollision: true, kind: 'hostage-chair' }
+  chair.box(0.48, 0.065, 0.46, 0, 0.405, -0.371, 'concrete', 'detail')
+  for (const x of [-0.205, 0.205]) for (const z of [-0.56, -0.18]) {
+    chair.beam([x, 0.025, z], [x, 0.41, z], 0.045, 'roof', 'detail')
+  }
+  for (const x of [-0.205, 0.205]) chair.beam([x, 0.42, -0.56], [x, 0.92, -0.59], 0.04, 'roof', 'detail')
+  chair.box(0.47, 0.25, 0.05, 0, 0.78, -0.58, 'concrete', 'detail')
+  chair.rotation.y = Math.PI / 2
+  chair.position.set(...RESCUE_LAYOUT.hostageSpawns[0])
+  root.add(chair.finish())
+  root.add(sign('DETENTION / STAIRS', [117, 3.5, -4.8], 7, 0, 'HOLDING CELLS BELOW'))
+  root.add(sign('CELLS / DOWN', [117, 2.6, -9.2], 3.1))
+  root.add(sign('EXIT / JEEP', [117, -1.1, -28.8], 3.8))
+  const accents = new Draft('Stairwell guidance stripe')
+  accents.userData.noCollision = true
+  for (const x of [115.48, 118.52]) accents.beam([x, -3.05, -19.8], [x, 1.27, -9], 0.07, 'green', 'detail')
+  root.add(accents.finish())
+  const stairMetadata = new THREE.Group()
+  stairMetadata.name = 'Detention stairs camera support'
+  stairMetadata.userData = { kind: 'stairs', bottom: [117, -4.2, -19.8], top: [117, 0.12, -9], width: 3.2 }
+  root.add(stairMetadata)
+  root.userData = { kind: 'detention', footprint: [18, 24], floor: FLOOR, floors: [-4.2, FLOOR], enterable: true }
+  for (const child of root.children) { child.position.x -= 117; child.position.z += 17 }
+  root.position.set(117, 0, -17)
+  return { root, cellDoors }
+}
+
+
+function securityCameras() {
+  return RESCUE_LAYOUT.cameras.map(spec => {
+    const root = new THREE.Group()
+    root.name = spec.id
+    root.position.set(...spec.position)
+    root.userData.noCollision = true
+    const mount = new Draft(`${spec.id} mount`)
+    mount.box(0.12, spec.position[1], 0.12, 0, -spec.position[1] / 2, 0, 'roof', 'detail')
+    const pivot = new THREE.Group()
+    pivot.rotation.y = spec.yaw
+    const casing = new Draft(`${spec.id} housing`)
+    casing.box(0.4, 0.3, 0.7, 0, 0, 0.25, 'roof', 'detail')
+    casing.box(0.24, 0.2, 0.04, 0, 0, 0.62, 'concrete', 'detail')
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0x3baf68, toneMapped: false }))
+    lamp.position.set(0.15, -0.08, 0.63)
+    pivot.add(casing.finish(), lamp)
+    root.add(mount.finish(), pivot)
+    return { id: spec.id, root, pivot, lamp }
+  })
+}
+
+export function createMissionWorld(): MissionWorld {
+  const root = new THREE.Group()
+  root.name = 'Hostage rescue · detention annex'
+  root.userData.kind = 'mission-world'
+  const bounds = { minX: -108, maxX: 183, minZ: -76, maxZ: 78 }
+  // The landscape stays open; runtime bounds still recover a player who leaves the map.
+  root.add(fence('East annex north perimeter', [[99, -37.5], [99, -57], [164, -57], [164, 7]], 3.1))
+  root.add(fence('East annex south perimeter', [[164, 15], [164, 18], [99, 18]], 3.1))
+  const exitGate = createDoor({ name: 'Secure compound exit gate', x: 164, z: 11,
+    floor: 0, width: 8, height: 3.1, angle: Math.PI / 2, industrial: true })
+  exitGate.userData.missionLocked = true
+  root.add(exitGate)
+
+  const apron = new Draft('East rail annex · concrete aprons')
+  const h = DETENTION_STAIR_HOLE
+  for (const [x0, x1, z0, z1] of [[99.5, h.minX, -55, 17], [h.maxX, 163.5, -55, 17],
+    [h.minX, h.maxX, -55, h.minZ], [h.minX, h.maxX, h.maxZ, 17]]) {
+    apron.box(x1 - x0, 0.045, z1 - z0, (x0 + x1) / 2, 0.02, (z0 + z1) / 2, 'concrete', false)
+  }
+  for (const x of [102, 136, 160]) apron.line([[x, 0.05, -54], [x, 0.05, 15]], 'mesh')
+  apron.box(19, 0.045, 8, 173, 0.02, 11, 'concrete', false)
+  root.add(apron.finish())
+  for (const spec of [
+    { name: 'Security cabin', x: 146, z: -45, width: 10, depth: 9, role: 'dispatch' },
+    { name: 'Crew house', x: 143, z: 3, width: 14, depth: 10, role: 'crew' },
+    { name: 'Maintenance shelter', x: 111, z: -45, width: 12, depth: 10, role: 'maintenance' },
+  ] satisfies HouseSpec[]) root.add(house(spec))
+  const detention = detentionBlock(), jeep = createRescueJeep(), cameras = securityCameras()
+  root.add(detention.root, jeep, ...cameras.map(camera => camera.root))
+
+  // Continue the existing spur beyond X=117; no duplicate raised loading platform.
+  const track = new Draft('Annex siding · track and buffer')
+  track.box(42, 0.1, 4.6, 138, 0.08, -32.4, 'concrete', 'detail')
+  for (let x = 117.4; x < 158; x += 0.92) track.box(0.24, 0.15, 2.6, x, 0.205, -32.4, 'paper', 'detail')
+  for (const side of [-1, 1]) {
+    const z = -32.4 + side * 1.435 / 2
+    track.box(42, 0.045, 0.18, 138, 0.3, z, 'paper', 'detail')
+    track.box(42, 0.15, 0.055, 138, 0.38, z, 'paper', false)
+    track.box(42, 0.065, 0.09, 138, 0.47, z, 'paper', 'detail')
+    track.beam([157.8, 0.3, z], [159, 1.6, z], 0.15)
+  }
+  track.box(0.28, 0.55, 3.2, 159, 1.6, -32.4, 'roof')
+  root.add(track.finish())
+  const wagon = new Draft('Secured munitions wagon')
+  wagon.box(10.5, 0.35, 2.65, 130, 1.1, -32.4, 'concrete', 'detail')
+  wagon.box(10.2, 1.5, 2.55, 130, 2.0, -32.4, 'roof')
+  for (const x of [126.4, 133.6]) for (const z of [-33.48, -31.32]) {
+    wagon.solid(new THREE.CylinderGeometry(0.48, 0.48, 0.18, 20), [x, 0.75, z], 'concrete', 'detail', [Math.PI / 2, 0, 0])
+  }
+  for (let x = 125.4; x < 135; x += 1.6) wagon.line([[x, 1.32, -31.1], [x, 2.73, -31.1]], 'mesh')
+  root.add(wagon.finish())
+
+  const cover = new Draft('Annex cover · freight and service baffles')
+  crates(cover, 123, -38.3, 2)
+  crates(cover, 129, 6, 3)
+  cover.box(5, 1.45, 0.55, 132, 0.725, -18, 'concrete', 'detail')
+  cover.box(4, 1.4, 0.6, 158, 0.7, -12, 'concrete', 'detail')
+  cover.box(5, 1.45, 0.55, 103, 0.725, -6, 'concrete', 'detail')
+  // New gate connects to the original raised loading platform through real steps.
+  steps(cover, 57, -23.99, 2.4, 1.05, 5)
+  crates(cover, 52, -15, 3)
+  root.add(cover.finish())
+
+  root.add(sign('SECURITY →', [94, 2.5, -35.5], 4.5, -Math.PI / 2, 'CAMERA CONTROL'))
+  root.add(sign('DETENTION →', [96, 2.6, 7], 4.2, -Math.PI / 2, 'CELLS / RESCUE JEEP'))
+  root.add(sign('↑ RAIL STAIRS', [54, 2.35, -17.8], 3.4))
+  root.add(sign('← NORTH INSERTION', [-43, 2.3, -30.5], 4.4, 0, 'MESS HALL ROOF'))
+  root.add(sign('← DETENTION     EXIT →', [134, 2.4, -6], 6.5))
+  root.add(sign('EXIT / RESCUE JEEP', [158, 3.5, 16.5], 6.4, Math.PI))
+
+  const stations = [
+    ...RESCUE_LAYOUT.hostageSpawns.map((position, index) => control('hostage', `hostage-${index + 1}`,
+      'Release hostage', [114, -4.2, position[2] + 1.25],
+      index % 2 === 0 ? Math.PI / 2 : -Math.PI / 2)),
+    control('cameras', 'security-computer', 'Disable cameras', [149, FLOOR, -45.8], -Math.PI / 2),
+    control('alarm', 'detention-alarm', 'Turn off alarm', [125.4, 0, -4.5]),
+    control('alarm', 'security-alarm', 'Turn off alarm', [142.3, FLOOR, -44], Math.PI / 2),
+    control('gate', 'exit-gate-control', 'Open gate', [160.5, 0, 6.3], -Math.PI / 2),
+    { id: 'rescue-jeep', kind: 'jeep', object: jeep,
+      point: new THREE.Vector3(154.65, 1.05, 9.95), label: 'Board jeep' } satisfies Station,
+    control('rally', 'escort-rally', 'Regroup hostage', [128, 0, 12]),
+    control('supply', 'maintenance-supplies', 'Take field supplies', [114.7, FLOOR, -45.5], -Math.PI / 2),
+    control('distraction', 'service-bell', 'Ring service bell', [-39, 0, 3]),
+  ]
+  stations.forEach(station => root.add(station.object))
+  root.add(sign('NORTH INSERTION', [-55.4, 2.8, -53.4], 5.4, Math.PI / 2, 'DETENTION IN EAST ANNEX'))
+
+  const enemies = [
+    enemy('yard-patrol', 'Mess-yard patrol', [[-34, 0, -29], [-23, 0, -29], [-23, 0, -21], [-42, 0, -21]]),
+    enemy('west-patrol', 'Service-yard patrol', [[-50, 0, -17], [-40, 0, -17], [-40, 0, -4], [-50, 0, -4]], 'smg'),
+    enemy('tower-patrol-a', 'Water-tower patrol', [[1, 0, -43], [21, 0, -43], [21, 0, -25], [1, 0, -25]]),
+    enemy('tower-patrol-b', 'Water-tower rear guard', [[21, 0, -25], [1, 0, -25], [1, 0, -43], [21, 0, -43]]),
+    enemy('inner-gate', 'Inner-gate sentry', [[-16, 0, 18], [-20, 0, 18], [-20, 0, 22], [-16, 0, 22]], 'smg'),
+    enemy('loading-patrol', 'Loading-court patrol', [[20, 0, 8], [40, 0, 8], [40, 0, 16], [20, 0, 16]]),
+    enemy('workshop-patrol', 'East-workshop guard', [[76, 0, 13], [89, 0, 13], [89, 0, 3], [76, 0, 3]], 'smg'),
+    enemy('rail-patrol', 'Siding sentry', [[125, 0, -36.8], [138, 0, -36.8], [156, 0, -36.8], [156, 0, -53], [136, 0, -53]]),
+    enemy('relay-patrol', 'Detention entrance guard', [[121, 0.12, -7], [121, 0.12, -9],
+      [121, 0.12, -7], [117, 0.12, -7], [117, 0, -2], [117, 0.12, -7]], 'smg'),
+    enemy('crew-patrol', 'Crew-house patrol', [[143, FLOOR, 3], [143, FLOOR, 7.5], [143, 0, 11],
+      [132, 0, 11], [132, 0, -5], [143, 0, -5], [143, FLOOR, -1.5]], 'smg'),
+    enemy('dispatch-guard', 'Dispatch watch', [[146, FLOOR, -45], [146, FLOOR, -41], [146, 0, -38],
+      [146, FLOOR, -41]], 'pistol'),
+    enemy('maintenance-guard', 'Maintenance watch', [[111, FLOOR, -45], [111, FLOOR, -41], [111, 0, -38],
+      [111, FLOOR, -41]], 'pistol'),
+    enemy('north-yard-relief', 'North-yard relief patrol', [[-20, 0, -29], [-10, 0, -29], [-10, 0, -28], [-20, 0, -28]], 'smg'),
+    enemy('west-relief', 'West service relief', [[-50, 0, -28], [-50, 0, -20], [-45, 0, -20], [-45, 0, -28]], 'pistol'),
+    enemy('loading-relief', 'Loading-lane relief', [[44, 0, 16], [54, 0, 16], [54, 0, 13], [44, 0, 13]]),
+    enemy('annex-gate-patrol', 'Annex gate patrol', [[104, 0, 11], [110, 0, 5], [117, 0, -2], [110, 0, 5]], 'smg'),
+    enemy('relay-perimeter', 'Detention perimeter patrol', [[128, 0, -9], [128, 0, -24], [136, 0, -24], [136, 0, -9]]),
+    enemy('dispatch-perimeter', 'Dispatch perimeter patrol', [[156, 0, -53], [136, 0, -53]], 'ak'),
+    // Occupied rooms reward checking corners. Short interior routes stay off the
+    // entry aisles, roof stairs, office furniture and the reserve muster points.
+    enemy('mess-kitchen', 'Mess kitchen watch', [[-34.2, 0.28, -56.4], [-32.9, 0.28, -56.4]], 'pistol'),
+    enemy('mess-east-aisle', 'Mess east-aisle guard', [[-29, 0.28, -42.15], [-29, 0.28, -39.65]], 'smg'),
+    enemy('mess-vestibule', 'Vestibule duty guard', [[-22.6, 0.28, -54.95], [-21.4, 0.28, -54.95]], 'pistol'),
+    enemy('relay-backroom', 'Detention corridor guard', [[117, -4.2, -26], [117, -4.2, -21]], 'pistol'),
+    enemy('relay-equipment', 'Detention guardroom watch', [[111, FLOOR, -7], [112.5, FLOOR, -7]], 'smg'),
+    enemy('crew-north-room', 'Crew north-room guard', [[140, FLOOR, -0.2], [141.1, FLOOR, -0.2]], 'pistol'),
+    enemy('crew-south-room', 'Crew south-room guard', [[146, FLOOR, 7], [144.9, FLOOR, 7]], 'smg'),
+    enemy('dispatch-records', 'Dispatch records guard', [[143.7, FLOOR, -47.6], [145, FLOOR, -47.6]], 'smg'),
+    enemy('maintenance-stores', 'Maintenance stores guard', [[109, FLOOR, -48], [110.3, FLOOR, -48]], 'pistol'),
+    enemy('barracks-a-room', 'Barracks A room patrol', [[11.6, 0.28, 36.75], [11.6, 0.28, 38.75]], 'smg'),
+    enemy('barracks-b-room', 'Barracks B room patrol', [[55.9, 0.28, 38.95], [55.9, 0.28, 37.95]], 'pistol'),
+    enemy('warehouse-west-aisle', 'Warehouse west-aisle guard', [[10.5, 0.65, -6.6], [13.5, 0.65, -6.6]]),
+    enemy('warehouse-east-aisle', 'Warehouse east-aisle guard', [[40, 0.65, -6.6], [43, 0.65, -6.6]], 'smg'),
+    enemy('administration-room', 'Administration records watch', [[-25.15, 0.28, 29.7], [-23.15, 0.28, 29.7]], 'pistol'),
+    enemy('medical-room', 'Medical hut watch', [[86.25, 0.28, 39.15], [88.25, 0.28, 39.15]], 'pistol'),
+    enemy('southwest-stores-room', 'Southwest stores guard', [[-58.05, 0.65, 64.5], [-55.55, 0.65, 64.5]], 'smg'),
+    enemy('gatehouse-room', 'Gatehouse radio watch', [[-5.15, 0.28, 24.75], [-5.15, 0.28, 26.05]], 'pistol'),
+    // The source map has one water tower and one observation tower. Use both
+    // existing supported decks, with fixed posts rather than ground navigation.
+    { ...enemy('water-sniper', 'Water-tower marksman', [[14.65, 12.615, -34.05]], 'sniper'), role: 'sniper' as const, facing: Math.PI / 2 },
+    { ...enemy('watch-sniper', 'Observation-tower marksman', [[-48.2, 6.735, 16.9]], 'sniper'), role: 'sniper' as const, facing: Math.PI * 0.75 },
+    ...([[140, FLOOR, 1.3], [146, FLOOR, 1.3], [140, FLOOR, 5], [146, FLOOR, 5]] as Vec3[]).map((position, index) =>
+      ({ ...enemy(`reserve-${index + 1}`, `Barracks response ${index + 1}`, [position, [143, FLOOR, 3],
+        [143, FLOOR, -1.5], [143, 0, -5], [151, 0, -8], [151, 0, -22],
+        [154, 0, -35], [146, 0, -37], [146, FLOOR, -42]], 'ak', true), alarmExit: [143, 0, -5] as Vec3 })),
+  ]
+  root.updateMatrixWorld(true)
+  return { root, stations, enemies, spawn: [-40, 0.15, -62.3], lookAt: [-49, 1.7, -61], bounds,
+    rescue: { gate: exitGate, jeep, cameras, cellDoors: detention.cellDoors } }
+}

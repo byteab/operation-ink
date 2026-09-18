@@ -1,0 +1,2749 @@
+{
+  "combat": {
+    "enemyAcquired": true,
+    "enemyHealthAfter": 66,
+    "enemyHealthBefore": 100,
+    "enemyShots": 1,
+    "lane": "Perimeter · northwest entrance return",
+    "playerHealth": 91,
+    "playing": true
+  },
+  "lane": {
+    "bodyBlocked": true,
+    "from": [
+      -64.2779170614802,
+      1.3,
+      -66.25380317986101
+    ],
+    "name": "Perimeter · northwest entrance return",
+    "reverseVisible": true,
+    "to": [
+      -64.43708293851981,
+      1.3,
+      -62.256971156422175
+    ],
+    "visible": true
+  },
+  "lanes": [
+    {
+      "bodyBlocked": false,
+      "from": [
+        -68.17791706148019,
+        1.3,
+        -66.40911291437428
+      ],
+      "name": "Perimeter · northwest entrance return",
+      "reverseVisible": true,
+      "to": [
+        -68.3370829385198,
+        1.3,
+        -62.41228089093544
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -66.42291706148019,
+        1.3,
+        -66.33922353384331
+      ],
+      "name": "Perimeter · northwest entrance return",
+      "reverseVisible": true,
+      "to": [
+        -66.5820829385198,
+        1.3,
+        -62.342391510404475
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -64.2779170614802,
+        1.3,
+        -66.25380317986101
+      ],
+      "name": "Perimeter · northwest entrance return",
+      "reverseVisible": true,
+      "to": [
+        -64.43708293851981,
+        1.3,
+        -62.256971156422175
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -62.5229170614802,
+        1.3,
+        -66.18391379933003
+      ],
+      "name": "Perimeter · northwest entrance return",
+      "reverseVisible": true,
+      "to": [
+        -62.6820829385198,
+        1.3,
+        -62.187081775891194
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -41.5439170614802,
+        1.3,
+        -65.34846689667516
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -41.7030829385198,
+        1.3,
+        -61.35163487323633
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -32.444917061480204,
+        1.3,
+        -64.98611733915304
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -32.6040829385198,
+        1.3,
+        -60.989285315714206
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -21.3239170614802,
+        1.3,
+        -64.54324565773712
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -21.4830829385198,
+        1.3,
+        -60.546413634298275
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -12.224917061480198,
+        1.3,
+        -64.180896100215
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -12.384082938519796,
+        1.3,
+        -60.18406407677615
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -0.6999999999999997,
+        1.3,
+        -58.626
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -4.699999999999999,
+        1.3,
+        -58.626
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -0.6999999999999997,
+        1.3,
+        -56.142
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -4.699999999999999,
+        1.3,
+        -56.142
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -0.6999999999999997,
+        1.3,
+        -53.105999999999995
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -4.699999999999999,
+        1.3,
+        -53.105999999999995
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -0.6999999999999997,
+        1.3,
+        -50.622
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        -4.699999999999999,
+        1.3,
+        -50.622
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        3.6135000000000006,
+        1.3,
+        -50
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        3.6135000000000006,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        8.554499999999999,
+        1.3,
+        -50
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        8.554499999999999,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        14.5935,
+        1.3,
+        -50
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        14.5935,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        19.5345,
+        1.3,
+        -50
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        19.5345,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        26.75,
+        1.3,
+        -45.585
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        22.75,
+        1.3,
+        -45.585
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        26.75,
+        1.3,
+        -43.695
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        22.75,
+        1.3,
+        -43.695
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        26.75,
+        1.3,
+        -41.385
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        22.75,
+        1.3,
+        -41.385
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        26.75,
+        1.3,
+        -39.495
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        22.75,
+        1.3,
+        -39.495
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        41.8275,
+        1.3,
+        -39.5
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        41.8275,
+        1.3,
+        -35.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        55.192499999999995,
+        1.3,
+        -39.5
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        55.192499999999995,
+        1.3,
+        -35.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        71.5275,
+        1.3,
+        -39.5
+      ],
+      "name": "Perimeter · north and northeast",
+      "reverseVisible": true,
+      "to": [
+        71.5275,
+        1.3,
+        -35.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -58.60918550082852,
+        1.3,
+        -63.74503237612715
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -62.50294239841567,
+        1.3,
+        -62.82925007530864
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -58.45740946140233,
+        1.3,
+        -63.099705424649734
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -62.35116635898948,
+        1.3,
+        -62.18392312383123
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -58.27190541321477,
+        1.3,
+        -62.31097248395512
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -62.16566231080192,
+        1.3,
+        -61.39519018313661
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -58.12012937378858,
+        1.3,
+        -61.66564553247771
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -62.01388627137573,
+        1.3,
+        -60.749863231659205
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -51.60459102540097,
+        1.3,
+        -62.39524493213548
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -55.41319455165793,
+        1.3,
+        -63.61775840027522
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -51.80720277294576,
+        1.3,
+        -61.7640307686348
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -55.61580629920272,
+        1.3,
+        -62.986544236774535
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -52.05483935327827,
+        1.3,
+        -60.99254679102284
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -55.86344287953523,
+        1.3,
+        -62.21506025916258
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -52.257451100823054,
+        1.3,
+        -60.36133262752215
+      ],
+      "name": "North entrance gate · open",
+      "reverseVisible": true,
+      "to": [
+        -56.066054627080014,
+        1.3,
+        -61.58384609566189
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -36.9135
+      ],
+      "name": "Perimeter · northeast rail entrance north",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -36.9135
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -36.4545
+      ],
+      "name": "Perimeter · northeast rail entrance north",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -36.4545
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -35.893499999999996
+      ],
+      "name": "Perimeter · northeast rail entrance north",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -35.893499999999996
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -35.4345
+      ],
+      "name": "Perimeter · northeast rail entrance north",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -35.4345
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -96.85,
+        1.3,
+        -24.271499999999996
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -100.85,
+        1.3,
+        -24.271499999999996
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -96.85,
+        1.3,
+        -12.040499999999998
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -100.85,
+        1.3,
+        -12.040499999999998
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -96.85,
+        1.3,
+        2.9085000000000036
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -100.85,
+        1.3,
+        2.9085000000000036
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -98.16,
+        1.3,
+        26.05
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -98.16,
+        1.3,
+        30.05
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -97.62,
+        1.3,
+        26.05
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -97.62,
+        1.3,
+        30.05
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -96.96,
+        1.3,
+        26.05
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -96.96,
+        1.3,
+        30.05
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -96.42,
+        1.3,
+        26.05
+      ],
+      "name": "Fuel annex · west",
+      "reverseVisible": true,
+      "to": [
+        -96.42,
+        1.3,
+        30.05
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -98.022,
+        1.3,
+        -41.9
+      ],
+      "name": "Fuel annex · north",
+      "reverseVisible": true,
+      "to": [
+        -98.022,
+        1.3,
+        -37.9
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -97.374,
+        1.3,
+        -41.9
+      ],
+      "name": "Fuel annex · north",
+      "reverseVisible": true,
+      "to": [
+        -97.374,
+        1.3,
+        -37.9
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -96.582,
+        1.3,
+        -41.9
+      ],
+      "name": "Fuel annex · north",
+      "reverseVisible": true,
+      "to": [
+        -96.582,
+        1.3,
+        -37.9
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -95.934,
+        1.3,
+        -41.9
+      ],
+      "name": "Fuel annex · north",
+      "reverseVisible": true,
+      "to": [
+        -95.934,
+        1.3,
+        -37.9
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -73.404,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · west",
+      "reverseVisible": true,
+      "to": [
+        -73.404,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -71.568,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · west",
+      "reverseVisible": true,
+      "to": [
+        -71.568,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -69.324,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · west",
+      "reverseVisible": true,
+      "to": [
+        -69.324,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -67.488,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · west",
+      "reverseVisible": true,
+      "to": [
+        -67.488,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -55.798874999999995,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · entry return",
+      "reverseVisible": true,
+      "to": [
+        -55.798874999999995,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -54.037125,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · entry return",
+      "reverseVisible": true,
+      "to": [
+        -54.037125,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -51.883875,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · entry return",
+      "reverseVisible": true,
+      "to": [
+        -51.883875,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -50.122125,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · entry return",
+      "reverseVisible": true,
+      "to": [
+        -50.122125,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -64.7036,
+        1.3,
+        -50
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -64.7036,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -64.0412,
+        1.3,
+        -50
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -64.0412,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -63.2316,
+        1.3,
+        -50
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -63.2316,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -62.569199999999995,
+        1.3,
+        -50
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -62.569199999999995,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -58.8964,
+        1.3,
+        -46
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -58.8964,
+        1.3,
+        -50
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -59.5588,
+        1.3,
+        -46
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -59.5588,
+        1.3,
+        -50
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -60.368399999999994,
+        1.3,
+        -46
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -60.368399999999994,
+        1.3,
+        -50
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -61.0308,
+        1.3,
+        -46
+      ],
+      "name": "North service yard gate · closed",
+      "reverseVisible": true,
+      "to": [
+        -61.0308,
+        1.3,
+        -50
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -1.8442499999999988,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · east",
+      "reverseVisible": true,
+      "to": [
+        -1.8442499999999988,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        8.072250000000004,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · east",
+      "reverseVisible": true,
+      "to": [
+        8.072250000000004,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        16.185750000000002,
+        1.3,
+        -50
+      ],
+      "name": "North service enclosure · east",
+      "reverseVisible": true,
+      "to": [
+        16.185750000000002,
+        1.3,
+        -46
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -43.45,
+        1.3,
+        33.5985
+      ],
+      "name": "Inner yard · south gate return",
+      "reverseVisible": true,
+      "to": [
+        -47.45,
+        1.3,
+        33.5985
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -73.473,
+        1.3,
+        19.15
+      ],
+      "name": "West cross fence",
+      "reverseVisible": true,
+      "to": [
+        -73.473,
+        1.3,
+        23.15
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -71.691,
+        1.3,
+        19.15
+      ],
+      "name": "West cross fence",
+      "reverseVisible": true,
+      "to": [
+        -71.691,
+        1.3,
+        23.15
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -69.51299999999999,
+        1.3,
+        19.15
+      ],
+      "name": "West cross fence",
+      "reverseVisible": true,
+      "to": [
+        -69.51299999999999,
+        1.3,
+        23.15
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -67.731,
+        1.3,
+        19.15
+      ],
+      "name": "West cross fence",
+      "reverseVisible": true,
+      "to": [
+        -67.731,
+        1.3,
+        23.15
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -63.59495681515473,
+        1.3,
+        21.79622832225376
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -67.4491895568235,
+        1.3,
+        22.86622363675211
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -63.338318438972294,
+        1.3,
+        22.720666045343016
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -67.19255118064106,
+        1.3,
+        23.79066135984137
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -63.0246493125271,
+        1.3,
+        23.850534373563217
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -66.87888205419587,
+        1.3,
+        24.920529688061567
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -62.76801093634468,
+        1.3,
+        24.774972096652473
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -66.62224367801345,
+        1.3,
+        25.844967411150822
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -53.45081044317649,
+        1.3,
+        22.86622363675211
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -57.30504318484526,
+        1.3,
+        21.79622832225376
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -53.70744881935892,
+        1.3,
+        23.79066135984137
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -57.56168156102769,
+        1.3,
+        22.720666045343016
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -54.021117945804114,
+        1.3,
+        24.920529688061567
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -57.87535068747288,
+        1.3,
+        23.850534373563217
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -54.277756321986544,
+        1.3,
+        25.844967411150822
+      ],
+      "name": "West service gate · open",
+      "reverseVisible": true,
+      "to": [
+        -58.13198906365531,
+        1.3,
+        24.774972096652473
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -12.76380074828483,
+        1.3,
+        18.362756088969785
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -13.83379606278318,
+        1.3,
+        14.508523347301011
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -13.428077761311442,
+        1.3,
+        18.547169781423577
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -14.498073075809792,
+        1.3,
+        14.692937039754804
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -14.23997188834397,
+        1.3,
+        18.772564294422654
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -15.30996720284232,
+        1.3,
+        14.91833155275388
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -14.904248901370584,
+        1.3,
+        18.95697798687644
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -15.974244215868932,
+        1.3,
+        15.102745245207668
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -13.83379606278318,
+        1.3,
+        25.691476652698984
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -12.76380074828483,
+        1.3,
+        21.83724391103021
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -14.498073075809792,
+        1.3,
+        25.507062960245193
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -13.428077761311442,
+        1.3,
+        21.65283021857642
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -15.30996720284232,
+        1.3,
+        25.281668447246116
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -14.23997188834397,
+        1.3,
+        21.42743570557734
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -15.974244215868932,
+        1.3,
+        25.097254754792328
+      ],
+      "name": "Inner yard gate · open",
+      "reverseVisible": true,
+      "to": [
+        -14.904248901370584,
+        1.3,
+        21.243022013123554
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        90.03,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 1",
+      "reverseVisible": true,
+      "to": [
+        90.03,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        83.01,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 1",
+      "reverseVisible": true,
+      "to": [
+        83.01,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        74.43,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 1",
+      "reverseVisible": true,
+      "to": [
+        74.43,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        67.41,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 1",
+      "reverseVisible": true,
+      "to": [
+        67.41,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        40.89,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 2",
+      "reverseVisible": true,
+      "to": [
+        40.89,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        30.630000000000003,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 2",
+      "reverseVisible": true,
+      "to": [
+        30.630000000000003,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        18.089999999999996,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 2",
+      "reverseVisible": true,
+      "to": [
+        18.089999999999996,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        7.829999999999998,
+        1.3,
+        -16.75
+      ],
+      "name": "Inner yard · railway separation and west return · run 2",
+      "reverseVisible": true,
+      "to": [
+        7.829999999999998,
+        1.3,
+        -20.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -1,
+        1.3,
+        -17.1975
+      ],
+      "name": "Inner yard · railway separation and west return · run 3",
+      "reverseVisible": true,
+      "to": [
+        -5,
+        1.3,
+        -17.1975
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -1,
+        1.3,
+        -15.9825
+      ],
+      "name": "Inner yard · railway separation and west return · run 3",
+      "reverseVisible": true,
+      "to": [
+        -5,
+        1.3,
+        -15.9825
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -1,
+        1.3,
+        -14.4975
+      ],
+      "name": "Inner yard · railway separation and west return · run 3",
+      "reverseVisible": true,
+      "to": [
+        -5,
+        1.3,
+        -14.4975
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -1,
+        1.3,
+        -13.2825
+      ],
+      "name": "Inner yard · railway separation and west return · run 3",
+      "reverseVisible": true,
+      "to": [
+        -5,
+        1.3,
+        -13.2825
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -5.1735,
+        1.3,
+        -10
+      ],
+      "name": "Inner yard · railway separation and west return · run 4",
+      "reverseVisible": true,
+      "to": [
+        -5.1735,
+        1.3,
+        -14
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -6.874499999999999,
+        1.3,
+        -10
+      ],
+      "name": "Inner yard · railway separation and west return · run 4",
+      "reverseVisible": true,
+      "to": [
+        -6.874499999999999,
+        1.3,
+        -14
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -8.9535,
+        1.3,
+        -10
+      ],
+      "name": "Inner yard · railway separation and west return · run 4",
+      "reverseVisible": true,
+      "to": [
+        -8.9535,
+        1.3,
+        -14
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -10.6545,
+        1.3,
+        -10
+      ],
+      "name": "Inner yard · railway separation and west return · run 4",
+      "reverseVisible": true,
+      "to": [
+        -10.6545,
+        1.3,
+        -14
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -10.45,
+        1.3,
+        -5.514
+      ],
+      "name": "Inner yard · railway separation and west return · run 5",
+      "reverseVisible": true,
+      "to": [
+        -14.45,
+        1.3,
+        -5.514
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -10.45,
+        1.3,
+        -0.4380000000000006
+      ],
+      "name": "Inner yard · railway separation and west return · run 5",
+      "reverseVisible": true,
+      "to": [
+        -14.45,
+        1.3,
+        -0.4380000000000006
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -10.45,
+        1.3,
+        5.765999999999998
+      ],
+      "name": "Inner yard · railway separation and west return · run 5",
+      "reverseVisible": true,
+      "to": [
+        -14.45,
+        1.3,
+        5.765999999999998
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -10.45,
+        1.3,
+        10.842000000000002
+      ],
+      "name": "Inner yard · railway separation and west return · run 5",
+      "reverseVisible": true,
+      "to": [
+        -14.45,
+        1.3,
+        10.842000000000002
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        56.107383831444494,
+        1.3,
+        -18.63565579609653
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        52.25315108977573,
+        1.3,
+        -17.56566048159818
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        56.2484627136611,
+        1.3,
+        -18.1274752091075
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        52.39422997199233,
+        1.3,
+        -17.057479894609152
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        56.42089245859251,
+        1.3,
+        -17.50636560278758
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        52.566659716923745,
+        1.3,
+        -16.43637028828923
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        56.56197134080912,
+        1.3,
+        -16.99818501579855
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        52.70773859914035,
+        1.3,
+        -15.928189701300202
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        61.74684891022427,
+        1.3,
+        -17.56566048159818
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        57.892616168555506,
+        1.3,
+        -18.63565579609653
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        61.60577002800767,
+        1.3,
+        -17.057479894609152
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        57.7515372863389,
+        1.3,
+        -18.1274752091075
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        61.433340283076255,
+        1.3,
+        -16.43637028828923
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        57.57910754140749,
+        1.3,
+        -17.50636560278758
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        61.29226140085965,
+        1.3,
+        -15.928189701300202
+      ],
+      "name": "Rail maintenance gate · open",
+      "reverseVisible": true,
+      "to": [
+        57.43802865919088,
+        1.3,
+        -16.99818501579855
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -20.798
+      ],
+      "name": "Perimeter · east, south and west · run 1",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -20.798
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        -14.066
+      ],
+      "name": "Perimeter · east, south and west · run 1",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        -14.066
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        101,
+        1.3,
+        0.8940000000000019
+      ],
+      "name": "Perimeter · east, south and west · run 1",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        0.8940000000000019
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        22.096
+      ],
+      "name": "Perimeter · east, south and west · run 2",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        22.096
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        101,
+        1.3,
+        28.431999999999995
+      ],
+      "name": "Perimeter · east, south and west · run 2",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        28.431999999999995
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101,
+        1.3,
+        36.176
+      ],
+      "name": "Perimeter · east, south and west · run 2",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        36.176
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        101,
+        1.3,
+        42.512
+      ],
+      "name": "Perimeter · east, south and west · run 2",
+      "reverseVisible": true,
+      "to": [
+        97,
+        1.3,
+        42.512
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        71.538,
+        1.3,
+        51.2
+      ],
+      "name": "Perimeter · east, south and west · run 3",
+      "reverseVisible": true,
+      "to": [
+        71.538,
+        1.3,
+        47.2
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        50.046,
+        1.3,
+        51.2
+      ],
+      "name": "Perimeter · east, south and west · run 3",
+      "reverseVisible": true,
+      "to": [
+        50.046,
+        1.3,
+        47.2
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        23.77799999999999,
+        1.3,
+        51.2
+      ],
+      "name": "Perimeter · east, south and west · run 3",
+      "reverseVisible": true,
+      "to": [
+        23.77799999999999,
+        1.3,
+        47.2
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        2.285999999999987,
+        1.3,
+        51.2
+      ],
+      "name": "Perimeter · east, south and west · run 3",
+      "reverseVisible": true,
+      "to": [
+        2.285999999999987,
+        1.3,
+        47.2
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -18.4,
+        1.3,
+        54.788999999999994
+      ],
+      "name": "Perimeter · east, south and west · run 4",
+      "reverseVisible": true,
+      "to": [
+        -22.4,
+        1.3,
+        54.788999999999994
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -18.4,
+        1.3,
+        59.163
+      ],
+      "name": "Perimeter · east, south and west · run 4",
+      "reverseVisible": true,
+      "to": [
+        -22.4,
+        1.3,
+        59.163
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -18.4,
+        1.3,
+        64.509
+      ],
+      "name": "Perimeter · east, south and west · run 4",
+      "reverseVisible": true,
+      "to": [
+        -22.4,
+        1.3,
+        64.509
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -18.4,
+        1.3,
+        68.883
+      ],
+      "name": "Perimeter · east, south and west · run 4",
+      "reverseVisible": true,
+      "to": [
+        -22.4,
+        1.3,
+        68.883
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -37.2705,
+        1.3,
+        75.5
+      ],
+      "name": "Perimeter · east, south and west · run 5",
+      "reverseVisible": true,
+      "to": [
+        -37.2705,
+        1.3,
+        71.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -50.473499999999994,
+        1.3,
+        75.5
+      ],
+      "name": "Perimeter · east, south and west · run 5",
+      "reverseVisible": true,
+      "to": [
+        -50.473499999999994,
+        1.3,
+        71.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -66.6105,
+        1.3,
+        75.5
+      ],
+      "name": "Perimeter · east, south and west · run 5",
+      "reverseVisible": true,
+      "to": [
+        -66.6105,
+        1.3,
+        71.5
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -95.75,
+        1.3,
+        64.7715
+      ],
+      "name": "Perimeter · east, south and west · run 6",
+      "reverseVisible": true,
+      "to": [
+        -91.75,
+        1.3,
+        64.7715
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -95.75,
+        1.3,
+        57.9405
+      ],
+      "name": "Perimeter · east, south and west · run 6",
+      "reverseVisible": true,
+      "to": [
+        -91.75,
+        1.3,
+        57.9405
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -95.75,
+        1.3,
+        49.5915
+      ],
+      "name": "Perimeter · east, south and west · run 6",
+      "reverseVisible": true,
+      "to": [
+        -91.75,
+        1.3,
+        49.5915
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -95.75,
+        1.3,
+        42.76049999999999
+      ],
+      "name": "Perimeter · east, south and west · run 6",
+      "reverseVisible": true,
+      "to": [
+        -91.75,
+        1.3,
+        42.76049999999999
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -89.61,
+        1.3,
+        33.55
+      ],
+      "name": "Perimeter · east, south and west · run 7",
+      "reverseVisible": true,
+      "to": [
+        -89.61,
+        1.3,
+        37.55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -86.37,
+        1.3,
+        33.55
+      ],
+      "name": "Perimeter · east, south and west · run 7",
+      "reverseVisible": true,
+      "to": [
+        -86.37,
+        1.3,
+        37.55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -82.41,
+        1.3,
+        33.55
+      ],
+      "name": "Perimeter · east, south and west · run 7",
+      "reverseVisible": true,
+      "to": [
+        -82.41,
+        1.3,
+        37.55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -79.17,
+        1.3,
+        33.55
+      ],
+      "name": "Perimeter · east, south and west · run 7",
+      "reverseVisible": true,
+      "to": [
+        -79.17,
+        1.3,
+        37.55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -77.75,
+        1.3,
+        13.504499999999997
+      ],
+      "name": "Perimeter · east, south and west · run 8",
+      "reverseVisible": true,
+      "to": [
+        -73.75,
+        1.3,
+        13.504499999999997
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        -77.75,
+        1.3,
+        -3.7485
+      ],
+      "name": "Perimeter · east, south and west · run 8",
+      "reverseVisible": true,
+      "to": [
+        -73.75,
+        1.3,
+        -3.7485
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -77.75,
+        1.3,
+        -42.0885
+      ],
+      "name": "Perimeter · east, south and west · run 8",
+      "reverseVisible": true,
+      "to": [
+        -73.75,
+        1.3,
+        -42.0885
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -75.79189009510885,
+        1.3,
+        -62.82773761888606
+      ],
+      "name": "Perimeter · east, south and west · run 9",
+      "reverseVisible": true,
+      "to": [
+        -73.29310990489115,
+        1.3,
+        -59.704262381113935
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -74.84689009510885,
+        1.3,
+        -63.58373761888606
+      ],
+      "name": "Perimeter · east, south and west · run 9",
+      "reverseVisible": true,
+      "to": [
+        -72.34810990489115,
+        1.3,
+        -60.460262381113935
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -73.69189009510885,
+        1.3,
+        -64.50773761888605
+      ],
+      "name": "Perimeter · east, south and west · run 9",
+      "reverseVisible": true,
+      "to": [
+        -71.19310990489114,
+        1.3,
+        -61.384262381113935
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        -72.74689009510885,
+        1.3,
+        -65.26373761888605
+      ],
+      "name": "Perimeter · east, south and west · run 9",
+      "reverseVisible": true,
+      "to": [
+        -70.24810990489115,
+        1.3,
+        -62.140262381113935
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        99.11434420390349,
+        1.3,
+        11.892616168555506
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        100.18433951840184,
+        1.3,
+        15.746848910224276
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        99.6225247908925,
+        1.3,
+        11.751537286338898
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        100.69252010539086,
+        1.3,
+        15.605770028007669
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        100.24363439721242,
+        1.3,
+        11.579107541407488
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        101.31362971171076,
+        1.3,
+        15.433340283076262
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        100.75181498420145,
+        1.3,
+        11.43802865919088
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        101.8218102986998,
+        1.3,
+        15.292261400859656
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        100.18433951840184,
+        1.3,
+        6.253151089775723
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        99.11434420390349,
+        1.3,
+        10.107383831444494
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        100.69252010539086,
+        1.3,
+        6.39422997199233
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        99.6225247908925,
+        1.3,
+        10.248462713661102
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101.31362971171076,
+        1.3,
+        6.566659716923739
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        100.24363439721242,
+        1.3,
+        10.420892458592512
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        101.8218102986998,
+        1.3,
+        6.707738599140346
+      ],
+      "name": "East annex service gate · open",
+      "reverseVisible": true,
+      "to": [
+        100.75181498420145,
+        1.3,
+        10.56197134080912
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        97,
+        1.3,
+        -41.985
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        101,
+        1.3,
+        -41.985
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        97,
+        1.3,
+        -45.495
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        101,
+        1.3,
+        -45.495
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        97,
+        1.3,
+        -49.785
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        101,
+        1.3,
+        -49.785
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        97,
+        1.3,
+        -53.295
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        101,
+        1.3,
+        -53.295
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        113.95,
+        1.3,
+        -59
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        113.95,
+        1.3,
+        -55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        125.65,
+        1.3,
+        -59
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        125.65,
+        1.3,
+        -55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        139.95,
+        1.3,
+        -59
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        139.95,
+        1.3,
+        -55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        151.65,
+        1.3,
+        -59
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        151.65,
+        1.3,
+        -55
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        166,
+        1.3,
+        -39.75
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        162,
+        1.3,
+        -39.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        166,
+        1.3,
+        -26.250000000000004
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        162,
+        1.3,
+        -26.250000000000004
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        166,
+        1.3,
+        -9.75
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        162,
+        1.3,
+        -9.75
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        149.05,
+        1.3,
+        20
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        149.05,
+        1.3,
+        16
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        137.35,
+        1.3,
+        20
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        137.35,
+        1.3,
+        16
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": true,
+      "from": [
+        123.05,
+        1.3,
+        20
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        123.05,
+        1.3,
+        16
+      ],
+      "visible": true
+    },
+    {
+      "bodyBlocked": false,
+      "from": [
+        111.35,
+        1.3,
+        20
+      ],
+      "name": "East annex perimeter",
+      "reverseVisible": true,
+      "to": [
+        111.35,
+        1.3,
+        16
+      ],
+      "visible": true
+    }
+  ]
+}

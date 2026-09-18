@@ -1,0 +1,164 @@
+{
+  "active": {
+    "max": 18,
+    "mean": 18,
+    "min": 18,
+    "p95": 18
+  },
+  "combat": {
+    "max": 3,
+    "mean": 2.625994694960212,
+    "min": 2,
+    "p95": 3
+  },
+  "condition": "Staged outdoor water-tower encounter, 2s warmup plus 8s sample, live original actors and reserve routes, health held at 100 only to avoid ending sample.",
+  "dpr": 1,
+  "drawCalls": {
+    "max": 1387,
+    "mean": 1380.104774535809,
+    "min": 1318,
+    "p95": 1385
+  },
+  "finalActors": [
+    {
+      "id": "yard-patrol",
+      "shots": 0,
+      "state": "combat"
+    },
+    {
+      "id": "west-patrol",
+      "shots": 0,
+      "state": "investigate"
+    },
+    {
+      "id": "tower-patrol-a",
+      "shots": 20,
+      "state": "combat"
+    },
+    {
+      "id": "tower-patrol-b",
+      "shots": 4,
+      "state": "combat"
+    },
+    {
+      "id": "inner-gate",
+      "shots": 0,
+      "state": "investigate"
+    },
+    {
+      "id": "loading-patrol",
+      "shots": 0,
+      "state": "investigate"
+    },
+    {
+      "id": "workshop-patrol",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "rail-patrol",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "relay-patrol",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "crew-patrol",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "dispatch-guard",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "maintenance-guard",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "water-sniper",
+      "shots": 0,
+      "state": "search"
+    },
+    {
+      "id": "watch-sniper",
+      "shots": 0,
+      "state": "search"
+    },
+    {
+      "id": "reserve-1",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "reserve-2",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "reserve-3",
+      "shots": 0,
+      "state": "patrol"
+    },
+    {
+      "id": "reserve-4",
+      "shots": 0,
+      "state": "patrol"
+    }
+  ],
+  "fps": 94.05483621485412,
+  "frameCount": 754,
+  "frameMs": {
+    "max": 50,
+    "mean": 10.632095490716187,
+    "min": 8.19999999999709,
+    "p95": 16.69999999999709
+  },
+  "geometries": 2360,
+  "hardwareConcurrency": 14,
+  "investigate": {
+    "max": 6,
+    "mean": 4.850132625994695,
+    "min": 4,
+    "p95": 5
+  },
+  "missionPhase": "active",
+  "navigationMs": {
+    "max": 3.5999999940395355,
+    "mean": 2.281034482845577,
+    "min": 0,
+    "p95": 3.300000011920929
+  },
+  "over33ms": 3,
+  "over50ms": 0,
+  "playerPosition": [
+    8,
+    0.0069999998882412946,
+    -43
+  ],
+  "playing": true,
+  "renderPixelRatio": 1.5,
+  "shotsDuringEncounter": 24,
+  "textures": 36,
+  "triangles": {
+    "max": 551727,
+    "mean": 551639.2281167109,
+    "min": 550871,
+    "p95": 551691
+  },
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.0.0 Safari/537.36",
+  "viewport": [
+    1440,
+    900
+  ],
+  "webgl": {
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)",
+    "vendor": "Google Inc. (Apple)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  }
+}

@@ -1,0 +1,911 @@
+{
+  "cases": [
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 66,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        -2.0403191920702888e-18,
+        -4.63481312206303e-15
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 66,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 30,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "torso"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 30,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "torso"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 66,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 66,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 66,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 66,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 66,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 66,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 18,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "pistol",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 34,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "torso"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 34,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "torso"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 74.80000000000001,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 20.40000000000001,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "ak",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 24,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "torso"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 24,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "torso"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 52.8,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 14.400000000000006,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "smg",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 100,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 100,
+      "distance": 2,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 65,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "torso"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 65,
+      "distance": 2,
+      "pass": true,
+      "predicted": "torso",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "torso"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 100,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 100,
+      "distance": 10,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 10,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 100,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 100,
+      "distance": 45,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 45,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    },
+    {
+      "aiming": false,
+      "bone": "head",
+      "damage": 100,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": true,
+      "bone": "head",
+      "damage": 100,
+      "distance": 85,
+      "pass": true,
+      "predicted": "head",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "head"
+    },
+    {
+      "aiming": false,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    },
+    {
+      "aiming": true,
+      "bone": "chest",
+      "damage": 39,
+      "distance": 85,
+      "pass": true,
+      "predicted": "arm",
+      "screen": [
+        0,
+        0
+      ],
+      "weapon": "sniper",
+      "zone": "arm"
+    }
+  ],
+  "recoil": {
+    "ammo": "11 / 36",
+    "health": 34,
+    "kickDegrees": 1.712748722005032,
+    "settledDegrees": 0.8297425060742478,
+    "targetScreen": [
+      0.004361779114399437,
+      -0.01620180814837095,
+      0.97010320165455
+    ]
+  }
+}

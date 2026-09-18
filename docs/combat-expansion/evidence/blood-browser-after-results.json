@@ -1,0 +1,26 @@
+{
+  "capTiming": {
+    "initialDrops": 192,
+    "initialStains": 512,
+    "maxMs": 2.8999999910593033,
+    "meanMs": 0.19312499994412063,
+    "p95Ms": 1,
+    "remaining": 0
+  },
+  "fatal": {
+    "drops": 42,
+    "stains": 6
+  },
+  "normal": {
+    "drops": 24,
+    "stains": 3
+  },
+  "normalTiming": {
+    "initialDrops": 42,
+    "initialStains": 6,
+    "maxMs": 1.5,
+    "meanMs": 0.06749999998137354,
+    "p95Ms": 0.4000000059604645,
+    "remaining": 0
+  }
+}

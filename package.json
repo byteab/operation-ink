@@ -5,9 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:vr": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "tsc --noEmit && vite build",
     "test:player": "node scripts/check-player.mjs",
-    "preview": "vite preview"
+    "test:vr": "node scripts/check-player.mjs scripts/vr-checks.ts",
+    "test:mission": "node scripts/check-player.mjs scripts/mission-checks.ts",
+    "test:rescue": "npm run test:mission && node scripts/check-player.mjs scripts/rescue-map-checks.ts && node scripts/check-player.mjs scripts/hostage-checks.ts && node scripts/check-player.mjs scripts/security-checks.ts",
+    "test:weapons": "node scripts/check-player.mjs scripts/weapon-checks.ts && node scripts/check-player.mjs scripts/starting-loadout-checks.ts",
+    "test:ai": "node scripts/check-player.mjs scripts/ai-checks.ts && node scripts/check-player.mjs scripts/tactical-ai-checks.ts && node scripts/check-player.mjs scripts/responsive-ai-checks.ts && node scripts/check-player.mjs scripts/fair-awareness-checks.ts && node scripts/check-player.mjs scripts/door-navigation-checks.ts",
+    "test:map": "node scripts/check-player.mjs scripts/map-checks.ts",
+    "test:expansion": "node scripts/check-player.mjs scripts/fence-checks.ts && node scripts/check-player.mjs scripts/indoor-enemy-checks.ts && node scripts/check-player.mjs scripts/zipline-checks.ts && node scripts/check-player.mjs scripts/near-miss-checks.ts && node scripts/check-player.mjs scripts/blood-feedback-checks.ts && node scripts/check-player.mjs scripts/blood-performance-checks.ts && node scripts/check-player.mjs scripts/hit-audio-checks.ts && node scripts/check-player.mjs scripts/enemy-motion-checks.ts",
+    "test:polish": "node scripts/check-player.mjs scripts/polish-weapon-checks.ts && node scripts/check-player.mjs scripts/polish-ai-checks.ts && node scripts/check-player.mjs scripts/polish-audio-checks.ts && node scripts/check-player.mjs scripts/polish-effects-checks.ts",
+    "preview": "vite preview",
+    "test:traversal-audio": "node scripts/check-player.mjs scripts/ladder-camera-checks.ts && node scripts/check-player.mjs scripts/polish-audio-checks.ts && node scripts/check-player.mjs scripts/hit-audio-checks.ts"
   },
   "dependencies": {
     "preact": "^10.29.8",

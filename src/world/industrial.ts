@@ -9,8 +9,10 @@ export type PlanPoint = [number, number]
 export function fence(name: string, points: PlanPoint[], height = 2.5) {
   const g = new Draft(name)
   g.userData.kind = 'fence'
-  // Wire is rendered as ink; these panels give it a continuous collision surface.
-  g.userData.collisionPanels = points.slice(1).map((b, i) => ({ a: points[i], b, height }))
+  // Wire blocks walking, not sight or shots. The solid posts remain ordinary cover.
+  g.userData.collisionPanels = points.slice(1).map((b, i) => ({
+    a: points[i], b, height, blocksSight: false, blocksShots: false,
+  }))
   const posted = new Set<string>()
   for (let n = 1; n < points.length; n++) {
     const [ax, az] = points[n - 1], [bx, bz] = points[n]
@@ -44,7 +46,7 @@ export function fence(name: string, points: PlanPoint[], height = 2.5) {
 
 export function gate(name: string, x: number, z: number, width: number, angle = 0, opened = true) {
   const g = new Draft(name, x, z, angle)
-  const panels: { a: PlanPoint; b: PlanPoint; height: number }[] = []
+  const panels: { a: PlanPoint; b: PlanPoint; height: number; blocksSight: boolean; blocksShots: boolean }[] = []
   g.userData.collisionPanels = panels
   for (const side of [-1, 1]) {
     g.box(0.26, 3.15, 0.26, side * width / 2, 1.575, 0)
@@ -53,7 +55,7 @@ export function gate(name: string, x: number, z: number, width: number, angle = 
     const at = (u: number, y: number): Point => hinge.clone().addScaledVector(direction, u).setY(y).toArray()
     const w = width / 2 - 0.07
     const end = at(w, 0)
-    panels.push({ a: [hinge.x, hinge.z], b: [end[0], end[2]], height: 2.65 })
+    panels.push({ a: [hinge.x, hinge.z], b: [end[0], end[2]], height: 2.65, blocksSight: false, blocksShots: false })
     g.line([at(0, 0.22), at(w, 0.22), at(w, 2.65), at(0, 2.65)], 'edge', true)
     g.line([at(0, 0.22), at(w, 2.65)], 'detail')
     for (let u = 0.35; u < w; u += 0.42) g.line([at(u, 0.22), at(u, 2.65)], 'mesh')
@@ -264,7 +266,7 @@ export function watchTower(x: number, z: number, ziplineTarget: PlanPoint = DEFA
   return g.finish()
 }
 
-/** A descending cable with accessible, outward-facing landings on both towers. */
+/** A powered cable shuttle with accessible landings on both towers. */
 export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
   const root = new THREE.Group()
   root.name = 'Tower-to-tower zipline'
@@ -274,9 +276,12 @@ export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
   const to = new THREE.Vector3(watch[0] + watchDirection[0] * watchAnchor, WATCH_DECK + 0.13 + heightAboveDeck, watch[1] + watchDirection[1] * watchAnchor)
   const sag = 0.65, cableRadius = 0.045
   const pointAt = (t: number) => from.clone().lerp(to, t).add(new THREE.Vector3(0, -4 * sag * t * (1 - t), 0))
+  const landingAt = (anchor: THREE.Vector3, direction: PlanPoint) => anchor.clone()
+    .add(new THREE.Vector3(-direction[0] * 0.75, -heightAboveDeck + 0.031, -direction[1] * 0.75)).toArray()
   root.userData = { environment: true, kind: 'zipline', start: from.toArray(), end: to.toArray(),
     horizontalSpan: Math.hypot(to.x - from.x, to.z - from.z), sag, cableRadius, landingWidth: 2,
-    anchorHeightAboveDeck: heightAboveDeck, direction: 'water-to-observation', gameplay: false }
+    startLanding: landingAt(from, waterDirection), endLanding: landingAt(to, watchDirection),
+    anchorHeightAboveDeck: heightAboveDeck, direction: 'water-to-observation', gameplay: true }
   for (const [name, center, direction, floor, anchor, waterSide] of [
     ['Water tower launch landing', water, waterDirection, WATER_DECK + 0.11, waterAnchor, true],
     ['Observation tower arrival landing', watch, watchDirection, WATCH_DECK + 0.13, watchAnchor, false],
@@ -312,12 +317,16 @@ export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
   const curve = new THREE.CatmullRomCurve3(Array.from({ length: 25 }, (_, i) => pointAt(i / 24)))
   cable.solid(new THREE.TubeGeometry(curve, 128, cableRadius, 8, false), [0, 0, 0], 'roof', false, [0, 0, 0], true)
   cable.line(Array.from({ length: 65 }, (_, i) => pointAt(i / 64).toArray()), 'edge')
-  const trolleyPoint = pointAt(0.003), transverse = new THREE.Vector3(waterDirection[1], 0, -waterDirection[0])
-  cable.box(0.3, 0.18, 0.27, trolleyPoint.x, trolleyPoint.y + 0.02, trolleyPoint.z, 'concrete', 'detail')
-  const handle = trolleyPoint.clone().add(new THREE.Vector3(0, -0.86, 0))
-  cable.beam(trolleyPoint.toArray(), handle.toArray(), 0.065, 'paper', 'detail')
-  cable.beam(handle.clone().addScaledVector(transverse, -0.32).toArray(), handle.clone().addScaledVector(transverse, 0.32).toArray(), 0.085, 'paper', 'detail')
   root.add(cable.finish())
+  const trolley = new Draft('Zipline · downhill trolley grip')
+  trolley.userData = { environment: true, kind: 'zipline-trolley', noCollision: true }
+  const trolleyPoint = pointAt(0.003), transverse = new THREE.Vector3(waterDirection[1], 0, -waterDirection[0])
+  trolley.userData.origin = trolleyPoint.toArray()
+  trolley.box(0.3, 0.18, 0.27, trolleyPoint.x, trolleyPoint.y + 0.02, trolleyPoint.z, 'concrete', 'detail')
+  const handle = trolleyPoint.clone().add(new THREE.Vector3(0, -0.86, 0))
+  trolley.beam(trolleyPoint.toArray(), handle.toArray(), 0.065, 'paper', 'detail')
+  trolley.beam(handle.clone().addScaledVector(transverse, -0.32).toArray(), handle.clone().addScaledVector(transverse, 0.32).toArray(), 0.085, 'paper', 'detail')
+  root.add(trolley.finish())
   return root
 }
 
