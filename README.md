@@ -118,7 +118,7 @@ Bookmarks are also available through `?view=overview`, `?view=yard`, `?view=rail
 - `src/world/doors.ts` and `src/interactions.ts`: separate hinged door leaves, occlusion-aware picking, door motion and interior cutaway.
 - `src/world/industrial.ts`: fences, gates, storage tanks, braced towers, standard-gauge track and loading canopy.
 - `src/world/ladders.ts`: shared pipe ladders with round rails, curved handholds and 35 cm rung spacing.
-- `src/render/ink.ts`: batched opaque surfaces and screen-space line materials, plus back-face silhouettes for curved objects. Architectural and road-edge strokes are 2.2 CSS pixels; secondary details use lighter, finer strokes. Depth-tested surfaces hide occluded lines. Mesh tessellation is never rendered as a wireframe.
+- `src/render/ink.ts`: batched opaque surfaces and screen-space line materials, plus back-face silhouettes for curved objects. Architectural and road-edge strokes are 2.2 CSS pixels nearby and taper smoothly with perspective distance; secondary details use lighter, finer strokes. Depth-tested surfaces hide occluded lines. Mesh tessellation is never rendered as a wireframe.
 - `src/camera.ts`: orbit, free inspection and orthographic plan cameras.
 - `src/player/`: grounded capsule movement, nearby geometry collision trees, moving door collision, ladder traversal, mouse capture, and interaction prompts. Simulation uses steps of at most 1/120 second.
 

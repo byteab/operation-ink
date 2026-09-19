@@ -42,6 +42,7 @@ Scenery, HUD and effects use blue ink. All NPC characters, including the hostage
 - Gun edges use 2.1 CSS px strokes with continuous primary paths, restrained pressure variation and silhouettes on rounded pieces. FPS arm contours use 2.4 px. Paper fills are depth-offset to prevent self-occlusion; all strokes still test scene depth.
 - Use gentle changes of direction and thickness, with occasional pen lifts and overshoots. Preserve recognizable roofs, doors, gun sights and fence openings.
 - Use stronger marks for foreground structure, lighter marks for secondary details, and sparse marks at distance.
+- In perspective views, preserve full line weight through 8 m, then taper width and sketch offsets smoothly toward 24% of their near weight. Evaluate depth per endpoint/vertex so long roads and batched scenery narrow continuously. Curved silhouettes use the same taper. Orthographic plan-view weights stay fixed.
 - Hatch selected scenery surfaces in directions that describe the surface. NPC characters remain solid black; FPS hands, arms and gun surfaces have no hatching or texture.
 - Keep fence mesh comparatively simple; repeating every wire would bury the scene in ink.
 - Seed marks once from stable object/part identifiers. Marks must follow objects and stay still when the game is still.

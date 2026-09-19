@@ -11,9 +11,17 @@ The user will review the actual look before browser verification begins. No brow
 - Environment roofs, recesses, windows, doors, crates, tanks, towers and jeep panels gain directional marks. Pines gain loose branch trails; road surfaces gain occasional scratches. Map dimensions and collision geometry remain unchanged.
 - All NPC characters, including the hostage, use plain solid black. FPS arms now have fuller tapered geometry, paper interiors and 2.4 CSS px blue silhouettes. Gun hard edges use 2.1 CSS px screen-space strokes; rounded parts also have view-dependent silhouettes. Restrained stroke deviation and depth-offset paper faces address faint or self-occluded lines without disabling depth testing. Guns and arms have no surface hatching. Existing mounts, bone lengths, animation clips and ballistics remain intact.
 - The AK's curved magazine has its own silhouette; all four pressed-rib curves use continuous 1.8 CSS px lines instead of the former one-pixel renderer.
+- Perspective line widths and curved silhouettes now narrow with view-space depth. The shared taper preserves full weight through 8 m, then approaches 24% at long distances: structural baselines are about 1.36 px at 40 m and 0.80 px at 80 m. Sketch and retrace offsets shrink with the strokes. Per-endpoint/vertex evaluation works within batched roads and scenery, and also covers distant gun models. FPS arms/guns retain their nearby weight; orthographic plans keep fixed weights. No extra geometry, draw calls or per-frame CPU updates are introduced.
 - Impact flecks, hit stains, muzzle flashes, shell casings, shot traces and camera indicators use the same blue palette. Active cameras have blue indicator dots; inactive dots become paper-coloured.
 - HUD, pause screen, field map, signs, scope, damage feedback, VR labels and animation-lab controls use paper/blue styling. Low-health emphasis and confirmed-hit feedback use mark/weight changes rather than a second colour. Hostage instructions no longer refer to green.
 - `src/render/paper.css` and a small static SVG texture add very faint paper grain to desktop views (overlay opacity reduced from 0.075 to 0.035). This overlay does not animate and cannot intercept input; it is hidden during immersive VR.
+
+## Checks after the distance taper revision
+
+- `npm run build` passed (TypeScript and production bundle; existing large-bundle warning remains).
+- `npm run test:vr` and `git diff --check` passed.
+- Inspected the installed Three.js line shader to confirm camera-space endpoints and width expansion occur after near-plane trimming. Distance taper is applied to both endpoint widths and sketch offsets, with the same function used by silhouette shaders.
+- No browser or GPU verification was performed; the user is reviewing the style first.
 
 ## Checks after the foreground contour revision
 

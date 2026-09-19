@@ -3,7 +3,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { penPalette, penRandom, penSeed, sketchSegments } from './ballpoint'
+import { penDistanceGLSL, penPalette, penRandom, penSeed, sketchSegments } from './ballpoint'
 
 export type Point = [number, number, number]
 export type Fill = 'paper' | 'roof' | 'concrete' | 'glass' | 'green' | 'rock'
@@ -39,22 +39,27 @@ for (const material of Object.values(strokes)) {
   material.onBeforeCompile = shader => {
     shader.vertexShader = shader.vertexShader
       .replace('uniform float linewidth;', `uniform float linewidth;
+        ${penDistanceGLSL}
         attribute float instancePenWidth;
         attribute vec2 instancePenOffset;`)
       .replace('// ndc space', `// Stable pen deviation in pixels, without shifting the line's depth.
+        // Per-endpoint depth lets long roads taper within a single batched mesh.
+        float penStartScale = penDistanceScale(-start.z);
+        float penEndScale = penDistanceScale(-end.z);
+        float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
         vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
         penDirection /= max(length(penDirection), 0.0001);
         vec2 penNormal = vec2(-penDirection.y, penDirection.x);
-        clipStart.xy += penNormal * instancePenOffset.x * 2.0 / resolution * clipStart.w;
-        clipEnd.xy += penNormal * instancePenOffset.y * 2.0 / resolution * clipEnd.w;
+        clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
+        clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
         // ndc space`)
-      .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth;')
+      .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
   }
-  material.customProgramCacheKey = () => 'ballpoint-world-strokes-v1'
+  material.customProgramCacheKey = () => 'ballpoint-world-strokes-v2'
 }
 
 // Smooth objects need a moving silhouette, not a wireframe of their tessellation.
-// Expand back faces in screen space so tank and tree contours keep the same weight.
+// Expand back faces with the same distance taper as the surrounding pen strokes.
 const silhouette = new THREE.ShaderMaterial({
   uniforms: {
     ink: { value: new THREE.Color(palette.ink) },
@@ -64,6 +69,7 @@ const silhouette = new THREE.ShaderMaterial({
   vertexShader: `
     uniform vec2 resolution;
     uniform float width;
+    ${penDistanceGLSL}
     void main() {
       vec4 view = modelViewMatrix * vec4(position, 1.0);
       vec4 clip = projectionMatrix * view;
@@ -72,7 +78,7 @@ const silhouette = new THREE.ShaderMaterial({
       vec2 direction = (tip.xy * clip.w - clip.xy * tip.w) * resolution;
       direction /= max(length(direction), 0.0001);
       float pressure = 0.88 + 0.12 * sin(position.y * 8.7 + position.x * 3.1 + position.z * 5.3);
-      clip.xy += direction * width * pressure * 2.0 / resolution * clip.w;
+      clip.xy += direction * width * pressure * penDistanceScale(-view.z) * 2.0 / resolution * clip.w;
       gl_Position = clip;
     }
   `,

@@ -16,6 +16,17 @@ export const penPalette = {
 export type PenRole = 'edge' | 'detail' | 'mesh' | 'landscape'
 export type PenMaterialOptions = { density?: number; scale?: number; seed?: number }
 
+/** Shared perspective taper for strokes and silhouettes, measured in view-space metres. */
+export const penDistanceGLSL = `
+  float penDistanceScale(float viewDepth) {
+    // Orthographic plan views have no perspective distance shrinkage.
+    if (projectionMatrix[2][3] != -1.0) return 1.0;
+    // Keep the first 8 m bold, then taper smoothly toward a legible distant contour.
+    float depthRatio = max(viewDepth - 8.0, 0.0) / 32.0;
+    return 0.24 + 0.76 / (1.0 + depthRatio * depthRatio);
+  }
+`
+
 /** Semantic seeds survive reloads and are independent of the scene's allocation order. */
 export function penSeed(value: string | number): number {
   const text = String(value)
@@ -173,18 +184,22 @@ const edgeMaterial = new LineMaterial({ color: 0xffffff, vertexColors: true, lin
 edgeMaterial.onBeforeCompile = shader => {
   shader.vertexShader = shader.vertexShader
     .replace('uniform float linewidth;', `uniform float linewidth;
+      ${penDistanceGLSL}
       attribute float instancePenWidth;
       attribute vec2 instancePenOffset;`)
     .replace('// ndc space', `// Foreground contours stay continuous with only a small pressure variation.
+      float penStartScale = penDistanceScale(-start.z);
+      float penEndScale = penDistanceScale(-end.z);
+      float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
       vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
       penDirection /= max(length(penDirection), 0.0001);
       vec2 penNormal = vec2(-penDirection.y, penDirection.x);
-      clipStart.xy += penNormal * instancePenOffset.x * 2.0 / resolution * clipStart.w;
-      clipEnd.xy += penNormal * instancePenOffset.y * 2.0 / resolution * clipEnd.w;
+      clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
+      clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
       // ndc space`)
-    .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth;')
+    .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
 }
-edgeMaterial.customProgramCacheKey = () => 'ballpoint-foreground-edges-v2'
+edgeMaterial.customProgramCacheKey = () => 'ballpoint-foreground-edges-v3'
 const penViewport = new THREE.Vector4()
 
 /** Logical desktop viewport keeps widths in CSS pixels despite supersampling. */
@@ -252,6 +267,7 @@ export function createPenSilhouette(geometry: THREE.BufferGeometry, width = 2.1,
       vertexShader: `
         uniform vec2 resolution;
         uniform float width;
+        ${penDistanceGLSL}
         void main() {
           vec4 view = modelViewMatrix * vec4(position, 1.0);
           vec4 clip = projectionMatrix * view;
@@ -259,7 +275,7 @@ export function createPenSilhouette(geometry: THREE.BufferGeometry, width = 2.1,
           vec4 tip = projectionMatrix * vec4(view.xyz + viewNormal, 1.0);
           vec2 direction = (tip.xy * clip.w - clip.xy * tip.w) * resolution;
           direction /= max(length(direction), 0.0001);
-          clip.xy += direction * width * 2.0 / resolution * clip.w;
+          clip.xy += direction * width * penDistanceScale(-view.z) * 2.0 / resolution * clip.w;
           gl_Position = clip;
         }
       `,
