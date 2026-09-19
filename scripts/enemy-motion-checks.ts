@@ -13,12 +13,20 @@ try {
   for (const weapon of ['pistol', 'ak', 'smg', 'sniper'] as const) {
     const actor = await EnemyActor.create(weapon)
     try {
-      const rootPosition = actor.root.position.clone(), initialHead = actor.rig.bones.head.quaternion.clone()
+      const rootPosition = actor.root.position.clone(), initialHead = actor.rig.bones.head.getWorldQuaternion(new THREE.Quaternion())
+      const hips = actor.rig.bones.hips.getWorldPosition(v())
+      const feet = (['L', 'R'] as const).map(side => actor.rig.bones[`shin.${side}`].localToWorld(new THREE.Vector3(0, Math.hypot(.36, .05), 0)))
       let variation = 0
-      for (let i = 0; i < 400; i++) {
+      for (let i = 0; i < 600; i++) {
         actor.update(1 / 60, 'guard', false)
-        variation = Math.max(variation, initialHead.angleTo(actor.rig.bones.head.quaternion))
+        // The neck shares the turn with the head; evaluate the visible gaze.
+        variation = Math.max(variation, initialHead.angleTo(actor.rig.bones.head.getWorldQuaternion(new THREE.Quaternion())))
         assert(actor.root.position.equals(rootPosition), 'Idle motion must not displace navigation root')
+        assert(actor.rig.bones.hips.getWorldPosition(v()).distanceTo(hips) < 1e-5, 'Relaxed look sways the pelvis')
+        for (const [index, side] of (['L', 'R'] as const).entries()) {
+          const foot = actor.rig.bones[`shin.${side}`].localToWorld(new THREE.Vector3(0, Math.hypot(.36, .05), 0))
+          assert(foot.distanceTo(feet[index]) < 1e-5, 'Relaxed look slides or lifts a planted foot')
+        }
       }
       assert(variation > 0.5, `${weapon}: guard actually checks different directions`)
       const heldHead = actor.rig.bones.head.quaternion.clone()

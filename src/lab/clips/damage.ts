@@ -3,6 +3,7 @@ import { makeClip, type Key, type Pose } from '../clip'
 import type { BoneName } from '../rig'
 import type { Action, Ctx } from '../registry'
 import { hang } from './idle'
+import { settleDeath } from '../death-settle'
 
 /**
  * Hit reactions. Shooter stands in front (+Z) so blood exits backward (-Z). Hit arm / hit leg are the
@@ -62,8 +63,10 @@ const flinchLeg = makeClip('flinchLeg', [
 
 // ---------------------------------------------------------------- deaths (one-shot, hold last frame)
 
+const death = (name: string, contact: number, keys: Key[]) => settleDeath(makeClip(name, keys), contact)
+
 /** Head: snap back, limbs go limp, sit straight down, topple onto the back. Ends on the back, head at -Z. */
-const dieHead = makeClip('dieHead', [
+const dieHead = death('dieHead', 0.84, [
   K(0, hang),
   K(0.07, { ...limp, head: [-45, 22, 15], neck: [-20, 0, 0], chest: [-10, 0, 0] }, [0, 0, -0.02]),
   K(0.28, { 'thigh.L': [-25, 0, 0], 'thigh.R': [-25, 0, 0], 'shin.L': [60, 0, 0], 'shin.R': [60, 0, 0], hips: [-6, 0, 0], head: [-40, 22, 15],
@@ -81,7 +84,7 @@ const dieHead = makeClip('dieHead', [
 ])
 
 /** Body: clutch chest, two steps back, to the knees, face-down forward. Ends prone, head at +Z. */
-const dieBody = makeClip('dieBody', [
+const dieBody = death('dieBody', 1.4, [
   K(0, hang),
   K(0.1, { ...clutchChest, chest: [-10, 0, 0], head: [10, 0, 0] }, [0, 0, -0.03]),
   K(0.35, { spine: [22, 0, 0], chest: [14, 0, 0], head: [14, 0, 0],
@@ -103,31 +106,32 @@ const dieBody = makeClip('dieBody', [
     'upper_arm.L': [-25, 4, 0], 'upper_arm.R': [-40, -6, 0], 'forearm.L': [-30, 0, 0], 'forearm.R': [-50, 0, 0] }, [0, -0.71, -0.09]),
 ])
 
-/** Arm: impact spins the body half a turn, falls onto the right side, hit arm splayed out front. Ends on the right side, head at +X. */
-const dieArm = makeClip('dieArm', [
+/** Arm: impact turns the body, the waist yields, then the right side lands and rolls partly onto the back. Head at +X. */
+const dieArm = death('dieArm', 0.72, [
   K(0, hang),
   K(0.08, { ...hang, 'upper_arm.R': [-50, -95, 0], 'forearm.R': [0, 0, 40], chest: [0, -22, 0], hips: [0, -15, 0], head: [0, -20, 0] }, [0, 0, -0.03]),
-  K(0.3, { hips: [4, -80, 0], chest: [4, -10, 0], head: [8, -10, 0],
+  K(0.3, { hips: [4, -80, 0], spine: [7, -8, 5], chest: [4, -10, 0], head: [8, -10, 0],
     'thigh.L': [-22, 0, 0], 'shin.L': [30, 0, 0], 'thigh.R': [14, 0, 0], 'shin.R': [10, 0, 0],
     'upper_arm.L': [-38, 35, 0], 'forearm.L': [0, 0, -20], 'upper_arm.R': [-30, -60, 0], 'forearm.R': [0, 0, 25] }, [0.02, -0.05, -0.1]),
-  K(0.44, { hips: [8, -115, -14], head: [4, -4, -14], 'thigh.L': [-26, 0, 0], 'shin.L': [55, 0, 0], 'thigh.R': [2, 0, 0], 'shin.R': [28, 0, 0] }, [0.06, -0.1, -0.12]),
-  K(0.55, { hips: [10, -140, -40], chest: [0, 0, 0], head: [0, 0, -15],
+  K(0.44, { hips: [8, -115, -14], spine: [12, -6, 10], chest: [8, 5, -4], head: [4, -4, -14], 'thigh.L': [-26, 0, 0], 'shin.L': [55, 0, 0], 'thigh.R': [2, 0, 0], 'shin.R': [28, 0, 0] }, [0.06, -0.1, -0.12]),
+  K(0.55, { hips: [10, -140, -40], spine: [7, 6, 8], chest: [-4, 8, 5], head: [0, 0, -15],
     'thigh.L': [-30, 0, 0], 'shin.L': [60, 0, 0], 'thigh.R': [-5, 0, 0], 'shin.R': [55, 0, 0],
     'upper_arm.L': [-30, 20, 0], 'upper_arm.R': [-45, 70, 0], 'forearm.R': [0, 0, 30] }, [0.12, -0.1, -0.15]),
-  K(0.63, { hips: [0, -165, -65], head: [5, 0, -18],
+  K(0.63, { hips: [0, -165, -65], spine: [4, 9, 3], chest: [8, -3, 6], head: [5, 0, -18],
     'thigh.L': [-42, 0, 4], 'shin.L': [62, 0, 0], 'thigh.R': [-12, 0, 0], 'shin.R': [45, 0, 0],
     'upper_arm.L': [-50, -40, 0], 'upper_arm.R': [-85, 80, 0], 'forearm.R': [0, 0, 30] }, [0.2, -0.36, -0.15]),
-  K(0.72, { hips: [0, -180, -90], head: [10, 0, -20], neck: [0, 0, -6],
+  K(0.72, { hips: [0, -162, -88], spine: [3, 6, -8], chest: [6, -4, 6], head: [10, 0, -20], neck: [0, 0, -6],
     'thigh.L': [-42, 0, 4], 'shin.L': [62, 0, 0], 'thigh.R': [-12, 0, 0], 'shin.R': [22, 0, 0],
     'upper_arm.L': [-70, -80, 0], 'forearm.L': [-60, 0, 0], 'upper_arm.R': [-90, 85, 0], 'forearm.R': [0, 0, 24], 'hand.R': [0, 0, 0] }, [0.26, -0.65, -0.15]),
-  K(0.8, { hips: [0, -180, -84] }, [0.27, -0.62, -0.15]),
-  K(0.9, { hips: [0, -180, -90] }, [0.27, -0.65, -0.15]),
-  K(1.5, { head: [20, 0, -24], 'thigh.L': [-48, 0, 6], 'shin.L': [70, 0, 0], 'thigh.R': [-6, 0, 0], 'shin.R': [14, 0, 0],
-    'upper_arm.L': [-74, -70, 0], 'forearm.L': [-70, 0, -10], 'upper_arm.R': [-90, 92, 0], 'forearm.R': [0, 0, 14] }, [0.27, -0.65, -0.15]),
+  K(0.8, { hips: [0, -153, -87], spine: [0, -3, -3], chest: [2, 5, -5], head: [16, -6, -26] }, [0.27, -0.63, -0.15]),
+  K(0.94, { hips: [0, -144, -90], spine: [2, -4, 2], chest: [-3, 1, -2], head: [23, -2, -22] }, [0.27, -0.645, -0.15]),
+  K(1.12, { hips: [0, -140, -90], spine: [1, -2, 0], chest: [1, -2, 0], neck: [0, 0, -4], head: [19, 3, -20] }, [0.27, -0.645, -0.15]),
+  K(1.7, { spine: [0, 0, 0], chest: [0, 0, 0], head: [20, 0, -20], 'thigh.L': [-48, 0, 6], 'shin.L': [70, 0, 0], 'thigh.R': [-6, 0, 0], 'shin.R': [14, 0, 0],
+    'upper_arm.L': [-74, -70, 0], 'forearm.L': [-70, 0, -10], 'upper_arm.R': [-90, 92, 0], 'forearm.R': [0, 0, 14] }, [0.27, -0.645, -0.15]),
 ])
 
-/** Leg: right leg folds, drops to that knee, hands reach for the ground, rolls over the right shoulder onto the back. Ends on the back rolled 50° to the right. */
-const dieLeg = makeClip('dieLeg', [
+/** Leg: right knee folds, the torso curls over the shoulder, then opens into a relaxed back/side rest (20° roll). */
+const dieLeg = death('dieLeg', 1.12, [
   K(0, hang),
   K(0.08, { 'thigh.R': [-30, 0, 0], 'shin.R': [90, 0, 0], 'thigh.L': [-20, 0, -6], 'shin.L': [45, 0, 0], hips: [10, 0, 10], spine: [4, 0, -4],
     'upper_arm.L': [-40, -30, 0], 'upper_arm.R': [-40, 30, 0], 'forearm.L': [0, 0, -25], 'forearm.R': [0, 0, 25] }, [0, -0.06, 0]),
@@ -137,20 +141,21 @@ const dieLeg = makeClip('dieLeg', [
     'upper_arm.L': [-40, -85, 0], 'forearm.L': [0, 0, -15], 'upper_arm.R': [-40, 85, 0], 'forearm.R': [0, 0, 15] }, [0, -0.4, 0.03]),
   K(0.55, { hips: [62, 0, 0], spine: [8, 0, 0], head: [-30, 0, 0], 'thigh.L': [-50, 0, -10], 'shin.L': [80, 0, 0], 'thigh.R': [-50, 0, 0], 'shin.R': [80, 0, 0],
     'upper_arm.L': [-30, -92, 0], 'forearm.L': [0, 0, -5], 'upper_arm.R': [-30, 92, 0], 'forearm.R': [0, 0, 5], 'hand.L': [0, 0, -30], 'hand.R': [0, 0, 30] }, [0, -0.4, 0.1]),
-  K(0.78, { hips: [30, 0, 40], spine: [0, 0, 0], head: [-10, 0, 15], 'thigh.L': [-85, 0, 10], 'shin.L': [120, 0, 0], 'thigh.R': [-80, 0, 0], 'shin.R': [120, 0, 0],
+  K(0.78, { hips: [30, 0, 40], spine: [15, -7, -12], chest: [8, -10, -5], head: [-10, 0, 15], 'thigh.L': [-85, 0, 10], 'shin.L': [120, 0, 0], 'thigh.R': [-80, 0, 0], 'shin.R': [120, 0, 0],
     'upper_arm.L': [-45, -60, 0], 'forearm.L': [-20, 0, -80], 'upper_arm.R': [-60, 40, 0], 'forearm.R': [0, 0, 40] }, [-0.06, -0.48, 0.05]),
-  K(0.88, { hips: [-5, 0, 45], head: [0, 0, 20], 'thigh.L': [-80, 0, 14], 'shin.L': [120, 0, 0], 'thigh.R': [-80, 0, 0], 'shin.R': [120, 0, 0] }, [-0.09, -0.5, -0.02]),
-  K(0.98, { hips: [-40, 0, 50], head: [10, 0, 25], 'thigh.L': [-55, 0, 20], 'shin.L': [20, 0, 0], 'thigh.R': [-60, 0, 0], 'shin.R': [30, 0, 0],
+  K(0.88, { hips: [-5, 0, 45], spine: [12, -5, -8], chest: [12, 5, -4], head: [0, 0, 20], 'thigh.L': [-80, 0, 14], 'shin.L': [120, 0, 0], 'thigh.R': [-80, 0, 0], 'shin.R': [120, 0, 0] }, [-0.09, -0.5, -0.02]),
+  K(0.98, { hips: [-40, 0, 50], spine: [8, 3, -5], chest: [14, 6, -3], head: [10, 0, 25], 'thigh.L': [-55, 0, 20], 'shin.L': [20, 0, 0], 'thigh.R': [-60, 0, 0], 'shin.R': [30, 0, 0],
     'upper_arm.L': [-58, -50, 0], 'forearm.L': [-30, 0, -90], 'upper_arm.R': [-80, 25, 0], 'forearm.R': [0, 0, 30] }, [-0.12, -0.58, -0.1]),
-  K(1.12, { hips: [-90, 0, 50], head: [22, 0, 30], neck: [8, 0, 5], 'thigh.L': [-40, 0, 20], 'shin.L': [40, 0, 0], 'thigh.R': [-45, 0, 0], 'shin.R': [70, 0, 0] }, [-0.14, -0.68, -0.16]),
-  K(1.2, { hips: [-84, 0, 48] }, [-0.14, -0.65, -0.16]),
-  K(1.3, { hips: [-90, 0, 50] }, [-0.14, -0.68, -0.16]),
-  K(1.9, { head: [24, 10, 34], neck: [10, 0, 5], 'thigh.L': [-22, 0, 24], 'shin.L': [30, 0, 0], 'thigh.R': [-42, 0, -4], 'shin.R': [96, 0, 0],
-    'upper_arm.L': [-62, -44, 0], 'forearm.L': [-20, 0, -70], 'hand.L': [-15, 0, 0], 'upper_arm.R': [-85, 0, 0], 'forearm.R': [0, 0, 30], 'hand.R': [0, 0, 0] }, [-0.14, -0.68, -0.16]),
+  K(1.12, { hips: [-90, 0, 42], spine: [3, 3, 2], chest: [7, -4, 3], head: [22, 0, 30], neck: [8, 0, 5], 'thigh.L': [-40, 0, 20], 'shin.L': [40, 0, 0], 'thigh.R': [-45, 0, 0], 'shin.R': [70, 0, 0] }, [-0.14, -0.68, -0.16]),
+  K(1.2, { hips: [-87, 0, 32], spine: [-3, -2, 0], chest: [-4, 2, -2], head: [30, 8, 25] }, [-0.14, -0.66, -0.16]),
+  K(1.34, { hips: [-90, 0, 22], spine: [1, 0, 0], chest: [2, 1, 0], head: [25, 14, 20] }, [-0.14, -0.695, -0.16]),
+  K(1.55, { hips: [-90, 0, 20], spine: [0, 0, 0], chest: [0, 0, 0], head: [24, 12, 18], neck: [10, 0, 3] }),
+  K(2.17, { head: [24, 12, 18], neck: [10, 0, 3], 'thigh.L': [-22, 0, 24], 'shin.L': [30, 0, 0], 'thigh.R': [-42, 0, -4], 'shin.R': [96, 0, 0],
+    'upper_arm.L': [-62, -44, 0], 'forearm.L': [-20, 0, -70], 'hand.L': [-15, 0, 0], 'upper_arm.R': [-85, 0, 0], 'forearm.R': [0, 0, 30], 'hand.R': [0, 0, 0] }, [-0.14, -0.695, -0.16]),
 ])
 
 /** Shot from behind: thrown forward, lands flat on the face with the arms out. Ends prone, head at +Z. */
-const dieBack = makeClip('dieBack', [
+const dieBack = death('dieBack', 0.66, [
   K(0, hang),
   K(0.08, { chest: [22, 0, 0], head: [-22, 0, 0], 'upper_arm.L': [-35, -60, 0], 'upper_arm.R': [-35, 60, 0], 'forearm.L': [0, 0, -30], 'forearm.R': [0, 0, 30] }, [0, 0, 0.05]),
   K(0.3, { hips: [32, 0, 0], chest: [12, 0, 0], head: [-25, 0, 0], 'thigh.L': [12, 0, 0], 'thigh.R': [6, 0, 0], 'shin.L': [25, 0, 0], 'shin.R': [15, 0, 0] }, [0, -0.1, 0.18]),
@@ -164,7 +169,7 @@ const dieBack = makeClip('dieBack', [
 ])
 
 /** Close shotgun impact: compression, airborne recoil, trailing limbs, back/shoulder contact, settle. */
-const dieShotgun = makeClip('dieShotgun', [
+const dieShotgun = death('dieShotgun', 0.73, [
   K(0, { ...hang, hips: [0, 0, 0] }, [0, 0, 0]),
   { ...K(0.055, { ...hang, chest: [-18, -4, 0], head: [-18, 8, 5], hips: [-7, 0, -3],
     'thigh.L': [-12, 0, 0], 'thigh.R': [-9, 0, 0], 'shin.L': [22, 0, 0], 'shin.R': [18, 0, 0] }, [0, -0.035, -0.08]), ease: 'linear' },

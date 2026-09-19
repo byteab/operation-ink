@@ -1,0 +1,13 @@
+{
+  "duration": 9.6,
+  "frames": 601,
+  "halfSpeed": true,
+  "headLeadSeconds": 0.2667999999999878,
+  "maxFootTravel": 1.0655189789143243e-09,
+  "maxPelvisTravel": 0,
+  "maxYaw": 35.26293322693883,
+  "minYaw": -39.95571371506415,
+  "passed": true,
+  "pause": true,
+  "wraps": 1
+}

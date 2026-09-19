@@ -1,0 +1,51 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "duration": 1.77,
+      "name": "dieArm",
+      "passed": true,
+      "renderedFrames": 121,
+      "wallSeconds": 2.0175
+    },
+    {
+      "duration": 2.17,
+      "name": "dieLeg",
+      "passed": true,
+      "renderedFrames": 145,
+      "wallSeconds": 2.4165999999940397
+    },
+    {
+      "duration": 1.89,
+      "name": "dieHead",
+      "passed": true,
+      "renderedFrames": 128,
+      "wallSeconds": 2.1334000000059605
+    },
+    {
+      "duration": 2.45,
+      "name": "dieBody",
+      "passed": true,
+      "renderedFrames": 162,
+      "wallSeconds": 2.7
+    },
+    {
+      "duration": 1.71,
+      "name": "dieBack",
+      "passed": true,
+      "renderedFrames": 117,
+      "wallSeconds": 1.95
+    },
+    {
+      "duration": 1.78,
+      "name": "dieShotgun",
+      "passed": true,
+      "renderedFrames": 121,
+      "wallSeconds": 2.0167999999821187
+    },
+    {
+      "name": "Pause, half speed and interrupted death",
+      "passed": true
+    }
+  ]
+}

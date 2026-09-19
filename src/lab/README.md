@@ -13,7 +13,9 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `player.ts` | `Player`: `play`, `queue`, `stop`, `setSpeed`, `update`; `fade` default |
 | `registry.ts` | `Ctx`, `Action`, `Updater`; globs `clips/*.ts`, `actions/*.ts`, `fx/*.ts`, `weapons/*.ts` |
 | `clips/idle.ts` | worked example: `hang` pose, `idle` clip, "Idle" action |
+| `clips/behavior.ts` | behaviour clips; relaxed looking uses planted feet, separate head-led glances and delayed shoulder follow |
 | `gait.ts` | bakes narrow walk/run foot paths, forward knee poles, pelvis height and fixed-length leg rotations into shared clips |
+| `death-settle.ts` | bakes staggered limp limb release, impact flex and resting head/hand/leg floor contacts into all six deaths |
 | `actions/scenario.ts` | game-like combos (shot → flinch/death + blood, armed patrol, alert + burst, reset) and "Export clips JSON" |
 | `panel.tsx` | preact panel: camera presets, speed/crossfade, action buttons, bone inspector |
 | `main.ts` | renderer, scene, orbit camera, rAF loop, hotkeys |
@@ -22,6 +24,12 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `weapons/poses.ts` | solves authored weapon holds into fixed-length arm animation keys |
 | `weapons/support.ts` | analytic arm positioning, wrist orientation, and elbow direction for grips and moving mechanisms |
 | `weapons/dropped.ts` | released weapon fall, floor settling, and cleanup |
+
+The relaxed look-around loop lasts 9.6 s. Its pelvis and feet stay planted while the head/neck lead two
+unequally timed glances, the shoulders follow 0.17 s later, and subtle breathing continues through the holds.
+Every root sample is explicit, including the matching loop endpoints, so looking cannot slide the stance
+or jump on repeat. The same clip is used by idle guards. Check it with `scripts/check-lab-relaxed-look.js`
+through agent-browser and `scripts/enemy-motion-checks.ts`; preview and results are in `docs/character-relaxed-look/`.
 
 ## Adding things (drop a file in, no edits to existing files)
 
@@ -197,6 +205,13 @@ Manual cycling retains the selected aimed or hip stance.
 `readyToFire` indicates that `fire()` can emit immediately; scripted bursts wait for it across hold transitions.
 Lethal reactions release the weapon before the death pose starts. The prop falls and settles on the floor,
 following playback speed; equipping, holstering, or resetting the scene clears the dropped prop.
+
+All six deaths finish with supported hands, lower legs and head. Arm/leg deaths yield through the waist and
+ribcage, roll toward a relaxed resting pose, then release the limbs at staggered times. The shared settling
+pass adds a damped torso response and fixed-length floor contacts, baked at 120 Hz into ordinary clips;
+pause, export, game mirroring and saved-pose restoration need no separate simulation state.
+Run `npm run test:deaths` for the real-mesh and mission checks, or `scripts/check-lab-deaths.js` through
+agent-browser for normal-speed button playback. Visual evidence and notes: `docs/character-death-settle/`.
 
 For regression checks, start the dev server, open and reload `/lab.html` in agent-browser, then run from the project root:
 

@@ -86,6 +86,42 @@ const beckon = (curl: number, tilt = 12): Pose => ({
   'upper_arm.L': [-76, 0, 0],
 })
 
+/** A planted idle with separate glances, not a whole-body side-to-side sweep.
+ * The featureless head needs a small shoulder follow to read the turn, but the
+ * pelvis and feet must not move to exaggerate it. Bake independent timings so
+ * the head arrives first and the chest catches up after it. */
+function relaxedLook() {
+  const duration = 9.6, count = Math.round(duration * 60)
+  const ease = (value: number) => {
+    const u = Math.max(0, Math.min(1, value))
+    return u * u * u * (10 + u * (-15 + u * 6))
+  }
+  const glance = (t: number, start: number, arrive: number, leave: number, end: number) =>
+    ease((t - start) / (arrive - start)) * (1 - ease((t - leave) / (end - leave)))
+  const gaze = (t: number) => 30 * glance(t, 0.8, 1.32, 3.05, 3.63) - 34 * glance(t, 4.85, 5.45, 7.3, 7.96)
+  const keys: Key[] = Array.from({ length: count + 1 }, (_, i) => {
+    const t = i / count * duration
+    const turn = gaze(t), neck = gaze(t - 0.055), shoulders = gaze(t - 0.17), waist = gaze(t - 0.24)
+    const breath = (1 - Math.cos(2 * Math.PI * t / 4.8)) * 0.5
+    const left = glance(t, 1.05, 1.55, 2.9, 3.55), right = glance(t, 5.1, 5.65, 7.15, 7.9)
+    return {
+      t, root: [0, 0, 0], ease: 'linear',
+      pose: {
+        ...stand,
+        spine: [-0.15 * breath, waist * 0.035, 0],
+        chest: [-0.45 * breath, shoulders * 0.14, 0],
+        neck: [0, neck * 0.16, 0],
+        head: [0.6 * breath + 1.8 * left - right, turn * 0.84, 0.6 * left + 0.4 * right],
+        // Loose hanging arms absorb a little of the shoulder turn. No gesture
+        // or shrug that could be mistaken for the character being pulled along.
+        'upper_arm.L': [-78, -shoulders * 0.045, 0],
+        'upper_arm.R': [-78, -shoulders * 0.045, 0],
+      },
+    }
+  })
+  return makeClip('lookRelaxed', keys, { loop: true, duration })
+}
+
 export const clips = {
   startle: makeClip('startle', [
     { t: 0, pose: stand },
@@ -132,15 +168,7 @@ export const clips = {
     { t: 1.8, pose: { ...ready, chest: [5, -3, 0], head: [-4, -12, 0], hips: [0, 0, -2] }, root: [-0.015, READY_Y, 0] },
   ], { loop: true, duration: 2.4 }),
 
-  lookRelaxed: makeClip('lookRelaxed', [
-    { t: 0, pose: stand },
-    { t: 1.2, pose: { ...stand, head: [0, 35, 0], chest: [0, 8, 0], hips: [0, 0, 3] }, root: [0.03, 0, 0] },
-    { t: 2.6, pose: { ...stand, head: [3, 30, 0], chest: [0, 8, 0], hips: [0, 0, 3] }, root: [0.03, 0, 0] },
-    { t: 3.8, pose: { ...stand, head: [0, -35, 0], chest: [0, -8, 0], hips: [0, 0, -3] }, root: [-0.03, 0, 0] },
-    { t: 4.6, pose: { ...stand, head: [2, -30, 0], chest: [0, -8, 0], hips: [0, 0, -3], 'upper_arm.R': [-68, 0, -14], 'forearm.R': [0, 0, 20] }, root: [-0.03, 0, 0] },
-    { t: 4.9, pose: { ...stand, head: [2, -30, 0], chest: [-2, -8, 4], hips: [0, 0, -3], 'upper_arm.R': [-88, 0, 10], 'forearm.R': [0, 0, 20] }, root: [-0.03, 0, 0] },
-    { t: 5.3, pose: { ...stand, head: [0, -20, 0], chest: [0, -5, 0], hips: [0, 0, -2] }, root: [-0.02, 0, 0] },
-  ], { loop: true, duration: 6.4 }),
+  lookRelaxed: relaxedLook(),
 
   point: makeClip('point', [
     { t: 0, pose: stand },
