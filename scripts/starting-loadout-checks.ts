@@ -24,6 +24,9 @@ function fixture(wall = false) {
   const f = fixture()
   const fresh = f.weapons.snapshot()
   assert.deepEqual(fresh.slots.map(w => w?.name), ['pistol', 'shotgun', 'ak', 'smg'])
+  assert.equal(fresh.selected, 2)
+  assert.equal(f.weapons.current?.name, 'ak', 'Fresh missions equip the AK-47')
+  assert.equal(f.weapons.ammo, '30 / 90')
   assert(!fresh.slots.some(w => w?.name === 'sniper'))
   for (let i = 0; i < 4; i++) { f.weapons.switchSlot(i); f.step(0.3); assert.equal(f.weapons.current?.name, fresh.slots[i]?.name) }
   assert(!f.weapons.switchSlot(4)); assert(!f.weapons.switchSlot(-1)); assert(!f.weapons.switchSlot(1.5))
@@ -31,9 +34,11 @@ function fixture(wall = false) {
   assert.equal(f.weapons.selected, 3)
   const second = fixture(); f.weapons.current!.magazine = 1
   assert.equal(second.weapons.slots[3]?.magazine, 24, 'starting inventories cannot share mutable ammo')
+  f.weapons.restore(fresh)
+  assert.equal(f.weapons.current?.name, 'ak', 'Restoring the insertion checkpoint equips the AK-47')
   f.dispose(); second.dispose()
 }
-console.log('PASS Four independent starting guns, no sniper, all slots selectable and checkpoint-restorable')
+console.log('PASS AK-47 starts equipped; four independent guns keep their slots and checkpoint selection')
 {
   const f = fixture(); f.weapons.switchSlot(1); f.step(0.3)
   f.weapons.trigger(true); f.weapons.trigger(false); f.step(1 / 60)
@@ -80,9 +85,13 @@ console.log('PASS Solid cover blocks the shotgun muzzle without spending a shell
   assert(f.weapons.pickup('found-sniper'))
   assert.deepEqual(f.weapons.slots.map(w => w?.name), ['pistol', 'shotgun', 'ak', 'sniper'])
   assert(f.weapons.snapshot().pickups.some(w => w.id === 'player-smg' && w.magazine === 24 && w.reserve === 72))
+  f.frame.aiming = true; f.step(0.3)
+  assert(f.weapons.scoped, 'A picked-up sniper can enter its scope')
+  assert(f.weapons.adjustScopeZoom(1))
+  assert.equal(f.weapons.scopeMagnification, 5)
   f.dispose()
 }
-console.log('PASS A later sniper pickup swaps only the selected fourth gun and preserves dropped ammunition')
+console.log('PASS A picked-up sniper swaps only the selected gun, preserves ammunition and supports adjustable zoom')
 for (const distance of [3, 28]) {
   const scene = new THREE.Scene(), world = new CollisionWorld(scene)
   const ai = new EnemyDirector({ scene, world, doors: [], specs: [{ id: 'target', name: 'Target', position: [0, 0, -distance], patrol: [], weapon: 'pistol' }], emit() {}, damagePlayer() {}, dropWeapon() {} }, async () => {

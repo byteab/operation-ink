@@ -3,7 +3,7 @@ import type { Action, Ctx } from '../registry'
 import { bloodPalette, chooseStamp, createStampSurface, type StampKind } from './blood-stamps'
 
 /**
- * Airborne droplets, ink-on-paper ground splashes and slowly spreading pools.
+ * Airborne droplets, solid red ground splashes and slowly spreading pools.
  * Ground marks share a procedural pigment atlas and one instanced ring buffer.
  * API lives on ctx.fx.blood (registered on first update / action).
  */
@@ -118,24 +118,24 @@ const api: Blood = {
   spray(worldPos, worldDir, amount) {
     if (!settings.enabled || !drops) return
     amount = THREE.MathUtils.clamp(amount, 0, 1)
-    const n = Math.round((6 + 54 * amount) * settings.intensity * GORE[settings.gore])
+    const n = Math.round((12 + 84 * amount) * settings.intensity * GORE[settings.gore])
     v.copy(worldDir).normalize()
     for (let i = 0; i < n; i++) {
       const back = Math.random() < 0.22
-      const speed = (back ? rand(0.6, 2.2) : rand(1.5, 4.5) * (0.5 + amount)) * (0.8 + 0.4 * settings.intensity)
+      const speed = (back ? rand(0.8, 2.6) : rand(1.8, 5.2) * (0.5 + amount)) * (0.8 + 0.4 * settings.intensity)
       // cone: main direction (or its opposite for back-spatter) plus random scatter, biased upward
       const scatter = back ? 0.9 : 0.55
       p.set(rand(-1, 1), rand(-0.6, 1), rand(-1, 1)).normalize().multiplyScalar(scatter)
       p.addScaledVector(v, back ? -1 : 1).normalize().multiplyScalar(speed)
-      p.y += rand(0.2, 1.4)
+      p.y += rand(0.35, 1.65)
       spawnDrop(worldPos.x + rand(-0.03, 0.03), worldPos.y + rand(-0.03, 0.03), worldPos.z + rand(-0.03, 0.03),
-        p.x, p.y, p.z, rand(0.012, 0.038) * (back ? 0.7 : 1) * (0.7 + 0.3 * GORE[settings.gore]))
+        p.x, p.y, p.z, rand(0.016, 0.048) * (back ? 0.7 : 1) * (0.7 + 0.3 * GORE[settings.gore]))
     }
   },
   splat(worldPos, sz = 0.12) {
     if (!settings.enabled || !decals) return
     c.copy(DARK).lerp(BRIGHT, rand(0.25, 0.6))
-    stain(worldPos.x, worldPos.z, sz, rand(1, 1.25), rand(0, Math.PI * 2), c, 2 + Math.round(3 * GORE[settings.gore]))
+    stain(worldPos.x, worldPos.z, sz, rand(1, 1.25), rand(0, Math.PI * 2), c, 4 + Math.round(4 * GORE[settings.gore]))
   },
   pool(worldPos, seconds) {
     if (!settings.enabled || !decals) return

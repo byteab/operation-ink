@@ -47,6 +47,7 @@ body[data-mission="true"] #walk-hud[data-playing="false"] .walk-heading { displa
 .scope-lens i { position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid var(--ink-deep); }
 .scope-lens b { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid var(--ink-deep); }
 .scope-lens span { position: absolute; bottom: 13%; left: 54%; font: 11px monospace; color: var(--ink-deep); }
+.scope-lens small { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); font: 11px var(--notes); color: var(--ink-deep); white-space: nowrap; }
 body.mission-scoped .crosshair { visibility: hidden; }
 body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; }
 .mission-weapon { position: absolute; right: 30px; bottom: 26px; text-align: right; }

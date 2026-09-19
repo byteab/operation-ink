@@ -14,25 +14,41 @@ const blood = new MissionBlood(scene, {
 const hit: HitReaction = { zone: 'torso', point: new THREE.Vector3(0, 1.2, 0), direction: new THREE.Vector3(0, 0, 1), lethal: false }
 const droplets = blood.root.getObjectByName('Impact blood droplets') as THREE.InstancedMesh
 const marks = blood.root.getObjectByName('Blood pigment stains') as THREE.InstancedMesh
+// Every stamp needs an unbroken filled centre; crosshatching previously left
+// transparent grid holes in both splashes and pools despite their red tint.
+const atlas = (marks.material as THREE.ShaderMaterial).uniforms.atlas.value as THREE.DataTexture
+const pixels = atlas.image.data
+const tileSize = atlas.image.width / 8
+for (let row = 0; row < 4; row++) for (let column = 0; column < 8; column++) {
+  const coverage = (x: number, y: number) => pixels[((row * tileSize + y) * atlas.image.width + column * tileSize + x) * 4]
+  for (let y = 112; y < 144; y++) for (let x = 112; x < 144; x++) {
+    assert(coverage(x, y) >= 250, `Blood stamp ${row * 8 + column} must have a solid filled centre, without grid holes`)
+  }
+  for (let edge = 0; edge < tileSize; edge++) {
+    assert.equal(coverage(edge, 0), 0); assert.equal(coverage(edge, tileSize - 1), 0)
+    assert.equal(coverage(0, edge), 0); assert.equal(coverage(tileSize - 1, edge), 0)
+  }
+}
+console.log('PASS All 32 blood stamps have solid centres and transparent padding, with no crosshatched holes')
 assert.equal(droplets.count, 0); assert.equal(marks.count, 0)
 blood.update(1 / 60)
 assert.equal(blood.snapshot().stains.length, 0, 'no effects without a confirmed hit')
 blood.emitHit(hit)
 const normal = blood.snapshot()
-assert.equal(normal.droplets.length, 24)
-assert.equal(normal.stains.length, 3)
-assert(normal.droplets.every(drop => drop.radius >= 0.028 && drop.radius < 0.058))
+assert.equal(normal.droplets.length, 48)
+assert.equal(normal.stains.length, 5)
+assert(normal.droplets.every(drop => drop.radius >= 0.032 && drop.radius < 0.07))
 assert(normal.droplets.some(drop => drop.velocity[2] < 0) && normal.droplets.some(drop => drop.velocity[2] > 0), 'forward spray and backscatter')
 assert(new Set(normal.droplets.map(drop => drop.radius)).size > 20)
 assert(normal.stains.every(stain => Math.abs(stain.position[1] - 0.006) < 0.002))
 assert.equal(droplets.count, normal.droplets.length)
 assert.equal(marks.count, normal.stains.length)
-console.log('PASS Confirmed hits create 24 varied larger droplets and three pigment splashes; no idle/miss emission')
+console.log('PASS Confirmed hits create 48 varied larger droplets and five solid splashes; no idle/miss emission')
 
 blood.clear(); blood.emitHit({ ...hit, lethal: true })
 const lethal = blood.snapshot()
-assert.equal(lethal.droplets.length, 42)
-assert.equal(lethal.stains.length, 6)
+assert.equal(lethal.droplets.length, 72)
+assert.equal(lethal.stains.length, 9)
 const pool = lethal.stains.find(stain => stain.grow)!
 assert(pool && pool.size === 0.3 && pool.grow! >= 0.55 && pool.grow! <= 0.7)
 for (let i = 0; i < 300; i++) blood.update(1 / 60)
@@ -41,7 +57,7 @@ assert.equal(settled.droplets.length, 0)
 assert(settled.stains.length > lethal.stains.length, 'falling spray deposits visible splatter')
 assert(settled.stains.find(stain => stain.grow)!.size > pool.size, 'fatal pool spreads over time')
 assert(settled.stains.every(stain => Math.abs(stain.position[1] - 0.006) < 0.002))
-console.log('PASS Fatal hits create 42 droplets and six immediate marks; a larger pool spreads and all airborne particles expire')
+console.log('PASS Fatal hits create 72 droplets and nine immediate marks; a larger pool spreads and all airborne particles expire')
 
 blood.restore(lethal)
 assert.deepEqual(blood.snapshot(), lethal)

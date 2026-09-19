@@ -20,7 +20,7 @@ let body: THREE.Vector3 | null = v(0, 1.2, 0)
 const blood = new MissionBlood(scene, world, () => body?.clone() ?? null)
 const hit: HitReaction = { zone: 'torso', point: v(0, 1.2, 0), direction: v(0, 0, 1), lethal: true, weapon: 'shotgun', targetId: 'guard' }
 blood.emitHit(hit)
-assert.equal(blood.snapshot().droplets.length, 110)
+assert.equal(blood.snapshot().droplets.length, 144)
 assert.equal(blood.snapshot().shotgunBursts!.length, 1)
 assert(!blood.snapshot().stains.some(stain => stain.grow), 'Growing pool waits for the moving body to land')
 const initial = blood.snapshot(); blood.update(0); assert.deepEqual(blood.snapshot(), initial)

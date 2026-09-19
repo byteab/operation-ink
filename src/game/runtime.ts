@@ -82,6 +82,13 @@ export class MissionRuntime {
     const options = { signal: this.abort.signal }
     document.querySelector('#walk-start')!.addEventListener('click', () => { void this.audio.unlock() }, options)
     window.addEventListener('keydown', this.keyDown, options)
+    document.querySelector('#world')!.addEventListener('wheel', event => {
+      const wheel = event as WheelEvent
+      if (!this.isActive() || !this.aiming || wheel.ctrlKey || wheel.metaKey || wheel.altKey) return
+      if (!this.weapons.adjustScopeZoom(-Math.sign(wheel.deltaY))) return
+      wheel.preventDefault()
+      this.invalidate()
+    }, { ...options, passive: false })
     window.addEventListener('pointerdown', event => {
       if (!this.isActive() || event.target !== document.querySelector('#world')) return
       void this.audio.unlock()
@@ -139,8 +146,9 @@ export class MissionRuntime {
   private isActive() { return this.ready && this.state.phase === 'active' && this.player.enabled && this.player.playing && !this.player.immersive }
   private cancelInput() { this.aiming = false; this.weapons.cancel() }
   private keyDown = (event: KeyboardEvent) => {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || !this.player.enabled || this.player.immersive) return
-    if (event.target instanceof HTMLElement && event.target.closest('button,input,select,textarea,summary')) return
+    const zoomKey = event.code === 'KeyQ' || event.code === 'KeyE'
+    if (event.ctrlKey || event.metaKey || event.altKey || (event.repeat && !zoomKey) || !this.player.enabled || this.player.immersive) return
+    if (event.target instanceof HTMLElement && event.target.closest('button,input,select,textarea,summary,[contenteditable="true"]')) return
     if (event.code === 'KeyM') {
       event.preventDefault()
       if (this.player.playing) this.player.pause()
@@ -148,6 +156,10 @@ export class MissionRuntime {
       this.cancelInput(); this.invalidate(); return
     }
     if (!this.isActive()) return
+    if (zoomKey) {
+      if (!this.aiming || !this.weapons.adjustScopeZoom(event.code === 'KeyE' ? 1 : -1)) return
+      event.preventDefault(); this.invalidate(); return
+    }
     switch (event.code) {
       case 'KeyR': this.weapons.reload(); break
       case 'Digit1': this.weapons.switchSlot(0); break
@@ -352,7 +364,7 @@ export class MissionRuntime {
     this.weapons.update(dt,{active:this.isActive()&&this.interactionTime===0&&this.state.jeep!=='escaping',climbing:this.player.actions.traversing,
       moving:this.player.body.velocity.length(),aiming:this.aiming,reducedMotion:this.hud.reducedMotion,feet:this.player.body.position})
     this.audio.update(this.camera.perspective)
-    this.hud.setScoped(this.weapons.scoped)
+    this.hud.setScoped(this.weapons.scoped, this.weapons.scopeMagnification)
     if(active) {
       for(const trace of this.traces) trace.time-=dt
       for(const trace of this.traces.filter(t=>t.time<=0)) { trace.line.removeFromParent();trace.line.geometry.dispose();(trace.line.material as THREE.Material).dispose() }

@@ -57,6 +57,7 @@ export function shotgunDamageMultiplier(distance: number) {
 }
 
 export const WEAPON_SLOTS = 4
+export const SNIPER_ZOOM = { min: 2, max: 8, initial: 4 } as const
 export function startingLoadout(): WeaponItem[] {
   return [
     { id: 'player-pistol', name: 'pistol', magazine: 12, reserve: 36 },

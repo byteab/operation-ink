@@ -33,6 +33,8 @@ function setup(initialFov = 75) {
   assert.equal(camera.fov, 75, 'Entering walk after weapon construction owns the unscoped FOV')
   step(0.1, { aiming: true })
   assert(camera.fov < 25)
+  weapons.adjustScopeZoom(1)
+  weapons.adjustScopeZoom(1)
   weapons.cancel()
   assert.equal(camera.fov, 75, 'Scope captures actual walk FOV, not construction overview FOV')
   camera.fov = 38; camera.updateProjectionMatrix()
@@ -93,10 +95,51 @@ function setup(initialFov = 75) {
   console.log('PASS Sniper reload exits scope and transfers cartridges only once at completion')
 }
 
+{
+  const { camera, weapons, step } = setup()
+  const magnification = () => Math.tan(THREE.MathUtils.degToRad(75) / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
+  assert(!weapons.adjustScopeZoom(1), 'Unscoped input must not change the camera')
+  assert.equal(camera.fov, 75)
+  step(0.1, { aiming: true })
+  assert.equal(weapons.scopeMagnification, 4)
+  for (const expected of [5, 6, 7, 8, 8]) {
+    assert(weapons.adjustScopeZoom(1))
+    assert.equal(weapons.scopeMagnification, expected)
+    assert(Math.abs(magnification() - expected) < 1e-10, 'Zoom must use optical magnification, not linear FOV')
+    assert.equal(weapons.lookSensitivity, 1 / expected)
+  }
+  for (let i = 0; i < 10; i++) weapons.adjustScopeZoom(-1)
+  assert.equal(weapons.scopeMagnification, 2)
+  assert(Math.abs(magnification() - 2) < 1e-10)
+  for (const invalid of [0, NaN, Infinity, -Infinity]) assert(!weapons.adjustScopeZoom(invalid))
+  assert.equal(weapons.scopeMagnification, 2)
+  step(1 / 60, { aiming: false })
+  assert.equal(camera.fov, 75); assert.equal(weapons.lookSensitivity, 1)
+  assert(!weapons.adjustScopeZoom(-1))
+  step(1 / 60, { aiming: true })
+  assert(Math.abs(magnification() - 2) < 1e-10, 'Re-entering aim keeps the equipped scope setting')
+  weapons.current!.magazine = 4
+  assert(weapons.reload())
+  assert(!weapons.adjustScopeZoom(1), 'Reloading disables zoom input')
+  step(3)
+  assert(weapons.scoped)
+  assert(Math.abs(magnification() - 2) < 1e-10)
+  assert(weapons.switchSlot(2)); step(0.3)
+  assert.equal(weapons.current?.name, 'ak')
+  assert(!weapons.adjustScopeZoom(1), 'Other weapons cannot zoom the camera')
+  assert.equal(camera.fov, 75)
+  assert(weapons.switchSlot(1)); step(0.3)
+  assert.equal(weapons.scopeMagnification, 4, 'Equipping a sniper resets to its default magnification')
+  assert(Math.abs(magnification() - 4) < 1e-10)
+  weapons.dispose()
+  console.log('PASS Scope zoom steps from 2× to 8×, scales sensitivity, ignores inactive input and preserves the camera baseline')
+}
+
 for (const interruption of ['cancel', 'pause', 'climb', 'switch', 'restore', 'dispose'] as const) {
   const { camera, weapons, step, shots } = setup()
   step(0.1, { aiming: true })
   assert(weapons.scoped)
+  weapons.adjustScopeZoom(1); weapons.adjustScopeZoom(1)
   weapons.trigger(true)
   if (interruption === 'cancel') weapons.cancel()
   if (interruption === 'pause') step(0.02, { active: false })
@@ -124,6 +167,7 @@ for (const interruption of ['cancel', 'pause', 'climb', 'switch', 'restore', 'di
   const blocked = new FirstPersonWeapons({ scene, camera, world: new CollisionWorld(scene), onShot: shot => blockedShots.push(shot), emit: () => {} })
   const snapshot = blocked.snapshot()
   snapshot.slots[0] = { id: 'blocked-sniper', name: 'sniper', magazine: 5, reserve: 0 }
+  snapshot.selected = 0
   blocked.restore(snapshot)
   const frame: WeaponFrame = { active: true, climbing: false, moving: 0, aiming: true, reducedMotion: false, feet: new THREE.Vector3() }
   blocked.update(1 / 60, frame)

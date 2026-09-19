@@ -18,6 +18,7 @@ export class MissionHUD {
   private health: HTMLElement
   private healthBar: HTMLElement
   private scope = document.createElement('div')
+  private scopeLabel: HTMLSpanElement
   private ammo: HTMLElement
   private weapon: HTMLElement
   private alert: HTMLElement
@@ -44,7 +45,7 @@ export class MissionHUD {
     $('.walk-controls').innerHTML = '<span><kbd>WASD</kbd> Move</span><span><kbd>F</kbd> Use</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Pistol / Shotgun / AK / SMG</span><span><kbd>M</kbd> Field map</span><span><kbd>Esc</kbd> Pause</span>'
     $('#world').setAttribute('aria-label', 'Operation Safe Return tactical mission. Mouse to look, WASD move, left click fire, right click aim, F interact, R reload, M field map, Escape pause.')
     const card = $('.walk-card')
-    card.innerHTML = `<div class="mission-orders"><div class="mission-number">Field orders / 01</div><h1>Operation Safe Return</h1><p class="mission-premise">One hostage.<br>One way home.</p><p>Infiltrate the east annex, release the hostage beneath detention, and escape together in the jeep.</p><ol id="mission-checklist"><li>Find detention and reach the underground cells.</li><li>Release the prisoner in cell 01.</li><li>Lead him to the jeep beside the east gate.</li><li>Open the gate, board, and escape.</li></ol><p class="mission-warning">Preparation pays: disable cameras in security and open the gate before the rescue. Alarms bring two soldiers immediately and two more after 14 seconds. No need to kill everyone.</p><div id="mission-debrief" role="status" hidden></div><div class="mission-start-slot"></div><div class="mission-recovery"><button id="mission-retry">Retry checkpoint</button><button id="mission-restart">Restart mission</button></div><small id="mission-checkpoint">Insertion checkpoint · saves last until this page closes.</small></div><div class="mission-reference"><div class="field-map">${this.buildMap(world)}</div><p class="map-legend"><span>— Rail approach</span><span>┄ Service approach</span><span>▲ Your position</span></p><p class="map-note">Rail route: use the mess-hall roof and northern siding to reach security. Quiet entry: open the west service gate beside the mess hall and follow the covered lanes. The jeep waits southeast of detention.</p><div class="mission-keys"><span><kbd>WASD</kbd> Move</span><span><kbd>Mouse</kbd> Look</span><span><kbd>Shift</kbd> Sprint / louder</span><span><kbd>Space</kbd> Jump</span><span><kbd>Left click</kbd> Fire</span><span><kbd>Right click</kbd> Hold aim</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Weapon slot</span><span><kbd>F</kbd> Use / pick up</span><span><kbd>G</kbd> Drop weapon</span></div><div class="mission-settings"><label>Volume <input id="mission-volume" type="range" min="0" max="100" value="55" aria-label="Volume" /></label><label><input id="mission-mute" type="checkbox" /> Mute</label><label><input id="mission-motion" type="checkbox" ${this.reducedMotion ? 'checked' : ''} /> Reduced motion</label></div><small>Retry restores the insertion checkpoint, including the hostage and security. The unarmed prisoner waits inside cell 01. Return along the marked route or use a regroup panel if he falls behind.</small></div>`
+    card.innerHTML = `<div class="mission-orders"><div class="mission-number">Field orders / 01</div><h1>Operation Safe Return</h1><p class="mission-premise">One hostage.<br>One way home.</p><p>Infiltrate the east annex, release the hostage beneath detention, and escape together in the jeep.</p><ol id="mission-checklist"><li>Find detention and reach the underground cells.</li><li>Release the prisoner in cell 01.</li><li>Lead him to the jeep beside the east gate.</li><li>Open the gate, board, and escape.</li></ol><p class="mission-warning">Preparation pays: disable cameras in security and open the gate before the rescue. Alarms bring two soldiers immediately and two more after 14 seconds. No need to kill everyone.</p><div id="mission-debrief" role="status" hidden></div><div class="mission-start-slot"></div><div class="mission-recovery"><button id="mission-retry">Retry checkpoint</button><button id="mission-restart">Restart mission</button></div><small id="mission-checkpoint">Insertion checkpoint · saves last until this page closes.</small></div><div class="mission-reference"><div class="field-map">${this.buildMap(world)}</div><p class="map-legend"><span>— Rail approach</span><span>┄ Service approach</span><span>▲ Your position</span></p><p class="map-note">Rail route: use the mess-hall roof and northern siding to reach security. Quiet entry: open the west service gate beside the mess hall and follow the covered lanes. The jeep waits southeast of detention.</p><div class="mission-keys"><span><kbd>WASD</kbd> Move</span><span><kbd>Mouse</kbd> Look</span><span><kbd>Shift</kbd> Sprint / louder</span><span><kbd>Space</kbd> Jump</span><span><kbd>Left click</kbd> Fire</span><span><kbd>Right click</kbd> Hold aim</span><span><kbd>Q / E / Wheel</kbd> Scope zoom</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Weapon slot</span><span><kbd>F</kbd> Use / pick up</span><span><kbd>G</kbd> Drop weapon</span></div><div class="mission-settings"><label>Volume <input id="mission-volume" type="range" min="0" max="100" value="55" aria-label="Volume" /></label><label><input id="mission-mute" type="checkbox" /> Mute</label><label><input id="mission-motion" type="checkbox" ${this.reducedMotion ? 'checked' : ''} /> Reduced motion</label></div><small>Retry restores the insertion checkpoint, including the hostage and security. The unarmed prisoner waits inside cell 01. Return along the marked route or use a regroup panel if he falls behind.</small></div>`
     $('.mission-start-slot').append(this.start)
     this.title = $('.walk-card h1'); this.debrief = $('#mission-debrief'); this.mapDot = document.querySelector('#field-player')!
     this.checklist = $('#mission-checklist'); this.checkpoint = $('#mission-checkpoint')
@@ -61,7 +62,8 @@ export class MissionHUD {
     this.scope.className = 'mission-scope'
     this.scope.hidden = true
     this.scope.setAttribute('aria-hidden', 'true')
-    this.scope.innerHTML = '<div class="scope-lens"><i></i><b></b><span>4×</span></div>'
+    this.scope.innerHTML = '<div class="scope-lens"><i></i><b></b><span>4×</span><small>Q − · E + · Mouse wheel</small></div>'
+    this.scopeLabel = this.scope.querySelector('span')!
     document.body.append(this.scope)
     this.ammo = $('#mission-ammo'); this.weapon = $('#mission-weapon'); this.alert = $('#mission-alert'); this.caption = $('#mission-caption')
     this.icon = document.createElement('span'); this.icon.className = 'action-icon'; this.icon.setAttribute('aria-hidden', 'true')
@@ -103,7 +105,12 @@ export class MissionHUD {
   notify(message: string, duration = 5) { this.caption.textContent = message; this.captionTimer = duration }
   hurt() { this.damageTimer = 0.32 }
   reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false) }
-  setScoped(scoped: boolean) { this.scope.hidden = !scoped; document.body.classList.toggle('mission-scoped', scoped) }
+  setScoped(scoped: boolean, magnification = 4) {
+    this.scope.hidden = !scoped
+    document.body.classList.toggle('mission-scoped', scoped)
+    const label = `${magnification}×`
+    if (this.scopeLabel.textContent !== label) this.scopeLabel.textContent = label
+  }
   setCheckpoint(label: string) { this.checkpoint.textContent = `${label} · session checkpoint` }
 
   update(dt: number, state: MissionState, data: { playing: boolean; enabled: boolean; label: string; ammo: string; reloading: boolean; blocked: boolean; alert: string; position: THREE.Vector3; yaw: number; deaths: number; ready: boolean }) {

@@ -173,13 +173,13 @@ export class MissionBlood {
 
   private spray(point: THREE.Vector3, forward: THREE.Vector3, count: number, lethal: boolean, shotgun = false) {
     for (let i = 0; i < count; i++) {
-      const speed = 1.3 + this.random() * (lethal ? 3.5 : 2.3) + (shotgun ? 0.5 : 0)
+      const speed = 1.8 + this.random() * (lethal ? 4.6 : 3.2) + (shotgun ? 0.6 : 0)
       const direction = forward.clone().multiplyScalar(i % 4 === 0 ? -0.7 : 1)
         .add(new THREE.Vector3((this.random() - 0.5) * (shotgun ? 1.7 : 1.4), this.random() - 0.2,
           (this.random() - 0.5) * (shotgun ? 1.7 : 1.4))).normalize().multiplyScalar(speed)
-      direction.y += 0.45 + this.random() * 0.75
+      direction.y += 0.6 + this.random() * 0.95
       this.droplets.push({ position: point.toArray() as Vec3, velocity: direction.toArray() as Vec3,
-        radius: 0.028 + this.random() * (lethal ? 0.04 : 0.03), age: 0 })
+        radius: 0.032 + this.random() * (lethal ? 0.05 : 0.038), age: 0 })
     }
     this.droplets = this.droplets.slice(-this.dropLimit)
   }
@@ -188,21 +188,21 @@ export class MissionBlood {
     if (this.disposed) return
     const shotgun = hit.weapon === 'shotgun'
     const forward = hit.direction.clone().normalize()
-    this.spray(hit.point, forward, shotgun ? (hit.lethal ? 110 : 36) : hit.lethal ? 42 : 24, hit.lethal, shotgun)
+    this.spray(hit.point, forward, shotgun ? (hit.lethal ? 144 : 64) : hit.lethal ? 72 : 48, hit.lethal, shotgun)
     const followsFall = shotgun && hit.lethal && hit.targetId && this.followBody
     if (followsFall) {
       this.shotgunBursts = this.shotgunBursts.filter(burst => burst.targetId !== hit.targetId)
       this.shotgunBursts.push({ targetId: hit.targetId!, direction: forward.toArray(), elapsed: 0, next: 0 })
       this.shotgunBursts = this.shotgunBursts.slice(-16)
     }
-    // Broken pigment around the wound reads immediately, before gravity lands the spray.
-    for (let i = 0; i < (shotgun ? (hit.lethal ? 8 : 3) : hit.lethal ? 5 : 2); i++) {
+    // Immediate solid splashes reinforce the hit before airborne spray lands.
+    for (let i = 0; i < (shotgun ? (hit.lethal ? 10 : 5) : hit.lethal ? 8 : 4); i++) {
       const spread = new THREE.Vector3((this.random() - 0.5) * 1.1, 0, (this.random() - 0.5) * 1.1)
         .addScaledVector(forward, 0.12 + this.random() * 0.28)
       spread.y = 0
       const distance = spread.length()
       if (distance && this.nearby(hit.point).rayDistance(hit.point, spread.clone().normalize(), distance) < distance) continue
-      this.stain(hit.point.clone().add(spread), 0.08 + this.random() * 0.09, Math.floor(this.random() * 16))
+      this.stain(hit.point.clone().add(spread), 0.1 + this.random() * 0.1, Math.floor(this.random() * 16))
     }
     // Only the stain created for this fatal hit may grow; unsupported hits must
     // never attach a pool to an unrelated earlier victim.
@@ -249,10 +249,10 @@ export class MissionBlood {
       burst.elapsed += delta
       while (burst.next < events.length && burst.elapsed + 1e-8 >= events[burst.next]) {
         const index = burst.next++
-        if (index < 3) this.spray(point, new THREE.Vector3(...burst.direction), 20 - index * 4, false, true)
+        if (index < 3) this.spray(point, new THREE.Vector3(...burst.direction), 28 - index * 6, false, true)
         else {
           this.stain(point, 0.32, 16 + Math.floor(this.random() * 8), 0.65)
-          this.spray(point, new THREE.Vector3(...burst.direction).setY(0.15).normalize(), 16, false)
+          this.spray(point, new THREE.Vector3(...burst.direction).setY(0.15).normalize(), 24, false)
         }
       }
       return burst.next < events.length
@@ -299,8 +299,9 @@ export class MissionBlood {
     this.droplets.forEach((drop, index) => {
       this.position.fromArray(drop.position)
       this.velocity.fromArray(drop.velocity)
+      const stretch = 1 + Math.min(this.velocity.length() * 0.25, 1.6)
       this.orientation.setFromUnitVectors(up, this.velocity.normalize())
-      this.scale.set(drop.radius, drop.radius * 1.7, drop.radius)
+      this.scale.set(drop.radius / Math.sqrt(stretch), drop.radius * stretch, drop.radius / Math.sqrt(stretch))
       this.drops.setMatrixAt(index, this.matrix.compose(this.position, this.orientation, this.scale))
     })
     this.drops.instanceMatrix.needsUpdate = true

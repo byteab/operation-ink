@@ -1,8 +1,21 @@
 # Ballpoint style preview
 
-The revised preview uses black environment outlines on white paper (`#ffffff`), solid black NPC characters, fuller FPS arms with black outlines and paper interiors, and guns with plain paper faces and stronger continuous black outlines. Blood uses red droplets, splashes and pools. This follows the user's corrections after the previews. The local game is available at `http://localhost:5173/`.
+The revised preview uses black environment outlines on white paper (`#ffffff`), solid black NPC characters, fuller FPS arms with black outlines and paper interiors, and guns with plain paper faces and stronger continuous black outlines. Blood uses solid red droplets, splashes and pools, with stronger bursts on confirmed hits. This follows the user's corrections after the previews. The local game is available at `http://localhost:5173/`.
 
 The user will review the actual look before browser verification begins. No browser was opened and no screenshot, GPU shader compilation, frame-rate measurement or visual pass has been claimed.
+
+## One-hand first-person pistol
+
+- Removed the cupped support grip from the player's pistol. Only the right hand and arm are visible while carrying, aiming and firing; the left hand comes up from below for reloads and returns below view afterward. Other weapons retain their support hand.
+- `npm run build`, `npm run test:weapons`, the polish weapon checks and `git diff --check` passed. Tests cover hand visibility during aiming/firing/reload, switching back and forth, reduced motion and fixed arm lengths. Browser verification remains deferred for style review.
+
+## Solid blood and stronger hit feedback
+
+- Removed the crosshatched coverage and pigment-density shading from all 32 blood stamps. The stamps retain irregular outlines with antialiased edges and fully filled interiors. Normal alpha blending preserves red where splashes overlap.
+- Normal hits now emit 48 droplets and five immediate splashes (previously 24 and three); fatal hits emit 72 droplets and nine marks (previously 42 and six). Shotgun bursts emit 64/144 droplets for nonfatal/fatal hits, with stronger follow-up bursts. Droplets are larger, faster and stretch with velocity. The lab also has denser sprays and more splash specks.
+- Mission effects remain capped at 192 droplets and 512 stains; collision, expiry, clear/dispose and deterministic checkpoint restoration checks pass.
+- `npm run build` and the blood-feedback, shotgun-feedback and blood-performance checks passed. The new stamp-centre regression reproduced the grid failure before the fix and passes for all 32 stamps afterward.
+- Inspected a CPU-composited preview of the actual splash, pool and droplet masks. Browser/GPU verification remains deferred for user style review. Full-map Node timing measured about 0.54 ms p95 for one fatal hit and 1.39 ms p95 at the particle cap; these are CPU simulation checks, not browser frame rates.
 
 ## Red blood revision
 

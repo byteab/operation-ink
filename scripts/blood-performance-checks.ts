@@ -42,7 +42,7 @@ const profile = (count: number) => {
   const emissionStart = performance.now()
   for (let i = 0; i < count; i++) blood.emitHit({ zone: 'torso', point, direction, lethal: true })
   const emissionMs = performance.now() - emissionStart
-  assert.equal(blood.snapshot().droplets.length, Math.min(42 * count, 192))
+  assert.equal(blood.snapshot().droplets.length, Math.min(72 * count, 192))
   const times: number[] = []
   for (let i = 0; i < 160; i++) { const start = performance.now(); blood.update(1 / 60); times.push(performance.now() - start) }
   times.sort((a, b) => a - b)

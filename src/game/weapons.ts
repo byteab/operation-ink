@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { applyPenMaterial, createPenSilhouette, penPalette } from '../render/ballpoint'
 import { disposeGun, type Gun } from '../lab/weapons/models'
 import type { WeaponContext, WeaponFrame, WeaponItem, WeaponSnapshot } from './types'
-import { WEAPON_RULES, WEAPON_SLOTS, SHOTGUN_PELLETS, SHOTGUN_BALLISTICS, startingLoadout } from './balance'
+import { WEAPON_RULES, WEAPON_SLOTS, SHOTGUN_PELLETS, SHOTGUN_BALLISTICS, SNIPER_ZOOM, startingLoadout } from './balance'
 import { createMissionGun } from './weapon-models'
 export { WEAPON_RULES } from './balance'
 
@@ -15,7 +15,7 @@ type Arm = { shoulder: THREE.Vector3; pole: THREE.Vector3; upper: THREE.Mesh; fo
 /** Gameplay weapons deliberately have no lab action timers or animation-mixer dependencies. */
 export class FirstPersonWeapons {
   private inventory: (WeaponItem | null)[] = startingLoadout()
-  private slot = 0
+  private slot = this.inventory.findIndex(item => item?.name === 'ak')
   private nextId = 1
   private loose = new Map<string, LooseWeapon>()
   private root = new THREE.Group()
@@ -23,7 +23,6 @@ export class FirstPersonWeapons {
   private rightHand = new THREE.Group()
   private leftHand = new THREE.Group()
   private supportFingers = new THREE.Group()
-  private pistolSupport = new THREE.Group()
   private armMaterial = new THREE.MeshBasicMaterial({
     color: penPalette.paper, toneMapped: false,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
@@ -56,6 +55,7 @@ export class FirstPersonWeapons {
   private obstructed = false
   private disposed = false
   private scopeActive = false
+  private scopeZoom: number = SNIPER_ZOOM.initial
   private baseFov: number | null = null
   private feet = new THREE.Vector3()
   private frame: WeaponFrame = { active: false, climbing: false, moving: 0, aiming: false, reducedMotion: false, feet: this.feet }
@@ -68,9 +68,9 @@ export class FirstPersonWeapons {
     this.mount.add(this.rightHand, this.flash)
     this.flash.visible = false
     this.makeHand(this.rightHand, true)
-    this.leftHand.add(this.supportFingers, this.pistolSupport)
+    this.leftHand.name = 'Left reload and support hand'
+    this.leftHand.add(this.supportFingers)
     this.makeHand(this.supportFingers, false)
-    this.makePistolSupport()
     this.arms = [
       this.makeArm(new THREE.Vector3(0.24, -0.34, -0.1), new THREE.Vector3(0.75, -1, 0.4)),
       this.makeArm(new THREE.Vector3(-0.2, -0.34, -0.16), new THREE.Vector3(-0.7, -1, 0.3)),
@@ -85,7 +85,8 @@ export class FirstPersonWeapons {
   get blocked() { return this.obstructed }
   get selected() { return this.slot }
   get scoped() { return this.scopeActive }
-  get lookSensitivity() { return this.scopeActive ? 0.25 : 1 }
+  get scopeMagnification() { return this.scopeZoom }
+  get lookSensitivity() { return this.scopeActive ? 1 / this.scopeZoom : 1 }
   get current(): WeaponItem | null { return this.inventory[this.slot] }
   get slots(): readonly (WeaponItem | null)[] { return this.inventory }
 
@@ -135,12 +136,6 @@ export class FirstPersonWeapons {
     }
   }
 
-  private makePistolSupport() {
-    this.pistolSupport.name = 'Pistol cupped support mitten'
-    this.mitten(this.pistolSupport, [-0.018, -0.006, 0.012], [0.042, 0.040, 0.032])
-    this.mitten(this.pistolSupport, [-0.038, 0.019, -0.003], [0.022, 0.022, 0.031])
-  }
-
   private segment(mesh: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3) {
     const direction = end.clone().sub(start)
     mesh.position.copy(start).add(end).multiplyScalar(0.5)
@@ -165,6 +160,7 @@ export class FirstPersonWeapons {
   }
 
   private setHeldModel() {
+    this.scopeZoom = SNIPER_ZOOM.initial
     if (this.model) disposeGun(this.model)
     this.model = null
     this.partRest.clear()
@@ -236,12 +232,21 @@ export class FirstPersonWeapons {
     if (active && !this.scopeActive) this.baseFov = this.context.camera.fov
     this.scopeActive = active
     const baseline = this.baseFov ?? this.context.camera.fov
-    const fov = active ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(baseline) / 2) / 4)) : baseline
+    const fov = active ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(baseline) / 2) / this.scopeZoom)) : baseline
     if (this.context.camera.fov !== fov) {
       this.context.camera.fov = fov
       this.context.camera.updateProjectionMatrix()
     }
     if (!active) this.baseFov = null
+  }
+
+  /** Adjust only an active sniper scope; preserve the unscoped camera's FOV. */
+  adjustScopeZoom(direction: number) {
+    if (this.disposed || !this.enabled || !this.scopeActive || this.current?.name !== 'sniper' ||
+        this.reloading || !Number.isFinite(direction) || direction === 0) return false
+    this.scopeZoom = THREE.MathUtils.clamp(this.scopeZoom + Math.sign(direction), SNIPER_ZOOM.min, SNIPER_ZOOM.max)
+    this.setScope(true)
+    return true
   }
 
   update(dt: number, frame: WeaponFrame) {
@@ -353,15 +358,17 @@ export class FirstPersonWeapons {
       pump.position.z -= 0.07 * smooth(cycle, 0.12, 0.3) * (1 - smooth(cycle, 0.35, 0.55))
     }
     this.root.updateWorldMatrix(true, true)
-    const pistolHold = this.current.name === 'pistol' && !this.reloading
-    this.pistolSupport.visible = pistolHold
-    this.supportFingers.visible = !pistolHold
-    const support = this.model.userData.support?.clone() ?? new THREE.Vector3(this.current.name === 'pistol' ? 0.04 : 0,
-      this.current.name === 'pistol' ? -0.012 : 0.035, this.current.name === 'pistol' ? -0.005 : 0.145)
+    const pistol = this.current.name === 'pistol'
+    this.leftHand.visible = !pistol || this.reloading
+    const leftArm = this.arms[1]
+    leftArm.upper.visible = leftArm.fore.visible = leftArm.elbow.visible = this.leftHand.visible
+    const support = this.model.userData.support?.clone() ?? new THREE.Vector3(0, 0.035, 0.145)
     // Place the palm against the fore-end rather than intersecting the receiver.
     if (this.model.userData.support) support.y += 0.026
     if (pump) support.z += pump.position.z - this.partRest.get(pump)!.z
-    const left = this.root.worldToLocal(this.mount.localToWorld(support))
+    // Pistols stay in the right hand; the reload hand enters and leaves below view.
+    const left = pistol ? new THREE.Vector3(-0.28, -0.7, -0.12)
+      : this.root.worldToLocal(this.mount.localToWorld(support))
     if (this.reloading && magazine) {
       const magGrip = magazine.userData.grip as THREE.Vector3 | undefined
       const contact = this.root.worldToLocal(magazine.localToWorld(magGrip?.clone() ?? new THREE.Vector3(0, -0.04, 0)))
