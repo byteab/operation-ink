@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { FirstPersonWeapons } from '../src/game/weapons'
 import { EnemyDirector } from '../src/game/ai'
 import type { EnemyActor } from '../src/game/actors'
-import { SHOTGUN_PELLETS, WEAPON_RULES } from '../src/game/balance'
+import { SHOTGUN_PELLETS, WEAPON_RULES, shotgunDamageMultiplier } from '../src/game/balance'
 import { CollisionWorld } from '../src/player/collision'
 import { createCompound } from '../src/world/compound'
 import { createMissionWorld, prepareCompound } from '../src/game/world'
@@ -40,7 +40,7 @@ console.log('PASS Four independent starting guns, no sniper, all slots selectabl
   assert.equal(f.shots.length, SHOTGUN_PELLETS); assert.equal(f.weapons.current!.magazine, 5)
   assert.equal(f.sounds.filter(e => e.kind === 'shot-shotgun').length, 1)
   assert.equal(new Set(f.shots.map(s => s.direction.toArray().join(','))).size, SHOTGUN_PELLETS)
-  assert(f.shots.every(s => Math.abs(s.direction.length() - 1) < 1e-8 && s.range === 32 && s.damage === 14))
+  assert(f.shots.every(s => Math.abs(s.direction.length() - 1) < 1e-8 && s.range === 32 && s.damage === WEAPON_RULES.shotgun.damage))
   assert.deepEqual(f.shots.map(s => s.pelletIndex), [0, 1, 2, 3, 4, 5, 6, 7])
   f.step(0.24)
   const model = f.scene.getObjectByName('Firing hand grip mount')!.children.find(o => o.userData.parts)!
@@ -92,8 +92,8 @@ for (const distance of [3, 28]) {
   await ai.init()
   assert(ai.hit({ origin: v(0, 1.1), direction: v(0, 0, -1), range: 32, damage: WEAPON_RULES.shotgun.damage, weapon: 'shotgun' }, 32))
   const damage = 100 - ai.enemies[0].health
-  if (distance === 3) assert.equal(damage, 14)
-  else assert(damage < 4, 'shotgun pellets lose most damage at long range')
+  if (distance === 3) assert.equal(damage, WEAPON_RULES.shotgun.damage)
+  else assert(damage < WEAPON_RULES.shotgun.damage * shotgunDamageMultiplier(26), 'individual shotgun pellets lose energy at long range')
   ai.dispose(); world.dispose()
 }
 console.log('PASS Shotgun damage falls off from close to long range')

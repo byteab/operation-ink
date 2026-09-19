@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { makeClip, type Key, type Pose } from '../clip'
 import { hang } from '../clips/idle'
+import { enterPosture, postureClips, weaponPosture, type Posture } from '../postures'
 import type { Action, Ctx } from '../registry'
 import { builders, disposeGun, type Gun, type GunClass, type GunName } from './models'
 import { placeHand, supportHand } from './support'
@@ -19,7 +20,7 @@ const readyHold: Hold = { position: [-0.19, 1.03, 0.22], pitch: 24, yaw: 8 }
 // Small guns follow the forearm: a soft extended aim, relaxed thigh-level carry,
 // and a bent elbow at the hip. Pulling the lowered fist up to the belt hooks the wrist.
 const handgunHold: Hold = { position: [-0.13, 1.22, 0.55] }
-const handgunDown: Hold = { position: [-0.20, 0.655, 0.10], pitch: 65, yaw: 5, elbow: [-0.4, 0, -1] }
+const handgunDown: Hold = { position: [-0.20, 0.695, 0.10], pitch: 65, yaw: 5, elbow: [-0.4, 0, -1] }
 const lower1 = heldPose(hang, handgunDown)
 const handgunHip: Hold = { position: [-0.18, 0.93, 0.32], elbow: [-0.4, -1, -0.3] }
 const reloadHold: Hold = { position: [-0.06, 1.075, 0.31], pitch: 12, yaw: -12 }
@@ -79,6 +80,8 @@ const still = (name: string, pose: Pose) => makeClip(name, [{ t: 0, pose }], { l
 const shot = (name: string, base: Pose, kick: Pose, dur: number, loop = false) =>
   makeClip(name, [{ t: 0, pose: base }, { t: 0.04, pose: kick, ease: 'linear' }, { t: dur, pose: base }], { loop, duration: dur })
 export const clips = {
+  posture_stand: postureClips.stand, posture_crouch: postureClips.crouch,
+  posture_kneel: postureClips.kneel, posture_prone: postureClips.prone,
   gun_aim1: still('gun_aim1', aim1), gun_fire1: shot('gun_fire1', aim1, recoil1, 0.16), gun_auto1: shot('gun_auto1', aim1, recoil1, 0.08, true),
   gun_aim2: still('gun_aim2', aim2), gun_fire2: shot('gun_fire2', aim2, recoil2, 0.2), gun_auto2: shot('gun_auto2', aim2, recoil2, 0.1, true),
   gun_hip: still('gun_hip', hip2), gun_fireHip: shot('gun_fireHip', hip2, recoilHip, 0.2), gun_autoHip: shot('gun_autoHip', hip2, recoilHip, 0.1, true),
@@ -106,6 +109,25 @@ type Operation = { gun: Gun; clip: THREE.AnimationClip | null; supportPose?: THR
 let ctx: Ctx
 let gun: Gun | null = null
 let stance: Stance = 'down'
+let bodyPosture: Posture = 'stand'
+let postureEntering: THREE.AnimationClip | null = null
+let pendingPostureAction: 'fire' | 'auto' | 'reload' | null = null
+const postureCache = new Map<THREE.AnimationClip, Map<Posture, THREE.AnimationClip>>()
+const posedClips = new WeakSet<THREE.AnimationClip>()
+function inPosture(clip: THREE.AnimationClip) {
+  if (bodyPosture === 'stand' || posedClips.has(clip)) return clip
+  let variants = postureCache.get(clip)
+  if (!variants) { variants = new Map(); postureCache.set(clip, variants) }
+  let result = variants.get(bodyPosture)
+  if (!result) {
+    result = weaponPosture(clip, postureClips[bodyPosture], clip.duration, gun?.userData.twoHanded)
+    result.name = `${clip.name}_${bodyPosture}`
+    variants.set(bodyPosture, result); posedClips.add(result)
+    if (supported.has(clip)) supported.add(result)
+    ctx.clips[`${clip.name}_${bodyPosture}`] = result
+  }
+  return result
+}
 let auto = false
 let nextShot = 0
 let busy: Operation | null = null
@@ -143,13 +165,13 @@ const flashTex = (() => {
   return new THREE.CanvasTexture(c)
 })()
 
-function restClip() { return gun?.userData.twoHanded ? clips.gun_lowReady : clips.gun_lower1 }
+function restClip() { return inPosture(bodyPosture === 'prone' ? (gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1) : gun?.userData.twoHanded ? clips.gun_lowReady : clips.gun_lower1) }
 function stanceClip(s: Stance) {
   if (s === 'down') return restClip()
-  if (s === 'hip') return gun?.userData.twoHanded ? clips.gun_hip : clips.gun_hip1
-  return gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1
+  if (s === 'hip' && bodyPosture !== 'prone') return inPosture(gun?.userData.twoHanded ? clips.gun_hip : clips.gun_hip1)
+  return inPosture(gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1)
 }
-function raiseClip() { return stance === 'hip' ? (gun?.userData.twoHanded ? raiseHip2 : raiseHip1) : gun?.userData.twoHanded ? raise2 : raise1 }
+function raiseClip() { return stance === 'hip' && bodyPosture !== 'prone' ? (gun?.userData.twoHanded ? raiseHip2 : raiseHip1) : gun?.userData.twoHanded ? raise2 : raise1 }
 function remount(g = gun) {
   if (!g) return
   ctx.rig.bones['hand.R'].add(g)
@@ -160,6 +182,7 @@ function resetMechanisms() {
   motions.length = 0
 }
 function cancel(restoreMount = true) {
+  postureEntering = null; pendingPostureAction = null
   busy = null; auto = false; autoClip = null; poseTransition = null; pendingAction = null
   timers.length = 0
   resetMechanisms()
@@ -175,11 +198,13 @@ function transitionTo(clip: THREE.AnimationClip, hold: Hold, duration = 0.35, fr
     position: from?.position ?? gun.getWorldPosition(new THREE.Vector3()), rotation: from?.rotation ?? gun.getWorldQuaternion(new THREE.Quaternion()) }
 }
 function setStance(s: Stance, fade = ctx.player.fade) {
-  const needsTransition = !!busy || !!poseTransition || !ctx.player.current?.getClip().name.startsWith('gun_')
+  // Two-handed holds need a grip-space arc even between weapon stances: blending
+  // elbow rotations alone sweeps the stock through the shortened upper arm.
+  const needsTransition = !!gun?.userData.twoHanded || !!busy || !!poseTransition || !ctx.player.current?.getClip().name.startsWith('gun_')
   // A relaxed thigh-level carry has a longer arc back to aim than a belt-level fist.
   if (gun && !gun.userData.twoHanded && fade > 0) fade = Math.max(fade, 0.28)
   const from = gun && { position: gun.getWorldPosition(new THREE.Vector3()), rotation: gun.getWorldQuaternion(new THREE.Quaternion()) }
-  const handoff = gun?.parent === ctx.rig.bones['hand.L'] && fade > 0 ? {
+  const handoff = gun?.parent === ctx.rig.bones['hand.L'] && fade > 0 && bodyPosture === 'stand' ? {
     position: ctx.rig.bones['hand.R'].localToWorld(MOUNT_POS.clone()),
     rotation: ctx.rig.bones['hand.R'].getWorldQuaternion(new THREE.Quaternion()),
     pole: ctx.rig.bones['forearm.R'].getWorldPosition(new THREE.Vector3()).sub(ctx.rig.bones['upper_arm.R'].getWorldPosition(new THREE.Vector3())).normalize(),
@@ -187,7 +212,7 @@ function setStance(s: Stance, fade = ctx.player.fade) {
   } : undefined
   cancel(!handoff); stance = s
   const clip = stanceClip(s)
-  if (needsTransition && fade > 0) {
+  if (needsTransition && fade > 0 && bodyPosture === 'stand') {
     fade = Math.max(fade, 0.35); transitionTo(clip, holdForStance(s), fade, from ?? undefined)
     if (poseTransition) poseTransition.handoff = handoff
   }
@@ -244,13 +269,14 @@ function later(op: Operation, delay: number, fn: () => void) { timers.push({ at:
 function active(op: Operation) { return busy === op && gun === op.gun }
 async function play(op: Operation, clip: THREE.AnimationClip, fade = 0.05) {
   if (!active(op)) return false
+  clip = inPosture(clip)
   op.clip = clip
   return await ctx.player.play(clip, { once: true, fade }) && active(op)
 }
 async function raise(op: Operation) {
   const hold = holdForStance(stance)
   poseTransition = null
-  op.raising = { position: op.gun.getWorldPosition(new THREE.Vector3()), rotation: op.gun.getWorldQuaternion(new THREE.Quaternion()), hold }
+  if (bodyPosture === 'stand') op.raising = { position: op.gun.getWorldPosition(new THREE.Vector3()), rotation: op.gun.getWorldQuaternion(new THREE.Quaternion()), hold }
   const done = await play(op, raiseClip(), 0.35)
   op.raising = undefined
   return done
@@ -271,11 +297,12 @@ function run(job: (op: Operation) => Promise<void>) {
 /** One shot and its manual cycle. Aim/hip returns a world ray; lowered/carry fire raises first and returns null. */
 function fire(): ReturnType<typeof muzzle> | null {
   if (!gun || busy || auto) return null
+  if (postureEntering) { pendingPostureAction = 'fire'; return null }
   if (poseTransition?.handoff && gun.parent === ctx.rig.bones['hand.L']) { pendingAction = 'fire'; return null }
   const raising = stance === 'down' || !!poseTransition || !ctx.player.current?.getClip().name.startsWith('gun_')
   if (stance === 'down') stance = 'aim'
   const g = gun, two = g.userData.twoHanded
-  const clip = stance === 'hip' ? (two ? clips.gun_fireHip : clips.gun_fireHip1) : two ? clips.gun_fire2 : clips.gun_fire1
+  const clip = stance === 'hip' && bodyPosture !== 'prone' ? (two ? clips.gun_fireHip : clips.gun_fireHip1) : two ? clips.gun_fire2 : clips.gun_fire1
   let ray: ReturnType<typeof muzzle> | null = null
   run(async op => {
     if (raising && !await raise(op)) return
@@ -287,7 +314,7 @@ function fire(): ReturnType<typeof muzzle> | null {
     if (!await recoil) return
     if (g.userData.cls === 'shotgun') {
       // Cycle in the selected hold so a hip shot does not jerk up to the shoulder.
-      const cycle = play(op, stance === 'hip' ? pumpHip : clips.gun_pump)
+      const cycle = play(op, stance === 'hip' && bodyPosture !== 'prone' ? pumpHip : clips.gun_pump)
       move(g.userData.parts.pump, 'z', -0.07, clips.gun_pump.duration)
       later(op, 0.2, () => eject(g))
       if (!await cycle) return
@@ -295,9 +322,9 @@ function fire(): ReturnType<typeof muzzle> | null {
       // Establish the shoulder pose before handing the rifle to the support hand.
       ctx.player.play(stanceClip(stance), { fade: 0 }); ctx.player.update(0); alignSupport()
       op.supportPose = supportBones.map(name => ctx.rig.bones[name].quaternion.clone())
-      if (stance === 'hip') op.cycleHold = { position: g.getWorldPosition(new THREE.Vector3()), rotation: g.getWorldQuaternion(new THREE.Quaternion()) }
+      if (stance === 'hip' && bodyPosture !== 'prone') op.cycleHold = { position: g.getWorldPosition(new THREE.Vector3()), rotation: g.getWorldQuaternion(new THREE.Quaternion()) }
       ctx.rig.bones['hand.L'].attach(g)
-      const cycle = play(op, stance === 'hip' ? boltHip : clips.gun_bolt)
+      const cycle = play(op, stance === 'hip' && bodyPosture !== 'prone' ? boltHip : clips.gun_bolt)
       holdSupport(op)
       later(op, 0.25, () => move(g.userData.parts.bolt, 'z', -0.04, 0.45))
       later(op, 0.45, () => eject(g))
@@ -314,7 +341,9 @@ function fire(): ReturnType<typeof muzzle> | null {
 
 function equip(name: GunName) {
   if (!Object.hasOwn(builders, name)) return
+  const posture = bodyPosture
   unequip()
+  bodyPosture = posture
   gun = builders[name]()
   remount()
   // There is no draw clip: spawn a new weapon already in its safe hold, so a long
@@ -329,26 +358,28 @@ function release() {
   if (!gun) return
   cancel(false)
   dropGun(gun, ctx)
-  gun = null; stance = 'down'
+  gun = null; stance = 'down'; bodyPosture = 'stand'
 }
 function unequip() {
   clearDroppedGuns()
   cancel()
   if (gun) disposeGun(gun)
-  gun = null; stance = 'down'
+  gun = null; stance = 'down'; bodyPosture = 'stand'
   ctx.player.play(ctx.clips.idle ?? clips.gun_lowReady)
 }
 function beginAuto() {
   if (!gun) return
   auto = true; nextShot = time
-  autoClip = stance === 'hip'
+  autoClip = stance === 'hip' && bodyPosture !== 'prone'
     ? (gun.userData.twoHanded ? clips.gun_autoHip : clips.gun_autoHip1)
     : gun.userData.twoHanded ? clips.gun_auto2 : clips.gun_auto1
+  autoClip = inPosture(autoClip)
   ctx.player.play(autoClip, { fade: 0, speed: autoClip.duration / (60 / RPM[gun.userData.name]!) })
   ctx.player.update(0)
 }
 function toggleAuto() {
   if (!gun || busy || !RPM[gun.userData.name]) return
+  if (postureEntering) { pendingPostureAction = 'auto'; return }
   if (auto) {
     auto = false; autoClip = null; resetMechanisms()
     ctx.player.play(stanceClip(stance))
@@ -363,13 +394,14 @@ function toggleAuto() {
 }
 function reload() {
   if (!gun || busy) return
+  if (postureEntering) { pendingPostureAction = 'reload'; return }
   if (poseTransition?.handoff && gun.parent === ctx.rig.bones['hand.L']) { pendingAction = 'reload'; return }
   auto = false; autoClip = null; resetMechanisms()
   const g = gun, name = g.userData.name
   run(async op => {
-    const clip = name === 'revolver' ? clips.gun_reload_revolver : clips[`gun_reload_${g.userData.cls}`]
+    const clip = inPosture(name === 'revolver' ? clips.gun_reload_revolver : clips[`gun_reload_${g.userData.cls}`])
     const fromCarry = !!poseTransition || !ctx.player.current?.getClip().name.startsWith('gun_')
-    if (fromCarry) transitionTo(clip, g.userData.twoHanded ? readyHold : reloadHold)
+    if (fromCarry && bodyPosture === 'stand') transitionTo(clip, g.userData.twoHanded ? readyHold : reloadHold)
     const reloading = play(op, clip, fromCarry ? 0.35 : 0.2)
     if (name === 'revolver') {
       later(op, 0.3, () => move(g.userData.parts.cylinder, 'x', 0.065, 1.65, 'hold'))
@@ -397,19 +429,43 @@ function api(c: Ctx) {
   return (c.weapons.guns ??= {
     names: Object.keys(builders) as GunName[],
     equip, unequip, release, fire, reload, toggleAuto,
+    posture: setPosture, nearMiss: (reaction: 'curious' | 'prone' | 'kneel') => setPosture(reaction === 'curious' ? 'crouch' : reaction, reaction === 'curious'),
+    get bodyPosture() { return bodyPosture },
+    get changingPosture() { return postureEntering !== null },
     aim: () => gun && setStance('aim'), hip: () => gun && setStance('hip'), lower: () => gun && setStance('down'),
     get current() { return gun },
     get stance() { return stance },
     get automatic() { return auto },
     get busy() { return busy !== null || !!poseTransition?.handoff || pendingAction !== null },
-    get readyToFire() { return !!gun && !busy && !auto && !poseTransition && stance !== 'down' && !!ctx.player.current?.getClip().name.startsWith('gun_') },
+    get readyToFire() { return !!gun && !busy && !auto && !postureEntering && !poseTransition && stance !== 'down' && !!ctx.player.current?.getClip().name.startsWith('gun_') },
     get canAuto() { return !!gun && !!RPM[gun.userData.name] },
     pose: (p: Pose) => { cancel(); ctx.player.play(still('gun_dev', p)) },
   })
 }
 
+async function setPosture(posture: Posture, scan = false) {
+  if (!Object.hasOwn(postureClips, posture)) return
+  const entering = enterPosture(ctx.rig, posture, scan, gun ? (gun.userData.twoHanded ? standing : aim1) : undefined)
+  cancel(); bodyPosture = posture; stance = 'aim'
+  const source = gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1
+  const clip = gun ? weaponPosture(source, entering, entering.duration, gun.userData.twoHanded) : entering
+  if (gun) clip.name = `gun_enter_${posture}`
+  if (gun) { supported.add(clip); posedClips.add(clip) }
+  postureEntering = clip
+  const done = await ctx.player.play(clip, { once: true, fade: 0.06 })
+  if (!done || postureEntering !== clip) return
+  postureEntering = null
+  const pending = pendingPostureAction as 'fire' | 'auto' | 'reload' | null; pendingPostureAction = null
+  ctx.player.play(gun ? stanceClip(stance) : postureClips[posture], { fade: 0 })
+  if (pending === 'fire') fire()
+  else if (pending === 'auto') toggleAuto()
+  else if (pending === 'reload') reload()
+}
+
 const label: Record<GunName, string> = { pistol: 'Pistol', revolver: 'Revolver', smg: 'SMG', ak: 'AK-47', shotgun: 'Shotgun', sniper: 'Sniper' }
 export const actions: Action[] = [
+  ...(['stand', 'crouch', 'kneel', 'prone'] as const).map<Action>(posture => ({ group: 'Combat stance',
+    label: { stand: 'Stand', crouch: 'Shallow crouch', kneel: 'One knee', prone: 'Prone' }[posture], run: c => api(c).posture(posture) })),
   ...(Object.keys(builders) as GunName[]).map<Action>(name => ({ group: 'Weapons', label: `Equip: ${label[name]}`, run: c => api(c).equip(name) })),
   { group: 'Weapons', label: 'Holster', run: c => api(c).unequip() },
   { group: 'Shooting', label: 'Aim', hotkey: 'a', run: c => api(c).aim() },
@@ -420,7 +476,7 @@ export const actions: Action[] = [
   { group: 'Shooting', label: 'Lower gun', run: c => api(c).lower() },
 ]
 
-const supported = new Set([
+const supported = new WeakSet([
   clips.gun_aim2, clips.gun_fire2, clips.gun_auto2, clips.gun_hip, clips.gun_fireHip,
   clips.gun_autoHip, clips.gun_lowReady, clips.gun_pump, pumpHip, raise2, raiseHip2,
 ])
@@ -455,6 +511,10 @@ function alignSupport(dt = 0) {
 function placeHold(hold: Hold, position: THREE.Vector3, rotation: THREE.Quaternion, t: number) {
   const blend = t * t * (3 - 2 * t)
   const point = ctx.rig.root.localToWorld(new THREE.Vector3(...hold.position)).lerp(position, 1 - blend)
+  // Arc the stock around the trigger arm and toward the support hand. The slight
+  // inward component keeps both grips reachable with the shorter arm proportions.
+  if (gun?.userData.twoHanded) point.add(new THREE.Vector3(0.03, 0.025, 0.05)
+    .applyQuaternion(ctx.rig.root.getWorldQuaternion(new THREE.Quaternion())).multiplyScalar(Math.sin(Math.PI * t) ** 2))
   const orientation = ctx.rig.root.getWorldQuaternion(new THREE.Quaternion()).multiply(new THREE.Quaternion().setFromEuler(
     new THREE.Euler(THREE.MathUtils.degToRad(hold.pitch ?? 0), THREE.MathUtils.degToRad(hold.yaw ?? 0), 0, 'YXZ')))
   orientation.slerp(rotation, 1 - blend).multiply(MOUNT_Q.clone().invert())
@@ -527,6 +587,9 @@ function alignCarry(dt: number) {
     carryPoint.y -= rest.hips.pos.y + rest.spine.pos.y + rest.chest.pos.y
   }
   const chestUp = new THREE.Vector3(0, 1, 0).transformDirection(chest.matrixWorld)
+  // As the chest leans into a run, lift the fore-end enough for the support
+  // forearm to remain beneath it. Blend with torso lean rather than clip changes.
+  if (gun.userData.twoHanded) carryPoint.y += 0.03 * THREE.MathUtils.smoothstep(1 - chestUp.y, 0.01, 0.05)
   if (gun.userData.twoHanded && chestUp.y < 0.9) { carryPoint.x -= 0.12; carryPoint.y -= 0.02; carryPoint.z -= 0.04 }
   carryPoint.applyQuaternion(ctx.rig.root.getWorldQuaternion(carryQ)).add(chest.getWorldPosition(new THREE.Vector3()))
   const pitch = gun.userData.twoHanded
@@ -572,7 +635,7 @@ function alignMechanisms() {
     const hold = 1 - THREE.MathUtils.smoothstep(t, 0.12, 0.26)
     ctx.player.adjustBones(supportBones.map(name => ctx.rig.bones[name]), () => supportHand(ctx.rig, gun!, undefined, hold))
   }
-  if (busy.clip?.name === 'gun_bolt') {
+  if (busy.clip?.name.startsWith('gun_bolt')) {
     contact(parts.bolt, 'R', reach(0.12, 0.25, 0.7, 0.85))
   } else if (busy.clip?.name.startsWith('gun_reload_')) {
     if (gun.userData.name === 'revolver') {
@@ -590,6 +653,11 @@ function alignMechanisms() {
 
 export function update(dt: number, c: Ctx) {
   api(c)
+  const current = c.player.current?.getClip()
+  if (postureEntering && current !== postureEntering) { postureEntering = null; pendingPostureAction = null }
+  if (bodyPosture !== 'stand' && current !== postureEntering && (!current || !posedClips.has(current)) && current !== postureClips[bodyPosture]) {
+    bodyPosture = 'stand'; postureEntering = null; pendingPostureAction = null
+  }
   if (gun && c.player.current?.getClip().name.startsWith('die')) {
     // Direct clip playback reaches this fallback after the mixer has already moved
     // the hands. Release from the last visible hold, as the lethal UI actions do.

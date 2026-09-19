@@ -20,6 +20,7 @@ const SAMPLES: Record<string, { files: string[]; gain: number; pitch?: number }>
   'enemy-shot-pistol': { files: series('shot_pistol', 4), gain: 0.7 },
   'enemy-shot-ak': { files: series('shot_rifle', 5), gain: 0.75 },
   'enemy-shot-smg': { files: series('shot_rifle', 5), gain: 0.6, pitch: 1.28 },
+  'enemy-shot-shotgun': { files: series('shot_rifle', 5), gain: 0.88, pitch: 0.62 },
   'enemy-shot-sniper': { files: series('shot_rifle', 5), gain: 0.82, pitch: 0.72 },
   impact: { files: series('hit_world', 5), gain: 0.35 },
   'enemy-hit': { files: series('hit_flesh', 5), gain: 0.75 },
@@ -208,8 +209,10 @@ export class MissionAudio {
       this.voiceUntil = context.currentTime + buffer.duration + 0.35
       gainValue = 0.95
     } else {
-      const preferred = IGI_SAMPLES[event.kind]
-      buffer = preferred && this.pick(`igi:${event.kind}`, preferred.files)
+      const kind = event.weapon === 'shotgun' && ['reload', 'enemy-reload', 'reload-ready'].includes(event.kind)
+        ? `${event.kind}-shotgun` : event.kind
+      const preferred = IGI_SAMPLES[kind]
+      buffer = preferred && this.pick(`igi:${kind}`, preferred.files)
       const entry: { files: string[]; gain: number; pitch?: number } | undefined = buffer ? preferred : SAMPLES[event.kind]
       if (!entry) return false
       if (!buffer) buffer = this.pick(event.kind, entry.files)

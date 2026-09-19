@@ -431,6 +431,10 @@ export function createMissionWorld(): MissionWorld {
   stations.forEach(station => root.add(station.object))
   root.add(sign('NORTH INSERTION', [-55.4, 2.8, -53.4], 5.4, Math.PI / 2, 'DETENTION IN EAST ANNEX'))
 
+  // The mess hall is west of the tank, so this post must use the west catwalk
+  // to watch the dining building without the tank blocking its own sightline.
+  const waterSniperPost: Vec3 = [7.25, 12.615, -34.05]
+  const messHallCenter: PlanPoint = [-34.2, -46.65]
   const enemies = [
     enemy('yard-patrol', 'Mess-yard patrol', [[-34, 0, -29], [-23, 0, -29], [-23, 0, -21], [-42, 0, -21]]),
     enemy('west-patrol', 'Service-yard patrol', [[-50, 0, -17], [-40, 0, -17], [-40, 0, -4], [-50, 0, -4]], 'smg'),
@@ -475,7 +479,8 @@ export function createMissionWorld(): MissionWorld {
     enemy('gatehouse-room', 'Gatehouse radio watch', [[-5.15, 0.28, 24.75], [-5.15, 0.28, 26.05]], 'pistol'),
     // The source map has one water tower and one observation tower. Use both
     // existing supported decks, with fixed posts rather than ground navigation.
-    { ...enemy('water-sniper', 'Water-tower marksman', [[14.65, 12.615, -34.05]], 'sniper'), role: 'sniper' as const, facing: Math.PI / 2 },
+    { ...enemy('water-sniper', 'Water-tower marksman', [waterSniperPost], 'sniper'), role: 'sniper' as const,
+      facing: Math.atan2(messHallCenter[0] - waterSniperPost[0], messHallCenter[1] - waterSniperPost[2]) },
     { ...enemy('watch-sniper', 'Observation-tower marksman', [[-48.2, 6.735, 16.9]], 'sniper'), role: 'sniper' as const, facing: Math.PI * 0.75 },
     ...([[140, FLOOR, 1.3], [146, FLOOR, 1.3], [140, FLOOR, 5], [146, FLOOR, 5]] as Vec3[]).map((position, index) =>
       ({ ...enemy(`reserve-${index + 1}`, `Barracks response ${index + 1}`, [position, [143, FLOOR, 3],

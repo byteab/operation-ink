@@ -204,6 +204,44 @@ igi.dispose()
 console.log('PASS Bullet flyby synthesis is bounded, spatial, resettable and muted with other effects')
 console.log('PASS All IGI routes select deployed WAVs; climbing varies one-shots, detection/hurt use original vocals, and hits interrupt barks')
 
+const shotgunAudio = new MissionAudio(); shotgunAudio.setActive(true); await shotgunAudio.unlock()
+await new Promise(resolve => setTimeout(resolve, 0))
+const sc = FakeAudioContext.latest
+const latestShotgunSource = () => sc.nodes.filter(node => node instanceof Source).at(-1) as Source
+for (const kind of ['shot-shotgun', 'enemy-shot-shotgun']) {
+  shotgunAudio.play({ kind, position: new THREE.Vector3(1, 1, 0) })
+  const source = latestShotgunSource()
+  assert((source.buffer as { url: string }).url.endsWith('/igi/spas12_shot_1.wav'), 'Both sides fire the original SPAS report')
+  assert(source.playbackRate.value >= 0.94 && source.playbackRate.value <= 1.06, 'SPAS report retains its original pitch')
+  assert(!source.loop, 'One report plays per shotgun blast')
+}
+const beforePump = shotgunAudio.diagnostics.sources
+shotgunAudio.play({ kind: 'weapon-pump' })
+assert.equal(shotgunAudio.diagnostics.sources, beforePump + 1, 'The two mechanism strokes use one bounded source')
+assert((latestShotgunSource().buffer as { url: string }).url.endsWith('/igi/spas12_pump.wav'))
+shotgunAudio.play({ kind: 'shell-load' }); const firstShell = latestShotgunSource().buffer
+shotgunAudio.play({ kind: 'shell-load' }); const nextShell = latestShotgunSource().buffer
+assert((firstShell as { url: string }).url.includes('/igi/spas12_bulins_'))
+assert.notEqual(firstShell, nextShell, 'Successive shells vary the original insertion clips')
+for (const [kind, clip] of [['reload', 'spas12_reload_1'], ['reload-ready', 'spas12_reload_2'], ['enemy-reload', 'spas12_pump']]) {
+  shotgunAudio.play({ kind, weapon: 'shotgun' })
+  assert((latestShotgunSource().buffer as { url: string }).url.endsWith(`/igi/${clip}.wav`), 'Shotgun reload metadata selects SPAS mechanism clips')
+  shotgunAudio.play({ kind, weapon: 'ak' })
+  assert((latestShotgunSource().buffer as { url: string }).url.includes('/igi/ak47_reload_'), 'Other weapons retain their existing reload clips')
+}
+for (const mode of ['muted', 'zero-volume', 'paused'] as const) {
+  shotgunAudio.setMuted(mode === 'muted'); shotgunAudio.setVolume(mode === 'zero-volume' ? 0 : 0.55); shotgunAudio.setActive(mode !== 'paused')
+  const count = sc.nodes.length
+  for (const kind of ['shot-shotgun', 'enemy-shot-shotgun', 'weapon-pump', 'shell-load']) shotgunAudio.play({ kind })
+  assert.equal(sc.nodes.length, count, `${mode} prevents shotgun and mechanism source allocation`)
+}
+shotgunAudio.setMuted(false); shotgunAudio.setVolume(0.55); shotgunAudio.setActive(true)
+for (let i = 0; i < 100; i++) shotgunAudio.play({ kind: i % 2 ? 'weapon-pump' : 'shot-shotgun' })
+assert.equal(shotgunAudio.diagnostics.sources, 80, 'Rapid shotgun effects retain the global source budget')
+shotgunAudio.dispose(); assert.equal(shotgunAudio.diagnostics.sources, 0)
+assert(sc.nodes.every(node => node.disconnected), 'Shotgun reset/disposal disconnects every node')
+console.log('PASS Original shotgun report/pump/shell routing, native report pitch, shell variation, mute/pause/volume, source budget and disposal')
+
 for (const failure of ['missing', 'decode'] as const) {
   let release!: () => void
   const ready = new Promise<void>(resolve => { release = resolve })
@@ -221,6 +259,22 @@ for (const failure of ['missing', 'decode'] as const) {
   const shot = fc.nodes.filter(node => node instanceof Source).at(-1) as Source
   assert((shot.buffer as { url: string }).url.includes('/sounds/shot_rifle_'), `${failure}: previous sample is retained`)
   assert(shot.playbackRate.value < 0.8, 'Fallback rifle keeps the original sniper pitch adjustment')
+  for (const kind of ['shot-shotgun', 'enemy-shot-shotgun']) {
+    fallback.play({ kind })
+    const report = fc.nodes.filter(node => node instanceof Source).at(-1) as Source
+    assert((report.buffer as { url: string }).url.includes('/sounds/shot_rifle_'), `${failure}: shotgun retains the previous sample fallback`)
+    assert(report.playbackRate.value >= 0.58 && report.playbackRate.value <= 0.66, 'Only the fallback uses the lowered rifle pitch')
+  }
+  for (const kind of ['weapon-pump', 'shell-load']) {
+    fallback.play({ kind })
+    const mechanism = fc.nodes.filter(node => node instanceof Source).at(-1) as Source
+    assert.equal(mechanism.buffer, undefined, `${failure}: ${kind} retains the existing mechanical fallback`)
+  }
+  for (const kind of ['reload', 'enemy-reload', 'reload-ready']) {
+    fallback.play({ kind, weapon: 'shotgun' })
+    const mechanism = fc.nodes.filter(node => node instanceof Source).at(-1) as Source
+    assert.equal(mechanism.buffer, undefined, `${failure}: shotgun ${kind} keeps the mechanical fallback`)
+  }
   fallback.play({ kind: 'empty' })
   const empty = fc.nodes.filter(node => node instanceof Source).at(-1) as Source
   assert.equal(empty.buffer, undefined, 'Mechanical effects synthesize when their IGI sample is unavailable')

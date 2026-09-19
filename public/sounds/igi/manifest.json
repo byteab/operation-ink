@@ -34,6 +34,36 @@
       "sha256": "eb4aa13d6b2bc697d7ed7780b56965f745b9bf93ff5d8299085a369e03ebf35b"
     },
     {
+      "file": "spas12_shot_1.wav",
+      "source": "LOCAL:common/sounds/spas12_shot_1.wav",
+      "sampleRate": 44100,
+      "channels": 1,
+      "frames": 64202,
+      "duration": 1.455828,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "e2b14a9d063b4e88f4119f84a50581211f5031557f7768ecd363a23663700602"
+    },
+    {
+      "file": "spas12_reload_1.wav",
+      "source": "LOCAL:common/sounds/spas12_reload_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 4738,
+      "duration": 0.214875,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "09279346c8d99065ebec2ac1e779cab6cec0128ba40aece450cd7b434f49271d"
+    },
+    {
+      "file": "spas12_reload_2.wav",
+      "source": "LOCAL:common/sounds/spas12_reload_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 5805,
+      "duration": 0.263265,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "ccff81059f29d84d28fa65860ef31a4191e7a608b7475920a69cc5eae8a6a365"
+    },
+    {
       "file": "door_open_1.wav",
       "source": "LOCAL:common/sounds/door_open_1.wav",
       "sampleRate": 22050,
@@ -192,6 +222,46 @@
       "duration": 0.473832,
       "edit": "Lossless PCM rewrap; original sample rate",
       "sha256": "5f2f8818a902657b68c6d1ed9f6296e9b5a4f8d721287c59f0f4fa93e0be8936"
+    },
+    {
+      "file": "spas12_bulins_1.wav",
+      "source": "LOCAL:common/sounds/spas12_bulins_1.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11824,
+      "duration": 0.536236,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "bdb9b7ac10c1fbfa7dc1053093f7ec7b54f0a0be5cbc8b879cc653298d85665f"
+    },
+    {
+      "file": "spas12_bulins_2.wav",
+      "source": "LOCAL:common/sounds/spas12_bulins_2.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 7805,
+      "duration": 0.353968,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "66f2e356cb5d4fe12033692592c1b65672214621fc5e9fd91359a2b4cb45618f"
+    },
+    {
+      "file": "spas12_bulins_3.wav",
+      "source": "LOCAL:common/sounds/spas12_bulins_3.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12251,
+      "duration": 0.555601,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "7cfaaa28a736d1a42b90b93d3511eb5a7009dc3b505873f30c176cf4f5575356"
+    },
+    {
+      "file": "spas12_bulins_4.wav",
+      "source": "LOCAL:common/sounds/spas12_bulins_4.wav",
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12348,
+      "duration": 0.56,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "669981c4d11341c2bdc77fd938c4c6045d0865b7e2e9639ab9e1754a33ff5903"
     },
     {
       "file": "detected_01.wav",
@@ -528,6 +598,19 @@
       "duration": 0.699342,
       "edit": "First 0.05s of burst; 8ms crossfade into decay; 1ms/5ms boundary fades",
       "sha256": "f86de1fe7db55112873ad609a23a61fc88bba5a2190ff46c7514aecc2e4d7f2e"
+    },
+    {
+      "file": "spas12_pump.wav",
+      "source": [
+        "LOCAL:common/sounds/spas12_reload_1.wav",
+        "LOCAL:common/sounds/spas12_reload_2.wav"
+      ],
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 10984,
+      "duration": 0.498141,
+      "edit": "Complete SPAS-12 reload_1 then reload_2 mechanism strokes; 20ms silent gap; original PCM and sample rate",
+      "sha256": "24d9513e33f28f5134a5a05ec139991e9c7bab8e5c1932dcfec31fef0d0d7575"
     }
   ]
 }

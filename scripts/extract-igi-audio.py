@@ -88,9 +88,11 @@ def single_shot(attack, tail, seconds):
 
 
 def selected_names():
-    names = ['glock_shot_1', 'glock_shot_2', 'svddrag_shot_1', 'door_open_1',
+    names = ['glock_shot_1', 'glock_shot_2', 'svddrag_shot_1', 'spas12_shot_1',
+             'spas12_reload_1', 'spas12_reload_2', 'door_open_1',
              'weaponpickup_1', 'new_gun', 'guns_dry_1', 'ak47_reload_1', 'ak47_reload_3']
     for prefix, count, padding in [('walk_gravel_', 6, 1), ('walk_ladder_', 4, 1),
+                                    ('spas12_bulins_', 4, 1),
                                     ('detected_', 6, 2), ('bul_concrete_', 2, 1),
                                     ('bul_flesh_', 5, 1), ('bodyfall_', 9, 1),
                                     ('ai_hit_', 3, 2), ('player_hit_', 4, 1), ('weapondrop_', 2, 2)]:
@@ -98,18 +100,37 @@ def selected_names():
     return [name + '.wav' for name in names]
 
 
+def pump_cycle(back, forward):
+    """Preserve both original SPAS mechanism strokes in the game's one pump event."""
+    if back['channels'] != forward['channels'] or back['rate'] != forward['rate']:
+        raise ValueError('Pump edits require matching source formats')
+    gap_frames = round(0.02 * back['rate'])
+    pcm = back['pcm'] + b'\0' * (gap_frames * back['channels'] * 2) + forward['pcm']
+    return dict(source=[back['source'], forward['source']], channels=back['channels'], rate=back['rate'],
+                frames=back['frames'] + gap_frames + forward['frames'], pcm=pcm,
+                edit='Complete SPAS-12 reload_1 then reload_2 mechanism strokes; 20ms silent gap; original PCM and sample rate')
+
+
+def curated_sounds(sounds):
+    selected = {name: sounds[name] for name in selected_names()}
+    selected['ak47_single.wav'] = single_shot(sounds['ak47_loop.wav'], sounds['ak47_loop_e.wav'], 0.085)
+    selected['mp5sd_single.wav'] = single_shot(sounds['mp5sd_loop.wav'], sounds['mp5sd_loop_e.wav'], 0.05)
+    selected['spas12_pump.wav'] = pump_cycle(sounds['spas12_reload_1.wav'], sounds['spas12_reload_2.wav'])
+    return selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=ROOT / 'project-igi-files/pc/common/sounds/sounds.res')
     parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/igi-audio.local')
     parser.add_argument('--game-output', type=Path, default=ROOT / 'public/sounds/igi')
+    parser.add_argument('--curated-only', action='store_true', help='Install only the curated game bank, skipping full archive export')
     args = parser.parse_args()
     sounds = read_archive(args.source)
-    for name, sound in sounds.items():
-        write_wav(args.output / name, sound)
-    selected = {name: sounds[name] for name in selected_names()}
-    selected['ak47_single.wav'] = single_shot(sounds['ak47_loop.wav'], sounds['ak47_loop_e.wav'], 0.085)
-    selected['mp5sd_single.wav'] = single_shot(sounds['mp5sd_loop.wav'], sounds['mp5sd_loop_e.wav'], 0.05)
+    if not args.curated_only:
+        for name, sound in sounds.items():
+            write_wav(args.output / name, sound)
+    selected = curated_sounds(sounds)
     entries = []
     for name, sound in selected.items():
         target = args.game_output / name
@@ -123,7 +144,8 @@ def main():
                     sourceSha256=hashlib.sha256(args.source.read_bytes()).hexdigest(),
                     extractedCount=len(sounds), assets=entries)
     (args.game_output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    print(f'Extracted {len(sounds)} WAV files to {args.output}')
+    if not args.curated_only:
+        print(f'Extracted {len(sounds)} WAV files to {args.output}')
     print(f'Installed {len(selected)} game samples ({sum(44 + len(s["pcm"]) for s in selected.values()):,} bytes) to {args.game_output}')
 
 

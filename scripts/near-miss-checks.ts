@@ -72,8 +72,12 @@ for (const [label, positions, wall] of [
   f.director.enemies[0].health = 0; f.director.enemies[0].state = 'dead'
   f.director.enemies[1].state = 'reserve'
   f.director.enemies[2].state = 'combat'
-  assert.equal(f.director.nearMiss(shot, 50), 0)
-  f.dispose(); console.log('PASS dead guards, reserves and existing combatants do not get suspicion scans')
+  assert.equal(f.director.nearMiss(shot, 50), 1)
+  const combatant = f.director.enemies[2]
+  assert.equal(combatant.state, 'combat')
+  assert.equal(combatant.scanTimer, 0)
+  assert(combatant.defensiveTimer > 0, 'Combatants may take a defensive stance without restarting suspicion')
+  f.dispose(); console.log('PASS dead guards and reserves ignore misses; combatants defend without suspicion scans')
 }
 {
   const f = await fixture([[0.65, 0, 10]])

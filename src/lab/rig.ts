@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { palette } from '../render/ink'
 
 /**
  * BONE AXIS CONVENTIONS — verified empirically in the lab bone inspector (2026-09-13).
@@ -56,7 +55,7 @@ export type Rig = {
 /** Rest pose of the loaded rig. Set by loadStickman(); clip.ts reads it, so build clips after the rig loads. */
 export let rest: Rig['rest'] | undefined
 
-const fill = new THREE.MeshBasicMaterial({ color: palette.concrete })
+const fill = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false })
 
 // Dual-quaternion skinning (Blender "Preserve Volume"): glTF only carries weights and Three.js skins with linear blending,
 // which collapses the elbow/shoulder at 90 deg and candy-wraps the upper arm on twist. Rewrites the three skinning chunks.
@@ -120,7 +119,7 @@ fill.onBeforeCompile = (shader) => { shader.vertexShader = dualQuaternionSkinnin
 
 // Inverted-hull outline: back faces pushed out by `width` px along the skinned normal (same idea as ink.ts, plus skinning).
 const outline = new THREE.ShaderMaterial({
-  uniforms: { ink: { value: new THREE.Color(palette.ink) }, resolution: { value: new THREE.Vector2(1, 1) }, width: { value: 1.2 }, ...dqUniforms },
+  uniforms: { ink: { value: new THREE.Color(0x000000) }, resolution: { value: new THREE.Vector2(1, 1) }, width: { value: 1.2 }, ...dqUniforms },
   vertexShader: dualQuaternionSkinning(`
     #include <common>
     #include <skinning_pars_vertex>
@@ -156,6 +155,41 @@ export function setOutlineResolution(width: number, height: number) {
   outline.uniforms.resolution.value.set(width, height)
 }
 
+/** Shorten each arm in bind space before clips and weapon holds read its lengths.
+ * Keep the shoulder attachment and fist size, compressing only shoulder-to-wrist
+ * distance. Rebinding below makes this the actual rest shape for every pose. */
+function shortenArms(root: THREE.Group, mesh: THREE.SkinnedMesh) {
+  const ratio = 0.92
+  const positions = mesh.geometry.attributes.position
+  const indices = mesh.geometry.attributes.skinIndex, weights = mesh.geometry.attributes.skinWeight
+  const point = new THREE.Vector3()
+  for (const side of ['L', 'R']) {
+    const bone = (name: string) => root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(`${name}.${side}`)) as THREE.Bone
+    const shoulder = bone('upper_arm'), elbow = bone('forearm'), wrist = bone('hand')
+    const origin = shoulder.getWorldPosition(new THREE.Vector3())
+    const end = wrist.getWorldPosition(new THREE.Vector3())
+    const axis = end.clone().sub(origin).normalize(), length = origin.distanceTo(end)
+    const armIndices = new Set([shoulder, elbow, wrist].map(b => mesh.skeleton.bones.indexOf(b)))
+    for (let i = 0; i < positions.count; i++) {
+      let influence = 0
+      for (let j = 0; j < 4; j++) if (armIndices.has(indices.getComponent(i, j))) influence += weights.getComponent(i, j)
+      if (!influence) continue
+      mesh.localToWorld(point.fromBufferAttribute(positions, i))
+      const distance = THREE.MathUtils.clamp(point.clone().sub(origin).dot(axis), 0, length)
+      point.addScaledVector(axis, distance * (ratio - 1) * influence)
+      mesh.worldToLocal(point)
+      positions.setXYZ(i, point.x, point.y, point.z)
+    }
+    elbow.position.multiplyScalar(ratio)
+    wrist.position.multiplyScalar(ratio)
+  }
+  positions.needsUpdate = true
+  mesh.geometry.computeVertexNormals()
+  mesh.geometry.computeBoundingBox()
+  mesh.geometry.computeBoundingSphere()
+  root.updateMatrixWorld(true)
+}
+
 export async function loadStickman(): Promise<Rig> {
   const gltf = await new GLTFLoader().loadAsync('/models/stickman.glb')
   const root = gltf.scene
@@ -173,6 +207,7 @@ export async function loadStickman(): Promise<Rig> {
     if (hand instanceof THREE.Bone) hand.position.y += 0.08
   }
   root.updateMatrixWorld(true)
+  shortenArms(root, mesh)
   mesh.skeleton.calculateInverses()
 
   const shell = new THREE.SkinnedMesh(mesh.geometry, outline)

@@ -180,7 +180,8 @@ await check('Real actor reaction replay restarts the same cached action immediat
   const clip = new THREE.AnimationClip('flinchHead', 0.5, [new THREE.NumberKeyframeTrack('.position[y]', [0, 0.1, 0.5], [0, 0.1, 0])])
   // Exercise the actor method with a real mixer without requiring browser GLB loading.
   const actor = Object.create(EnemyActor.prototype) as EnemyActor
-  Object.assign(actor, { root, player, lib: { clips: { flinchHead: clip } }, dead: false, reacting: 0 })
+  Object.assign(actor, { root, player, lib: { clips: { flinchHead: clip } }, dead: false, reacting: 0,
+    bodyPosture: 'stand', postureTransition: null, transientClips: new Set<THREE.AnimationClip>() })
   actor.react('flinchHead', false)
   player.update(0.25)
   const revision = player.revision

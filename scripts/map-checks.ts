@@ -40,9 +40,21 @@ check('Two supported tower sniper posts have open outward sightlines',()=>{
     assert.equal(npc.weapon,'sniper');assert.equal(npc.patrol.length,1)
     const feet=new THREE.Vector3(...npc.position)
     assert(feet.y>6);assert(Math.abs(world.floor(feet,.1,.3)-feet.y)<.03)
-    const target=feet.clone().add(new THREE.Vector3(20,-feet.y+1.4,npc.id==='watch-sniper'?-20:0))
+    const target=feet.clone().add(new THREE.Vector3(Math.sin(npc.facing!)*20,-feet.y+1.4,Math.cos(npc.facing!)*20))
     assert(world.visible(feet.clone().add(new THREE.Vector3(0,1.5,0)),target,new THREE.Object3D()),`${npc.id} sightline blocked`)
   }
+})
+check('Water-tower marksman faces the mess hall from an unobstructed west-side post',()=>{
+  const sniper=mission.enemies.find(npc=>npc.id==='water-sniper')!
+  const hall=compound.getObjectByName('Northwest service building')!
+  const tower=compound.getObjectByName('North water tower')!
+  const feet=new THREE.Vector3(...sniper.position)
+  const target=hall.getWorldPosition(new THREE.Vector3());target.y=hall.userData.roofHeight+1.65
+  const direction=target.clone().sub(feet).setY(0).normalize()
+  const facing=new THREE.Vector3(Math.sin(sniper.facing!),0,Math.cos(sniper.facing!))
+  assert(feet.x<tower.getWorldPosition(new THREE.Vector3()).x,'post must face out from the west side of the tank')
+  assert(facing.dot(direction)>.999,'authored facing must point toward the dining building')
+  assert(world.visible(feet.clone().add(new THREE.Vector3(0,1.5,0)),target,hall),'tank must not obstruct the mess-hall view')
 })
 for(const [name,points] of Object.entries({
   detention:[[117,-3],[117,-8],[117,-21,-4.2],[117,-26,-4.2],[117,-8],[117,-3]],security:[[146,-37],[146,-45],[146,-52]],

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { clipToJSON } from '../clip'
-import { hitRegion, type Region } from '../clips/damage'
+import { mapGait } from '../gait'
+import { hitRegion, hitShotgun, type Region } from '../clips/damage'
 import { curious, clips as behavior } from '../clips/behavior'
 import { clips as loco } from '../clips/locomotion'
 import { clips as gunClips } from '../weapons/guns'
@@ -12,7 +13,7 @@ function mix(name: string, base: THREE.AnimationClip, top: THREE.AnimationClip, 
   // Position tracks set limb lengths as well as rotations. Mixing only the
   // quaternions silently restores the source gait's arm proportions.
   const names = new Set(bones.flatMap(b => [`${rest![b].node}.quaternion`, `${rest![b].node}.position`]))
-  return new THREE.AnimationClip(name, base.duration, [...base.tracks.filter(t => !names.has(t.name)), ...top.tracks.filter(t => names.has(t.name))])
+  return mapGait(base, variant => new THREE.AnimationClip(name, variant.duration, [...variant.tracks.filter(t => !names.has(t.name)), ...top.tracks.filter(t => names.has(t.name))]))
 }
 const ARMS: BoneName[] = ['upper_arm.L', 'upper_arm.R', 'forearm.L', 'forearm.R', 'hand.L', 'hand.R']
 export const clips = {
@@ -101,9 +102,12 @@ function exportClips(ctx: Ctx) {
 }
 
 export const actions: Action[] = [
+  { group: 'Scenario', label: 'Shot: shotgun blast', run: hitShotgun },
   ...regions.map((r): Action => ({ group: 'Scenario', label: `Shot: ${r} (lethal)`, run: ctx => hitRegion(ctx, r, true) })),
   ...regions.map((r): Action => ({ group: 'Scenario', label: `Shot: ${r} (wound)`, run: ctx => hitRegion(ctx, r, false) })),
   { group: 'Scenario', label: 'Shot: miss → curious', run: curious },
+  { group: 'Scenario', label: 'Shot: miss → drop prone', run: ctx => ctx.weapons.guns?.nearMiss('prone') },
+  { group: 'Scenario', label: 'Shot: miss → one knee', run: ctx => ctx.weapons.guns?.nearMiss('kneel') },
   { group: 'Scenario', label: 'Armed guard patrol', run: ctx => { ctx.weapons.guns.equip('ak'); ctx.player.play(clips.patrolWalk, { fade: 0 }) } },
   { group: 'Scenario', label: 'Armed: alert & fire burst', run: burst },
   { group: 'Scenario', label: 'Reset scene', hotkey: '0', run: reset },

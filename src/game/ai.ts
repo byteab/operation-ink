@@ -1,7 +1,9 @@
 import * as THREE from 'three'
-import { EnemyActor } from './actors'
+import { Capsule } from 'three/addons/math/Capsule.js'
+import { EnemyActor, type ActorPostureSnapshot } from './actors'
+import type { Posture } from '../lab/postures'
 import { EnemyNavigation } from './navigation'
-import { ENEMY_HEALTH, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage } from './balance'
+import { ENEMY_HEALTH, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage, shotgunDamageMultiplier } from './balance'
 import { rayCapsuleDistance, reactionClipName, type HitReaction, type HitZone } from './hit-reactions'
 import type { AIContext, EnemySnapshot, EnemySpec, EnemyState, PlayerSense, Shot, SoundEvent, Vec3, WeaponName } from './types'
 
@@ -105,6 +107,7 @@ export type Enemy = {
   scanDuration: number
   scanCooldown: number
   scanYaw: number
+  defensiveTimer: number
 }
 
 const tuple = (point: THREE.Vector3): Vec3 => [point.x, point.y, point.z]
@@ -112,7 +115,7 @@ const vector = (value: unknown) => Array.isArray(value) && value.length === 3 &&
 const number = (value: unknown, fallback = 0) => typeof value === 'number' && Number.isFinite(value) ? value : fallback
 const NUMBERS = ['repath', 'stuck', 'senseTimer', 'lostFor', 'shotTimer', 'shots', 'magazine', 'reloadTimer', 'calloutTimer', 'communicationTimer', 'wait',
   'visitedWaypoints', 'distanceWalked', 'footstepDistance', 'pathFailures', 'tacticTimer', 'burst', 'aimTime', 'blockedFor', 'contactMemory', 'suppress', 'settledFor', 'hitPause', 'moveSpeed', 'searchIndex',
-  'scanTimer', 'scanDuration', 'scanCooldown', 'scanYaw'] as const
+  'scanTimer', 'scanDuration', 'scanCooldown', 'scanYaw', 'defensiveTimer'] as const
 
 export class EnemyDirector {
   readonly enemies: Enemy[] = []
@@ -154,7 +157,7 @@ export class EnemyDirector {
         reserveRoute: false, alarmResponse: false, alarmExit: null, post: null, visitedWaypoints: 0, distanceWalked: 0, footstepDistance: 0, pathFailures: 0,
         tactic: 'hold', tacticTimer: 0, tacticPoint: null, burst: 0, aimTime: 0, blockedFor: 0, contactMemory: 0, suppress: 0, settledFor: 0, hitPause: 0, moveSpeed: 0,
         searchPoints: [], searchIndex: 0, woundArm: false, woundLeg: false, deathClip: 'dieBody', speaker: i % 4, noticedBodies: [],
-        scanTimer: 0, scanDuration: 0, scanCooldown: 0, scanYaw: 0,
+        scanTimer: 0, scanDuration: 0, scanCooldown: 0, scanYaw: 0, defensiveTimer: 0,
       }
       actor.root.rotation.y = enemy.yaw
       this.enemies.push(enemy)
@@ -229,7 +232,7 @@ export class EnemyDirector {
   }
 
   private sees(enemy: Enemy, player: PlayerSense) {
-    const origin = enemy.position.clone().add(eyeOffset)
+    const origin = this.eye(enemy)
     const sniper = enemy.spec.role === 'sniper'
     const range = enemy.contactMemory > 0 ? (sniper ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) :
       (sniper ? COMBAT.sniperPassiveRange : COMBAT.passiveRange)
@@ -240,9 +243,64 @@ export class EnemyDirector {
 
   private speed(enemy: Enemy, base: number) { return enemy.woundLeg ? base * 0.6 : base }
 
+  private eye(enemy: Enemy) { return enemy.actor.eye?.() ?? enemy.position.clone().add(eyeOffset) }
+
+  private posture(enemy: Enemy) { return enemy.actor.posture ?? 'stand' }
+
+  private transitioning(enemy: Enemy) { return (enemy.actor.postureTransitionRemaining ?? 0) > 0 }
+
+  /** Low stances need a level supported footprint, including room for the extended limbs. */
+  private postureFits(enemy: Enemy, posture: Posture) {
+    if (posture === 'stand' || posture === 'crouch') return true
+    const radius = posture === 'prone' ? 1.05 : 0.52
+    for (let i = 0; i < 8; i++) {
+      const angle = i * Math.PI / 4
+      const point = enemy.position.clone().add(new THREE.Vector3(Math.sin(angle) * radius, 0, Math.cos(angle) * radius))
+      const floor = this.context.world.floor(point, 0.15, 0.25)
+      if (!Number.isFinite(floor) || Math.abs(floor - enemy.position.y) > 0.12) return false
+      const low = point.clone().add(new THREE.Vector3(0, 0.23, 0))
+      if (!this.context.world.fits(new Capsule(low, low.clone().add(new THREE.Vector3(0, 0.32, 0)), 0.2))) return false
+      if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && other.position.distanceTo(point) < 0.55)) return false
+    }
+    return true
+  }
+
+  private stand(enemy: Enemy) {
+    // A navigation request or large tracking turn cannot cancel a defensive hold.
+    if (enemy.defensiveTimer > 0 && this.posture(enemy) !== 'stand') return false
+    enemy.defensiveTimer = 0
+    if (this.posture(enemy) !== 'stand') {
+      enemy.actor.setPosture?.('stand')
+      enemy.settledFor = 0
+    }
+    return !this.transitioning(enemy)
+  }
+
+  /** Use the current location, so an indoor patrol can take outdoor stances after leaving. */
+  private protectedPost(enemy: Enemy) {
+    if (enemy.spec.role === 'sniper') return true
+    let protectedArea = false
+    this.context.scene.traverse(object => {
+      if (protectedArea) return
+      const data = object.userData
+      const tower = data.kind === 'water-tower' || data.kind === 'observation-tower'
+      if (!tower && !(data.footprint && (data.enterable || data.accessible))) return
+      const local = object.worldToLocal(enemy.position.clone())
+      if (tower) {
+        const radius = data.deckRadius ?? data.deckWidth / 2
+        protectedArea = Math.abs(local.y - data.deckHeight) < 1 && Math.abs(local.x) < radius + 1 && Math.abs(local.z) < radius + 1
+      } else {
+        const [width, depth] = data.footprint
+        protectedArea = Math.abs(local.x) <= width / 2 && Math.abs(local.z) <= depth / 2
+      }
+    })
+    // Covers rooms without footprint metadata, including the underground detention block.
+    return protectedArea || this.context.world.rayDistance(enemy.position.clone().add(eyeOffset), new THREE.Vector3(0, 1, 0), 16) < 16
+  }
+
   private noticeBody(enemy: Enemy) {
     if (enemy.state !== 'patrol' && enemy.state !== 'guard') return
-    const eye = enemy.position.clone().add(eyeOffset)
+    const eye = this.eye(enemy)
     for (const body of this.enemies) {
       if (body.state !== 'dead' || enemy.noticedBodies.includes(body.spec.id)) continue
       const point = body.position.clone().add(new THREE.Vector3(0, 0.3, 0))
@@ -265,7 +323,7 @@ export class EnemyDirector {
     enemy.burst = 0
     enemy.tacticTimer = 0
     this.say(enemy, 'Reloading! Cover me!', 'reload')
-    this.context.emit({ kind: 'enemy-reload', position: enemy.position.clone(), radius: 5 })
+    this.context.emit({ kind: 'enemy-reload', position: enemy.position.clone(), radius: 5, weapon: enemy.spec.weapon })
   }
 
   update(dt: number, player: PlayerSense) {
@@ -291,6 +349,8 @@ export class EnemyDirector {
       enemy.communicationTimer -= dt
       enemy.scanCooldown = Math.max(0, enemy.scanCooldown - dt)
       enemy.scanTimer = Math.max(0, enemy.scanTimer - dt)
+      enemy.defensiveTimer = Math.max(0, enemy.defensiveTimer - dt)
+      if (enemy.defensiveTimer <= 0) this.stand(enemy)
       enemy.moveSpeed = 0
       if (enemy.reloadTimer > 0) {
         enemy.reloadTimer -= dt
@@ -309,6 +369,7 @@ export class EnemyDirector {
         else this.noticeBody(enemy)
       }
       if (enemy.canSee) {
+        if (enemy.scanTimer > 0 && this.posture(enemy) === 'crouch') enemy.actor.setPosture?.('crouch', false)
         enemy.scanTimer = 0
         enemy.lostFor = 0
         enemy.aimTime += dt
@@ -321,21 +382,22 @@ export class EnemyDirector {
         enemy.suspicion = Math.max(0, enemy.suspicion - dt * 0.18)
         if (enemy.state === 'suspicious' && enemy.scanTimer <= 0 && enemy.lostFor > 0.65) this.enter(enemy, 'investigate')
         // A guard that ducked into cover chose to lose sight; only a real disappearance starts the hunt.
-        const patience = enemy.tactic === 'cover' || enemy.tactic === 'peek' ? 4 : 1.5
+        const relocating = ['flank', 'charge', 'retreat'].includes(enemy.tactic) && enemy.tacticPoint && enemy.tacticTimer > 0
+        const patience = relocating ? 7 : enemy.tactic === 'cover' || enemy.tactic === 'peek' ? 4 : 1.5
         if (enemy.state === 'combat' && enemy.lostFor > patience) this.enter(enemy, 'investigate')
       }
       let moving = false
-      if (enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0) {
+      if (enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0 || this.transitioning(enemy)) {
         enemy.hitPause = Math.max(0, enemy.hitPause - dt)
         enemy.settledFor = 0
       } else if (enemy.state === 'combat') {
         moving = this.combat(enemy, player, dt)
       } else if (enemy.state === 'suspicious') {
-        if (enemy.scanTimer > 0) {
+        if (enemy.scanTimer > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel') {
           const progress = 1 - enemy.scanTimer / enemy.scanDuration
           const yaw = enemy.scanYaw + Math.sin(progress * Math.PI * 2) * 0.7
           this.face(enemy, enemy.position.clone().add(new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))), dt, 2.8)
-        } else if (enemy.lastKnown) this.face(enemy, enemy.lastKnown, dt, 5)
+        } else if (enemy.scanTimer <= 0 && enemy.lastKnown) this.face(enemy, enemy.lastKnown, dt, 5)
       } else if (enemy.state === 'investigate') {
         if (enemy.spec.role === 'sniper') {
           if (enemy.lastKnown) this.face(enemy, enemy.lastKnown, dt, 2.2)
@@ -383,7 +445,7 @@ export class EnemyDirector {
       }
       enemy.actor.root.position.copy(enemy.position)
       enemy.actor.root.rotation.y = enemy.yaw
-      enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
+      enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel' ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
       enemy.actor.update(dt, enemy.state, moving, enemy.canSee && enemy.lastKnown ? enemy.lastKnown.clone().add(new THREE.Vector3(0, 1.65, 0)) : undefined, enemy.moveSpeed)
     }
   }
@@ -434,6 +496,27 @@ export class EnemyDirector {
     return null
   }
 
+  /** A bounded run to a visible firing lane, never a chase to the player's feet. */
+  private firingPosition(enemy: Enemy, known: THREE.Vector3, advance: boolean) {
+    const forward = known.clone().sub(enemy.position).setY(0).normalize()
+    const distance = Math.hypot(known.x - enemy.position.x, known.z - enemy.position.z)
+    const ideal = enemy.spec.weapon === 'shotgun' ? 9 : enemy.spec.weapon === 'smg' ? 14 : enemy.spec.weapon === 'pistol' ? 16 : 22
+    const ahead = advance ? Math.min(9, Math.max(0, distance - ideal)) : Math.min(2, Math.max(0, distance - ideal))
+    const side = this.random(enemy) < 0.5 ? 1 : -1
+    for (const lateral of [side * 5, -side * 5, side * 3, -side * 3]) {
+      const candidate = this.navigation.floor(enemy.position.clone().addScaledVector(forward, ahead)
+        .add(new THREE.Vector3(forward.z * lateral, 0, -forward.x * lateral)))
+      if (!candidate || !this.availablePosition(enemy, candidate, 2.5) || !this.navigation.segment(enemy.position, candidate, false)) continue
+      const origin = candidate.clone().add(eyeOffset), target = known.clone().add(eyeOffset)
+      if (!this.context.world.visible(origin, target, ignore)) continue
+      const ray = target.clone().sub(origin).normalize()
+      if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' &&
+        this.bodyHit(other, origin, ray, origin.distanceTo(target)))) continue
+      return candidate
+    }
+    return null
+  }
+
   private chooseTactic(enemy: Enemy) {
     const known = enemy.lastKnown!
     const threatEye = known.clone().add(eyeOffset)
@@ -455,35 +538,40 @@ export class EnemyDirector {
       return
     }
     const squad = this.squad(enemy)
+    // Fixed posts retain their shelter and height while they have contact.
+    if (enemy.canSee && this.protectedPost(enemy)) { enemy.tactic = 'hold'; enemy.tacticTimer = 4; return }
     const covering = squad.some(ally => ally.canSee && ally.tactic === 'hold' && ally.settledFor >= COMBAT.settle && ally.reloadTimer <= 0 && ally.magazine > 0 && ally.hitPause <= 0)
-    if (covering && !squad.some(ally => ally.tactic === 'flank') && roll < 0.6 && distance < 30) {
-      const side = this.random(enemy) < 0.5 ? 1 : -1
-      const forward = known.clone().sub(enemy.position).setY(0).normalize()
-      const reach = Math.min(distance, 9)
-      for (const flankSide of [side, -side]) {
-        const target = known.clone().add(new THREE.Vector3(forward.z, 0, -forward.x).multiplyScalar(flankSide * reach))
-        const floor = this.navigation.floor(target)
-        if (floor && this.availablePosition(enemy, floor, 3)) {
-          enemy.tactic = 'flank'; enemy.tacticPoint = floor; enemy.tacticTimer = 7
-          this.say(enemy, 'Flanking! Keep him busy!', 'flank'); return
-        }
+    const repositioning = squad.some(ally => ['flank', 'charge', 'cover', 'retreat', 'peek'].includes(ally.tactic))
+    if (covering && !repositioning && roll < 0.6 && distance < 35 && !enemy.woundLeg) {
+      const point = this.firingPosition(enemy, known, false)
+      if (point) {
+        enemy.tactic = 'flank'; enemy.tacticPoint = point; enemy.tacticTimer = 7
+        this.say(enemy, 'Flanking! Keep him busy!', 'flank'); return
       }
     }
     // Keep a planted shooter covering the teammate who is changing angle.
-    if (squad.some(ally => ally.tactic === 'flank') && enemy.canSee) {
+    if (repositioning && enemy.canSee) {
       enemy.tactic = 'hold'; enemy.tacticTimer = 2; return
     }
     const cover = this.coverPoint(enemy, threatEye, false)
     if (cover && roll < 0.85) { enemy.tactic = 'cover'; enemy.tacticPoint = cover; enemy.tacticTimer = 5; return }
-    // Open ground: close to effective range, then plant the feet for a full firing window.
-    enemy.tactic = distance > 24 ? 'charge' : 'hold'
-    enemy.tacticTimer = 3.5
+    // Only confirmed contact justifies a fast advance; teammates keep a covering lane.
+    const effectiveRange = enemy.spec.weapon === 'shotgun' ? 12 : enemy.spec.weapon === 'smg' ? 18 : enemy.spec.weapon === 'pistol' ? 20 : 26
+    const shouldAdvance = enemy.canSee && distance > effectiveRange && !enemy.woundLeg && (!squad.length || covering && !repositioning)
+    enemy.tacticPoint = shouldAdvance ? this.firingPosition(enemy, known, true) : null
+    enemy.tactic = enemy.tacticPoint ? 'charge' : 'hold'
+    enemy.tacticTimer = enemy.tacticPoint ? 7 : 3.5
   }
 
   private combat(enemy: Enemy, player: PlayerSense, dt: number) {
     const known = enemy.lastKnown
     if (!known) return false
-    enemy.tacticTimer -= dt
+    // A defensive reaction keeps its planted firing window; existing burst and aim timers survive.
+    if (enemy.defensiveTimer > 0) {
+      enemy.tactic = 'hold'
+      enemy.tacticPoint = null
+      enemy.tacticTimer = Math.max(enemy.tacticTimer, enemy.defensiveTimer)
+    } else enemy.tacticTimer -= dt
     // A nearby exposed threat takes priority over a long flank or advance.
     if (enemy.canSee && enemy.position.distanceTo(known) < 9 && (enemy.tactic === 'flank' || enemy.tactic === 'charge') && enemy.reloadTimer <= 0 && enemy.health >= 35) {
       enemy.tactic = 'hold'; enemy.tacticPoint = null; enemy.tacticTimer = COMBAT.openingHold
@@ -506,7 +594,13 @@ export class EnemyDirector {
           // Arrived in cover: wait out the burst, then step out to fire.
           enemy.tactic = 'hold'; enemy.tacticTimer = 1.8; enemy.tacticPoint = this.peekPoint(enemy, known.clone().add(eyeOffset))
           if (enemy.tacticPoint) enemy.tactic = 'peek'
-        } else enemy.tacticTimer = Math.min(enemy.tacticTimer, 0.5)
+        } else {
+          enemy.tactic = 'hold'; enemy.tacticPoint = null; enemy.tacticTimer = 3.5
+          enemy.path = []; enemy.pathTarget = null; this.plans.delete(enemy)
+          // Travel faces away from contact. Give the normal short reacquisition window
+          // to turn back toward the remembered position, without learning a hidden one.
+          enemy.lostFor = 0; enemy.senseTimer = 0
+        }
         break
       }
       case 'peek': {
@@ -519,8 +613,12 @@ export class EnemyDirector {
         break
       }
       case 'charge': {
-        if (enemy.position.distanceTo(known) > 18) moving = this.move(enemy, known, combatSpeed, dt)
-        else { enemy.tactic = 'hold'; enemy.tacticTimer = 3.5 }
+        if (enemy.tacticPoint && enemy.position.distanceTo(enemy.tacticPoint) > 0.5) moving = this.move(enemy, enemy.tacticPoint, combatSpeed, dt)
+        else {
+          enemy.tactic = 'hold'; enemy.tacticPoint = null; enemy.tacticTimer = 3.5
+          enemy.path = []; enemy.pathTarget = null; this.plans.delete(enemy)
+          enemy.lostFor = 0; enemy.senseTimer = 0
+        }
         break
       }
       default: break
@@ -531,7 +629,7 @@ export class EnemyDirector {
     const aimYaw = Math.atan2(known.x - enemy.position.x, known.z - enemy.position.z)
     const aligned = Math.cos(aimYaw - enemy.yaw) >= Math.cos(COMBAT.aimHalfAngle)
     // Small tracking turns are valid firing poses; only locomotion or a large turn resets readiness.
-    enemy.settledFor = moving || !aligned || positioning ? 0 : enemy.settledFor + dt
+    enemy.settledFor = moving || !aligned || positioning || this.transitioning(enemy) ? 0 : enemy.settledFor + dt
     if (enemy.canSee) {
       this.communicate(enemy)
       if (enemy.settledFor >= COMBAT.settle && enemy.aimTime >= COMBAT.aimDelay && enemy.shotTimer <= 0) {
@@ -539,7 +637,7 @@ export class EnemyDirector {
         else enemy.blockedFor += Math.max(dt, COMBAT.blockedRetry)
       }
       // A visible head over cover or a teammate in the doorway needs a new firing lane.
-      if (enemy.blockedFor >= COMBAT.blockedReposition && enemy.spec.role !== 'sniper' && enemy.tactic === 'hold') {
+      if (enemy.blockedFor >= COMBAT.blockedReposition && enemy.spec.role !== 'sniper' && enemy.tactic === 'hold' && enemy.defensiveTimer <= 0) {
         const point = this.peekPoint(enemy, known.clone().add(eyeOffset))
         enemy.blockedFor = 0
         if (point) { enemy.tactic = 'peek'; enemy.tacticPoint = point; enemy.tacticTimer = 2 }
@@ -591,6 +689,12 @@ export class EnemyDirector {
   private face(enemy: Enemy, target: THREE.Vector3, dt: number, speed = 3) {
     const desired = Math.atan2(target.x - enemy.position.x, target.z - enemy.position.z)
     const difference = Math.atan2(Math.sin(desired - enemy.yaw), Math.cos(desired - enemy.yaw))
+    // A planted knee or prone body cannot spin in place to follow a flanking target.
+    if (Math.abs(difference) > 0.6 && (this.posture(enemy) === 'prone' || this.posture(enemy) === 'kneel')) {
+      this.stand(enemy)
+      return
+    }
+    if (this.transitioning(enemy)) return
     enemy.yaw += clamp(difference, -speed * dt, speed * dt)
   }
 
@@ -608,6 +712,7 @@ export class EnemyDirector {
 
   private move(enemy: Enemy, destination: THREE.Vector3, speed: number, dt: number) {
     if (enemy.spec.role === 'sniper' || enemy.hitPause > 0) return false
+    if (!this.stand(enemy)) return false
     const recovered = this.navigation.recoverDoorOverlap(enemy.position)
     if (recovered && this.separated(enemy, recovered, this.lastPlayer?.feet)) {
       enemy.position.copy(recovered)
@@ -699,7 +804,7 @@ export class EnemyDirector {
 
   /** One round of a burst. Blind rounds go to the last contact and cannot damage: pressure, not punishment. */
   private shoot(enemy: Enemy, player: PlayerSense, blind = false) {
-    if (enemy.moveSpeed > 0 || enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0 || enemy.settledFor < COMBAT.settle || enemy.aimTime < COMBAT.aimDelay) return false
+    if (enemy.moveSpeed > 0 || enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0 || this.transitioning(enemy) || enemy.settledFor < COMBAT.settle || enemy.aimTime < COMBAT.aimDelay) return false
     const weapon = WEAPON[enemy.spec.weapon]
     if (enemy.reloadTimer > 0) return false
     if (enemy.magazine <= 0) {
@@ -722,7 +827,7 @@ export class EnemyDirector {
     }
     const distance = muzzle.distanceTo(target)
     direction.copy(target).sub(muzzle).normalize()
-    if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && rayBodyDistance(muzzle, direction, other.position) < distance)) return false
+    if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && this.bodyHit(other, muzzle, direction, distance))) return false
     const round = enemy.burst > 0 ? weapon.burst - enemy.burst : 0
     const recoil = round * 0.025
     const rangePenalty = enemy.spec.weapon === 'sniper' ? 0.004 : enemy.spec.weapon === 'smg' ? 0.017 : enemy.spec.weapon === 'pistol' ? 0.016 : 0.012
@@ -734,7 +839,7 @@ export class EnemyDirector {
     const hitPlayer = hit && obstruction >= muzzle.distanceTo(target) - 0.05
     const end = muzzle.clone().addScaledVector(direction, hitPlayer ? Math.min(distance, obstruction) : Math.min(distance + 2, obstruction))
     // Avoid shooting through a friendly body standing across a doorway.
-    if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && rayBodyDistance(muzzle, direction, other.position) < distance)) return false
+    if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && this.bodyHit(other, muzzle, direction, distance))) return false
     enemy.burst = (enemy.burst > 0 ? enemy.burst : weapon.burst) - 1
     enemy.shotTimer = enemy.burst > 0 ? weapon.gap : weapon.pause[0] + this.random(enemy) * (weapon.pause[1] - weapon.pause[0])
     enemy.shots++
@@ -764,7 +869,7 @@ export class EnemyDirector {
     if (!event.position || !event.radius || event.kind.startsWith('enemy-') || ['callout', 'ambience', 'door'].includes(event.kind)) return
     for (const enemy of this.enemies) {
       if (['dead', 'reserve', 'combat'].includes(enemy.state)) continue
-      const from = enemy.position.clone().add(eyeOffset)
+      const from = this.eye(enemy)
       const source = event.position.clone().add(new THREE.Vector3(0, 0.5, 0))
       const distance = from.distanceTo(source)
       const unobstructed = this.context.world.visible(from, source, ignore)
@@ -774,7 +879,10 @@ export class EnemyDirector {
       const visibleShot = shot && insideVisionCone(from, enemy.yaw, event.position, enemy.spec.role === 'sniper' ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) &&
         this.context.world.visible(from, event.position, ignore)
       // Seeing the muzzle can interrupt a near-miss scan; hearing it through cover cannot.
-      if (visibleShot) { enemy.contactMemory = COMBAT.contactMemory; enemy.scanTimer = 0; enemy.senseTimer = 0 }
+      if (visibleShot) {
+        if (enemy.scanTimer > 0 && this.posture(enemy) === 'crouch') enemy.actor.setPosture?.('crouch', false)
+        enemy.contactMemory = COMBAT.contactMemory; enemy.scanTimer = 0; enemy.senseTimer = 0
+      }
       else if (enemy.scanTimer > 0) continue
       if (!visibleShot && !audible(distance, event.radius, unobstructed)) continue
       enemy.lastKnown = event.position.clone()
@@ -793,8 +901,8 @@ export class EnemyDirector {
     const volumes = enemy.actor.hitVolumes as EnemyActor['hitVolumes'] | undefined
     if (volumes) {
       // Broad phase around the whole animated body before the per-capsule test.
-      const center = enemy.position.clone().add(new THREE.Vector3(0, 0.9, 0))
-      if (rayCapsuleDistance(origin, normalized, center, center, 1.3) > maxDistance) return null
+      const center = enemy.position.clone().add(new THREE.Vector3(0, 0.75, 0))
+      if (rayCapsuleDistance(origin, normalized, center, center, 1.9) > maxDistance) return null
       const hit = volumes.raycast(origin, normalized, maxDistance)
       return hit && { distance: hit.distance, point: hit.point, zone: hit.zone, bone: hit.bone }
     }
@@ -828,32 +936,78 @@ export class EnemyDirector {
     const ray = new THREE.Ray(shot.origin, normalized)
     let count = 0
     for (const enemy of this.enemies) {
-      if (enemy === nearest || enemy.health <= 0 || ['dead', 'reserve', 'combat'].includes(enemy.state) || enemy.canSee || enemy.scanCooldown > 0) continue
+      if (enemy === nearest || enemy.health <= 0 || ['dead', 'reserve'].includes(enemy.state) || enemy.scanCooldown > 0 ||
+        enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0 || this.transitioning(enemy)) continue
       const bulletPoint = new THREE.Vector3(), bodyPoint = new THREE.Vector3()
-      const separation = ray.distanceSqToSegment(enemy.position.clone().add(new THREE.Vector3(0, 0.3, 0)),
-        enemy.position.clone().add(new THREE.Vector3(0, 1.65, 0)), bulletPoint, bodyPoint)
+      const volumes = enemy.actor.hitVolumes?.volumes() ?? [{ a: enemy.position.clone().add(new THREE.Vector3(0, 0.3, 0)),
+        b: enemy.position.clone().add(new THREE.Vector3(0, 1.65, 0)) }]
+      let separation = Infinity
+      for (const volume of volumes) {
+        const bullet = new THREE.Vector3(), body = new THREE.Vector3()
+        const candidate = ray.distanceSqToSegment(volume.a, volume.b, bullet, body)
+        if (candidate < separation) { separation = candidate; bulletPoint.copy(bullet); bodyPoint.copy(body) }
+      }
       const along = bulletPoint.clone().sub(shot.origin).dot(normalized)
       if (separation > 0.95 ** 2 || along < 0.05 || along >= distance ||
         !this.context.world.visible(bodyPoint, bulletPoint, ignore)) continue
-      enemy.lastKnown = bulletPoint.clone().setY(enemy.position.y)
-      enemy.suspicion = Math.max(enemy.suspicion, 0.45)
-      enemy.lostFor = 0
-      this.enter(enemy, 'suspicious')
-      enemy.scanDuration = 1.35 + this.random(enemy) * 0.35
-      enemy.scanTimer = enemy.scanDuration
-      enemy.scanCooldown = 5
+      const roll = this.random(enemy)
+      let posture: Posture = roll < 1 / 3 ? 'crouch' : roll < 2 / 3 ? 'prone' : 'kneel'
+      const threat = enemy.canSee && enemy.lastKnown ? enemy.lastKnown : shot.origin
+      const tooClose = Math.hypot(threat.x - enemy.position.x, threat.z - enemy.position.z) < 14
+      if (posture === 'prone' && (tooClose || this.protectedPost(enemy)) || !this.postureFits(enemy, posture)) {
+        posture = this.postureFits(enemy, 'kneel') ? 'kneel' : 'crouch'
+      }
+      const engaged = enemy.state === 'combat' || enemy.canSee
+      // A missed round supplies its local passage, never a hidden shooter's coordinates.
+      // Combatants keep their confirmed contact and existing reaction/burst timing.
+      if (!engaged) {
+        enemy.lastKnown = bulletPoint.clone().setY(enemy.position.y)
+        enemy.suspicion = Math.max(enemy.suspicion, 0.45)
+        enemy.lostFor = 0
+        this.enter(enemy, 'suspicious')
+      }
+      enemy.scanDuration = 1.95 + this.random(enemy) * 0.15
+      enemy.scanTimer = engaged ? 0 : enemy.scanDuration
+      enemy.defensiveTimer = posture === 'prone' ? 7 + this.random(enemy) * 1.5 : posture === 'kneel' ? 4.5 : engaged ? 2.8 : enemy.scanDuration
+      enemy.scanCooldown = Math.max(6, enemy.defensiveTimer + 5)
       enemy.scanYaw = Math.atan2(bulletPoint.x - enemy.position.x, bulletPoint.z - enemy.position.z)
       enemy.settledFor = 0
-      enemy.actor.root.userData.alertScan = 0
+      enemy.moveSpeed = 0
+      enemy.path = []; enemy.pathTarget = null; this.plans.delete(enemy)
+      enemy.actor.setPosture?.(posture, !engaged && posture === 'crouch')
+      enemy.actor.root.userData.alertScan = !engaged && posture === 'crouch' ? 0 : undefined
       count++
     }
     return count
   }
 
+  /** Limit authored shotgun travel to clear, level floor before a wall or platform edge. */
+  private shotgunTravel(enemy: Enemy, shotDirection: THREE.Vector3) {
+    const forward = shotDirection.clone().setY(0)
+    if (forward.lengthSq() < 1e-8) return 0
+    forward.normalize()
+    let distance = 0
+    // The hips travel 1.72 m; reserve another 0.8 m for the falling torso beyond them.
+    for (let step = 1; step <= 26; step++) {
+      const travel = step / 26 * 2.53
+      const point = enemy.position.clone().addScaledVector(forward, travel)
+      let clear = true
+      for (const side of [-0.4, 0, 0.4]) {
+        const sample = point.clone().add(new THREE.Vector3(forward.z * side, 0, -forward.x * side))
+        const floor = this.context.world.floor(sample, 0.16, 0.26)
+        if (!Number.isFinite(floor) || Math.abs(floor - enemy.position.y) > 0.13) { clear = false; break }
+      }
+      const low = point.clone().add(new THREE.Vector3(0, 0.43, 0))
+      if (!clear || !this.context.world.fits(new Capsule(low, low.clone().add(new THREE.Vector3(0, 1.1, 0)), 0.4))) break
+      distance = travel
+    }
+    return clamp((distance - 0.8 + 1e-8) / 1.73, 0, 1)
+  }
+
   hit(shot: Shot, maxDistance: number) {
     const { nearest, best, normalized } = this.nearestHit(shot.origin, shot.direction, Math.min(maxDistance, shot.range))
     if (!nearest || !best) return false
-    const falloff = shot.weapon === 'shotgun' ? THREE.MathUtils.lerp(1, 0.25, clamp((best.distance - 4) / 24, 0, 1)) : 1
+    const falloff = shot.weapon === 'shotgun' ? shotgunDamageMultiplier(best.distance) : 1
     const damage = hitDamage(shot.weapon, best.zone, shot.damage) * falloff
     nearest.health = Math.max(0, nearest.health - damage)
     nearest.contactMemory = COMBAT.contactMemory
@@ -861,8 +1015,10 @@ export class EnemyDirector {
     nearest.senseTimer = 0
     const lethal = nearest.health === 0
     const fromBehind = normalized.x * Math.sin(nearest.yaw) + normalized.z * Math.cos(nearest.yaw) > 0.25
-    const reaction: HitReaction = { zone: best.zone, point: best.point, direction: normalized, lethal, bone: best.bone }
-    nearest.actor.react(reactionClipName(reaction, fromBehind), lethal)
+    const reaction: HitReaction = { zone: best.zone, point: best.point, direction: normalized, lethal, bone: best.bone, weapon: shot.weapon, targetId: nearest.spec.id }
+    nearest.scanTimer = 0
+    nearest.actor.root.userData.alertScan = undefined
+    nearest.actor.react(reactionClipName(reaction, fromBehind), lethal, normalized, lethal && shot.weapon === 'shotgun' ? this.shotgunTravel(nearest, normalized) : 1)
     if (!lethal) { nearest.hitPause = nearest.actor.reactionRemaining || 0.6; nearest.settledFor = 0; nearest.moveSpeed = 0 }
     if (lethal) nearest.deathClip = nearest.actor.deathClip
     this.context.onHit?.(reaction)
@@ -881,8 +1037,8 @@ export class EnemyDirector {
       // A witness knows the body location. Only a visible muzzle identifies the shooter.
       for (const ally of this.enemies) {
         if (ally === nearest || ['dead', 'reserve', 'combat'].includes(ally.state) || ally.position.distanceTo(nearest.position) > 18) continue
-        if (!this.context.world.visible(ally.position.clone().add(eyeOffset), nearest.position.clone().add(new THREE.Vector3(0, 0.9, 0)), ignore)) continue
-        const eye = ally.position.clone().add(eyeOffset)
+        if (!this.context.world.visible(this.eye(ally), nearest.position.clone().add(new THREE.Vector3(0, 0.9, 0)), ignore)) continue
+        const eye = this.eye(ally)
         const sawShooter = insideVisionCone(eye, ally.yaw, shot.origin, ally.spec.role === 'sniper' ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) && this.context.world.visible(eye, shot.origin, ignore)
         ally.lastKnown = sawShooter ? shot.origin.clone().setY(this.lastPlayer?.feet.y ?? ally.position.y) : nearest.position.clone()
         if (sawShooter) ally.contactMemory = COMBAT.contactMemory
@@ -966,6 +1122,7 @@ export class EnemyDirector {
       canSee: enemy.canSee, tactic: enemy.tactic, tacticPoint: enemy.tacticPoint ? tuple(enemy.tacticPoint) : null,
       searchPoints: enemy.searchPoints.map(tuple), woundArm: enemy.woundArm, woundLeg: enemy.woundLeg, deathClip: enemy.deathClip,
       noticedBodies: [...enemy.noticedBodies],
+      actorPosture: enemy.actor.postureSnapshot?.(),
       animationTime: enemy.actor.animationTime, elapsed: this.elapsed, reserveDestination: this.reserveDestination ? tuple(this.reserveDestination) : null,
     }))
   }
@@ -1000,8 +1157,8 @@ export class EnemyDirector {
       enemy.actor.root.position.copy(enemy.position)
       enemy.actor.root.rotation.y = enemy.yaw
       enemy.actor.root.visible = enemy.state !== 'reserve'
-      enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 && enemy.scanDuration > 0 ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
-      enemy.actor.restore(enemy.state, number(saved.animationTime), enemy.deathClip)
+      enemy.actor.restore(enemy.state, number(saved.animationTime), enemy.deathClip, saved.actorPosture as ActorPostureSnapshot | undefined)
+      enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 && enemy.scanDuration > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel' ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
       this.elapsed = number(saved.elapsed)
       this.reserveDestination = vector(saved.reserveDestination)
     }

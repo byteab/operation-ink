@@ -194,7 +194,9 @@ async function seq(player: Ctx['player'], list: THREE.AnimationClip[]) {
 }
 
 /** Missed shot → startle, lower body, look left/right, creep two steps, stand back up to idle. */
-export async function curious({ player, clips: c }: Ctx) {
+export async function curious(ctx: Ctx) {
+  if (ctx.weapons.guns?.nearMiss) { await ctx.weapons.guns.nearMiss('curious'); return }
+  const { player, clips: c } = ctx
   if (await seq(player, [clips.startle, clips.lower, clips.lookAround, clips.creepIn, clips.rise])) player.play(c.idle)
 }
 
@@ -204,6 +206,8 @@ const then = (clip: keyof typeof clips, next: (c: Ctx['clips']) => THREE.Animati
 
 export const actions: Action[] = [
   { group: 'Behaviour', label: 'Missed shot → curious', hotkey: 'm', run: curious },
+  { group: 'Behaviour', label: 'Missed shot → drop prone', run: ctx => ctx.weapons.guns?.nearMiss('prone') },
+  { group: 'Behaviour', label: 'Missed shot → one knee', run: ctx => ctx.weapons.guns?.nearMiss('kneel') },
   { group: 'Behaviour', label: 'Alert', run: then('alert', () => clips.alertIdle) },
   { group: 'Behaviour', label: 'Look around (relaxed)', run: ({ player }) => { player.play(clips.lookRelaxed) } },
   { group: 'Behaviour', label: 'Point/shout', run: then('point', c => c.idle) },

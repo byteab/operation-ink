@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { gaitPlayback } from './gait'
 
 export type PlayOpts = {
   /** crossfade seconds from the current action; default Player.fade */
@@ -37,6 +38,9 @@ export class Player {
   private rootTransition: RootTransition | null = null
   private boneTransition: BoneTransition | null = null
   private readonly adjustedBones = new Map<THREE.Bone, THREE.Quaternion>()
+  private sourceClip: THREE.AnimationClip | null = null
+  private actionSpeed = 1
+  private lastPlaybackSpeed = 1
 
   constructor(root: THREE.Object3D) {
     this.mixer = new THREE.AnimationMixer(root)
@@ -52,10 +56,13 @@ export class Player {
     this.restoreAdjustedBones()
     this.settle()
     const prev = this.current
-    const action = this.mixer.clipAction(clip)
+    this.sourceClip = clip
+    this.actionSpeed = speed
+    const playback = gaitPlayback(clip, speed * this.lastPlaybackSpeed)
+    const action = this.mixer.clipAction(playback.clip)
     action.reset().setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity).setEffectiveWeight(1)
     action.clampWhenFinished = !loop
-    action.timeScale = speed
+    action.timeScale = speed / playback.stride
     action.play()
     if (prev && prev !== action) {
       if (fade > 0) prev.crossFadeTo(action, fade, false)
@@ -82,13 +89,49 @@ export class Player {
     if (fade > 0) this.current?.fadeOut(fade)
     else this.current?.stop()
     this.current = null
+    this.sourceClip = null
     this.rootTransition = null
     this.boneTransition = boneTransition
     this.blendAdjustedPose(0)
     this.settle()
   }
 
-  setSpeed(s: number) { this.mixer.timeScale = s }
+  setSpeed(s: number) {
+    this.mixer.timeScale = s
+    // Pause freezes the current stride as well as its time.
+    if (s > 0) { this.lastPlaybackSpeed = s; this.refreshGait() }
+  }
+
+  /** Movement speed relative to the base clip, independent of global playback. */
+  setActionSpeed(speed: number) {
+    if (speed === this.actionSpeed) return
+    this.actionSpeed = speed
+    this.refreshGait()
+  }
+
+  private refreshGait() {
+    const previous = this.current
+    if (!previous || !this.sourceClip) return
+    const playback = gaitPlayback(this.sourceClip, this.actionSpeed * this.lastPlaybackSpeed)
+    if (playback.clip !== previous.getClip()) {
+      // Changing speed keeps the same foot in the same phase; it is not a new
+      // playback command and must not interrupt scenario/reaction bookkeeping.
+      const time = previous.time * (playback.clip.duration / previous.getClip().duration)
+      const paused = previous.paused, enabled = previous.enabled
+      const weight = previous.getEffectiveWeight()
+      previous.stop()
+      const action = this.mixer.clipAction(playback.clip)
+      action.reset().setLoop(previous.loop, previous.repetitions).setEffectiveWeight(weight)
+      action.clampWhenFinished = previous.clampWhenFinished
+      action.time = time
+      action.paused = paused
+      action.enabled = enabled
+      action.play()
+      this.current = action
+      this.rootTransition = null
+    }
+    this.current!.timeScale = this.actionSpeed / playback.stride
+  }
 
   /** Apply a temporary pose correction after animation, keeping the first unadjusted pose. */
   adjustBones(bones: readonly THREE.Bone[], adjust: () => void) {

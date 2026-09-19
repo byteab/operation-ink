@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { disposeGun, type Gun } from '../lab/weapons/models'
 import type { WeaponContext, WeaponFrame, WeaponItem, WeaponSnapshot } from './types'
-import { WEAPON_RULES, WEAPON_SLOTS, SHOTGUN_PELLETS, startingLoadout } from './balance'
+import { WEAPON_RULES, WEAPON_SLOTS, SHOTGUN_PELLETS, SHOTGUN_BALLISTICS, startingLoadout } from './balance'
 import { createMissionGun } from './weapon-models'
 export { WEAPON_RULES } from './balance'
 
@@ -184,7 +184,7 @@ export class FirstPersonWeapons {
     this.reloadElapsed = 0
     this.setScope(false)
     this.aim = 0
-    this.context.emit({ kind: 'reload', position: this.context.camera.getWorldPosition(new THREE.Vector3()), radius: 3, text: `Reloading ${this.label.toLowerCase()}` })
+    this.context.emit({ kind: 'reload', weapon: item.name, position: this.context.camera.getWorldPosition(new THREE.Vector3()), radius: 3, text: `Reloading ${this.label.toLowerCase()}` })
     return true
   }
 
@@ -259,7 +259,7 @@ export class FirstPersonWeapons {
         if (shellReload && this.current.magazine < WEAPON_RULES.shotgun.capacity && this.current.reserve > 0) this.reloadElapsed -= WEAPON_RULES.shotgun.reload
         else {
           this.reloadElapsed = null
-          this.context.emit({ kind: 'reload-ready', radius: 2, position: this.feet.clone(), text: 'Weapon ready' })
+          this.context.emit({ kind: 'reload-ready', weapon: this.current.name, radius: 2, position: this.feet.clone(), text: 'Weapon ready' })
         }
       }
     }
@@ -400,9 +400,9 @@ export class FirstPersonWeapons {
     this.recoil = 1
     this.flashTime = 0.045
     if (item.name === 'shotgun') {
-      const right = new THREE.Vector3().crossVectors(direction, up).normalize()
+      const right = new THREE.Vector3().crossVectors(direction, Math.abs(direction.y) > 0.98 ? new THREE.Vector3(1, 0, 0) : up).normalize()
       const vertical = new THREE.Vector3().crossVectors(right, direction).normalize()
-      const spread = Math.tan(THREE.MathUtils.degToRad(this.frame.aiming ? 2.6 : 4.2))
+      const spread = Math.tan(SHOTGUN_BALLISTICS.halfAngle)
       const rotation = Math.random() * Math.PI * 2
       for (let pellet = 0; pellet < SHOTGUN_PELLETS; pellet++) {
         const angle = rotation + pellet * 2.399963

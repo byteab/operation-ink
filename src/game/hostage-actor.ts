@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { loadStickman, type Rig } from '../lab/rig'
+import { GAIT_SPEED } from '../lab/gait'
 import { makeClip, type Key, type Pose } from '../lab/clip'
 import { Player } from '../lab/player'
 
@@ -89,16 +90,18 @@ export class HostageActor {
 
   animate(dt: number, moving: boolean, cowering: boolean, seated: boolean, captive: boolean) {
     if (seated) this.boardingFor = Math.min(BOARD_SECONDS, this.boardingFor + dt)
-    const mode = captive ? 'seated' : seated ? this.boardingFor < BOARD_SECONDS ? 'board' : 'seated' : !this.canWalk ? 'stand' : cowering ? 'cower' : moving ? 'walk' : 'idle'
+    // Escort travel is 2.05 m/s: use the shared run instead of doubling the walk's cadence.
+    const mode = captive ? 'seated' : seated ? this.boardingFor < BOARD_SECONDS ? 'board' : 'seated' : !this.canWalk ? 'stand' : cowering ? 'cower' : moving ? 'run' : 'idle'
     if (mode !== this.mode) {
       this.mode = mode
-      void this.player.play(this.clips[mode], { fade: ['stand', 'seated', 'board'].includes(mode) ? 0 : 0.12, once: mode === 'stand' || mode === 'board' })
+      const groundedTransition = mode === 'run' || this.player.current?.getClip().name === 'run'
+      void this.player.play(this.clips[mode], { fade: groundedTransition || ['stand', 'seated', 'board'].includes(mode) ? 0 : 0.12, once: mode === 'stand' || mode === 'board' })
     }
     if (mode === 'stand' || mode === 'board') {
       this.player.current!.time = mode === 'stand' ? this.standingFor : this.boardingFor
       this.player.update(0)
     } else {
-      this.player.current!.timeScale = moving ? 2.05 / 1.4 : 1
+      this.player.setActionSpeed(mode === 'run' ? 2.05 / GAIT_SPEED.run : 1)
       this.player.update(dt)
     }
     this.root.userData.animation = this.clips[mode].name

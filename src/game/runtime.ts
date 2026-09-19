@@ -55,7 +55,11 @@ export class MissionRuntime {
     this.weapons = new FirstPersonWeapons({ scene, camera: camera.perspective, world: player.world,
       aimDistance: (origin, direction, maxDistance) => this.ai.aimDistance(origin, direction, maxDistance),
       emit: event => this.emit(event, true), onShot: shot => this.shot(shot) })
-    this.blood = new MissionBlood(scene, player.world)
+    this.blood = new MissionBlood(scene, player.world, id => {
+      const enemy = this.ai?.enemies.find(candidate => candidate.spec.id === id)
+      if (!enemy || enemy.state !== 'dead' || enemy.deathClip !== 'dieShotgun') return null
+      return enemy.actor.rig.bones.chest.getWorldPosition(new THREE.Vector3())
+    })
     this.impacts = new MissionImpacts(scene)
     player.lookSensitivity = () => this.weapons.lookSensitivity
     this.ai = new EnemyDirector({ scene, world: player.world, doors: player.actions.doors, specs: world.enemies,

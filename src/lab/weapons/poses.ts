@@ -47,3 +47,26 @@ export function heldPose(body: Pose, hold: Hold, support?: [number, number, numb
   }
   return pose
 }
+
+/** Re-fit the trigger hand after changing the torso's posture, retaining the barrel's orientation. */
+export function shiftTriggerPose(body: Pose, offset: [number, number, number], prone = 0, twoHanded = true): Pose {
+  for (const name of BONE_NAMES) {
+    bones[name].position.copy(rest![name].pos)
+    poseQuat(name, body[name] ?? [0, 0, 0], bones[name].quaternion)
+  }
+  root.updateMatrixWorld(true)
+  const point = bones['hand.R'].localToWorld(mountPosition.clone()).add(new THREE.Vector3(...offset))
+  const rotation = bones['hand.R'].getWorldQuaternion(new THREE.Quaternion()).multiply(mountQuaternion)
+  placeHand(rig, 'R', point, 1, { orientation: rotation.clone().multiply(mountQuaternion.clone().invert()),
+    pole: new THREE.Vector3(-0.6, -1, -0.4).lerp(new THREE.Vector3(-0.65, -1, -0.35), prone) })
+  if (!twoHanded && prone > 0) {
+    const brace = point.clone().add(new THREE.Vector3(0.055, -0.035, 0.015).applyQuaternion(rotation))
+    placeHand(rig, 'L', brace, prone, { pole: new THREE.Vector3(0.8, -1, -0.1), maxWristAngle: 65 })
+  }
+  const pose = { ...body }
+  for (const name of armBones) {
+    const e = new THREE.Euler().setFromQuaternion(rest![name].quat.clone().invert().multiply(bones[name].quaternion), 'ZYX')
+    pose[name] = [e.x, e.y, e.z].map(v => v * THREE.MathUtils.RAD2DEG) as [number, number, number]
+  }
+  return pose
+}

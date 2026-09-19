@@ -2,11 +2,11 @@ import * as THREE from 'three'
 import type { BoneName, Rig } from '../lab/rig'
 import { createStampSurface } from '../lab/fx/blood-stamps'
 import type { CollisionWorld } from '../player/collision'
-import type { Vec3 } from './types'
+import type { Vec3, WeaponName } from './types'
 
 export type HitZone = 'head' | 'torso' | 'arm' | 'leg'
 export type ActorHit = { distance: number; point: THREE.Vector3; zone: HitZone; bone: BoneName }
-export type HitReaction = { zone: HitZone; point: THREE.Vector3; direction: THREE.Vector3; lethal: boolean; bone?: BoneName }
+export type HitReaction = { zone: HitZone; point: THREE.Vector3; direction: THREE.Vector3; lethal: boolean; bone?: BoneName; weapon?: WeaponName; targetId?: string }
 export type ActorReactionSnapshot = { clip: string; elapsed: number; zone: HitZone; lethal: boolean }
 export type HitVolume = { a: THREE.Vector3; b: THREE.Vector3; radius: number; zone: HitZone; bone: BoneName }
 
@@ -72,7 +72,8 @@ export class AnimatedHitVolumes {
   }
 }
 
-export function reactionClipName(hit: Pick<HitReaction, 'zone' | 'lethal' | 'bone'>, fromBehind: boolean) {
+export function reactionClipName(hit: Pick<HitReaction, 'zone' | 'lethal' | 'bone' | 'weapon'>, fromBehind: boolean) {
+  if (hit.lethal && hit.weapon === 'shotgun') return 'dieShotgun'
   const region = { head: 'Head', torso: 'Body', arm: 'Arm', leg: 'Leg' }[hit.zone]
   const base = hit.lethal && hit.zone === 'torso' && fromBehind ? 'dieBack' : `${hit.lethal ? 'die' : 'flinch'}${region}`
   return `${base}${(hit.zone === 'arm' || hit.zone === 'leg') && hit.bone?.endsWith('.L') ? 'Left' : ''}`
@@ -110,7 +111,8 @@ export function mirrorReactionClip(clip: THREE.AnimationClip, rig: Rig) {
 
 type Droplet = { position: Vec3; velocity: Vec3; radius: number; age: number }
 type Stain = { position: Vec3; size: number; angle: number; stamp: number; grow?: number }
-export type BloodSnapshot = { droplets: Droplet[]; stains: Stain[]; seed: number }
+type ShotgunBurst = { targetId: string; direction: Vec3; elapsed: number; next: number }
+export type BloodSnapshot = { droplets: Droplet[]; stains: Stain[]; seed: number; shotgunBursts?: ShotgunBurst[] }
 
 /** Per-mission version of the lab's pigment stamps; no global lab singleton, flat-ground assumption or timers. */
 export class MissionBlood {
@@ -119,6 +121,7 @@ export class MissionBlood {
   private readonly stainLimit = 512
   private droplets: Droplet[] = []
   private stains: Stain[] = []
+  private shotgunBursts: ShotgunBurst[] = []
   private seed = 17923
   private surface = createStampSurface(this.stainLimit)
   private drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 5, 4), new THREE.MeshBasicMaterial({ color: 0xb01020, toneMapped: false }), this.dropLimit)
@@ -131,7 +134,8 @@ export class MissionBlood {
   private disposed = false
   private regions = new Map<string, CollisionWorld>()
 
-  constructor(scene: THREE.Scene, private world: Pick<CollisionWorld, 'floor' | 'rayDistance'> & Partial<Pick<CollisionWorld, 'region'>>) {
+  constructor(scene: THREE.Scene, private world: Pick<CollisionWorld, 'floor' | 'rayDistance'> & Partial<Pick<CollisionWorld, 'region'>>,
+    private followBody?: (targetId: string) => THREE.Vector3 | null) {
     this.root.name = 'Mission blood effects'
     this.root.userData.noCollision = true
     this.drops.name = 'Impact blood droplets'
@@ -167,21 +171,32 @@ export class MissionBlood {
     return view
   }
 
-  emitHit(hit: HitReaction) {
-    if (this.disposed) return
-    const count = hit.lethal ? 42 : 24
-    const forward = hit.direction.clone().normalize()
+  private spray(point: THREE.Vector3, forward: THREE.Vector3, count: number, lethal: boolean, shotgun = false) {
     for (let i = 0; i < count; i++) {
-      const speed = 1.3 + this.random() * (hit.lethal ? 3.5 : 2.3)
+      const speed = 1.3 + this.random() * (lethal ? 3.5 : 2.3) + (shotgun ? 0.5 : 0)
       const direction = forward.clone().multiplyScalar(i % 4 === 0 ? -0.7 : 1)
-        .add(new THREE.Vector3((this.random() - 0.5) * 1.4, this.random() - 0.2, (this.random() - 0.5) * 1.4)).normalize().multiplyScalar(speed)
+        .add(new THREE.Vector3((this.random() - 0.5) * (shotgun ? 1.7 : 1.4), this.random() - 0.2,
+          (this.random() - 0.5) * (shotgun ? 1.7 : 1.4))).normalize().multiplyScalar(speed)
       direction.y += 0.45 + this.random() * 0.75
-      this.droplets.push({ position: hit.point.toArray() as Vec3, velocity: direction.toArray() as Vec3,
-        radius: 0.028 + this.random() * (hit.lethal ? 0.04 : 0.03), age: 0 })
+      this.droplets.push({ position: point.toArray() as Vec3, velocity: direction.toArray() as Vec3,
+        radius: 0.028 + this.random() * (lethal ? 0.04 : 0.03), age: 0 })
     }
     this.droplets = this.droplets.slice(-this.dropLimit)
+  }
+
+  emitHit(hit: HitReaction) {
+    if (this.disposed) return
+    const shotgun = hit.weapon === 'shotgun'
+    const forward = hit.direction.clone().normalize()
+    this.spray(hit.point, forward, shotgun ? (hit.lethal ? 110 : 36) : hit.lethal ? 42 : 24, hit.lethal, shotgun)
+    const followsFall = shotgun && hit.lethal && hit.targetId && this.followBody
+    if (followsFall) {
+      this.shotgunBursts = this.shotgunBursts.filter(burst => burst.targetId !== hit.targetId)
+      this.shotgunBursts.push({ targetId: hit.targetId!, direction: forward.toArray(), elapsed: 0, next: 0 })
+      this.shotgunBursts = this.shotgunBursts.slice(-16)
+    }
     // Broken pigment around the wound reads immediately, before gravity lands the spray.
-    for (let i = 0; i < (hit.lethal ? 5 : 2); i++) {
+    for (let i = 0; i < (shotgun ? (hit.lethal ? 8 : 3) : hit.lethal ? 5 : 2); i++) {
       const spread = new THREE.Vector3((this.random() - 0.5) * 1.1, 0, (this.random() - 0.5) * 1.1)
         .addScaledVector(forward, 0.12 + this.random() * 0.28)
       spread.y = 0
@@ -193,7 +208,7 @@ export class MissionBlood {
     // never attach a pool to an unrelated earlier victim.
     this.stain(hit.point, hit.lethal ? 0.3 : 0.17,
       hit.lethal ? 16 + Math.floor(this.random() * 8) : Math.floor(this.random() * 16),
-      hit.lethal ? 0.55 + this.random() * 0.15 : undefined)
+      hit.lethal && !followsFall ? 0.55 + this.random() * 0.15 : undefined)
     this.render()
   }
 
@@ -225,6 +240,23 @@ export class MissionBlood {
   update(dt: number) {
     if (this.disposed || dt <= 0) return
     const delta = Math.min(dt, 0.05)
+    // Same authored impact times as the lab; anchors follow the animated corpse,
+    // and snapshots retain pending marks without timers or renderer references.
+    const events = [0.12, 0.26, 0.44, 0.73]
+    this.shotgunBursts = this.shotgunBursts.filter(burst => {
+      const point = this.followBody?.(burst.targetId)
+      if (!point) return false
+      burst.elapsed += delta
+      while (burst.next < events.length && burst.elapsed + 1e-8 >= events[burst.next]) {
+        const index = burst.next++
+        if (index < 3) this.spray(point, new THREE.Vector3(...burst.direction), 20 - index * 4, false, true)
+        else {
+          this.stain(point, 0.32, 16 + Math.floor(this.random() * 8), 0.65)
+          this.spray(point, new THREE.Vector3(...burst.direction).setY(0.15).normalize(), 16, false)
+        }
+      }
+      return burst.next < events.length
+    })
     for (const mark of this.stains) if (mark.grow && mark.size < mark.grow) mark.size = Math.min(mark.grow, mark.size + delta * 0.1)
     const live: Droplet[] = []
     for (const drop of this.droplets) {
@@ -285,11 +317,12 @@ export class MissionBlood {
     if (this.marks.instanceColor) this.marks.instanceColor.needsUpdate = true
   }
 
-  snapshot(): BloodSnapshot { return structuredClone({ droplets: this.droplets, stains: this.stains, seed: this.seed }) }
+  snapshot(): BloodSnapshot { return structuredClone({ droplets: this.droplets, stains: this.stains, seed: this.seed, shotgunBursts: this.shotgunBursts }) }
   restore(snapshot?: BloodSnapshot | null) {
     if (this.disposed) return
     this.droplets = structuredClone(snapshot?.droplets ?? []).slice(-this.dropLimit)
     this.stains = structuredClone(snapshot?.stains ?? []).slice(-this.stainLimit)
+    this.shotgunBursts = structuredClone(snapshot?.shotgunBursts ?? []).slice(-16)
     this.seed = snapshot?.seed ?? 17923
     this.render()
   }
@@ -304,7 +337,7 @@ export class MissionBlood {
     this.surface.material.uniforms.atlas.value.dispose()
     this.surface.material.dispose()
     this.surface.geometry.dispose()
-    this.droplets = []; this.stains = []
+    this.droplets = []; this.stains = []; this.shotgunBursts = []
     this.drops.count = this.marks.count = 0
   }
 }

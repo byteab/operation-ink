@@ -2,6 +2,7 @@ import type * as THREE from 'three'
 import { makeClip, mirrorPose, type Key, type Pose, type Vec3 } from '../clip'
 import { hang } from './idle'
 import type { Action, Ctx } from '../registry'
+import { bakeGait } from '../gait'
 
 // All clips are in place: the game moves/turns the root. Axis cheat sheet (rig.ts):
 //   thigh x: - forward (knee lift) / + back      shin x: + bends knee (keep >= 0)
@@ -18,62 +19,11 @@ const legs = (thigh: number, shin: number, spread = 0): Pose => ({
  *  Thighs are children of hips, so the pelvis pitch is subtracted from the thigh angle. */
 const squat = (deg: number, lean: number, spread = 0): Pose => ({ ...legs(-(deg + lean), deg * 2, spread), hips: [lean, 0, 0] })
 
-/** Contralateral arm swing. `fwd` = how far the LEFT arm is forward in degrees (right arm mirrors). */
-const arms = (fwd: number, bend: number): Pose => ({
-  'upper_arm.L': [-78, fwd, 0], 'upper_arm.R': [-78, fwd, 0],
-  'forearm.L': [0, 0, -bend - (fwd < 0 ? -fwd * 0.6 : 0)], 'forearm.R': [0, 0, bend + (fwd > 0 ? fwd * 0.6 : 0)],
-})
-
-// ---------------------------------------------------------------- walk (1.0 s)
-// Half cycle: left heel strike -> left mid-stance -> right heel strike. Second half is the mirror.
-const walkHalf: Key[] = [
-  { t: 0, root: [0.0, -0.012, 0], pose: {     // L heel strike, R toe-off. hips low (double support)
-    'thigh.L': [-26, 0, 0], 'shin.L': [4, 0, 0], 'thigh.R': [20, 0, 0], 'shin.R': [10, 0, 0],
-    hips: [3, -6, 0], chest: [0, 6, 0], head: [0, 0, 0], ...arms(22, 8),
-  } },
-  { t: 0.12, root: [0.02, -0.018, 0], pose: {  // loading: L knee absorbs, R pushes off
-    'thigh.L': [-18, 0, 0], 'shin.L': [16, 0, 0], 'thigh.R': [24, 0, 0], 'shin.R': [32, 0, 0],
-    hips: [3, -4, -2], chest: [0, 4, 2], ...arms(16, 10),
-  } },
-  { t: 0.25, root: [0.025, 0.014, 0], pose: {   // L mid-stance (leg straight, hips high), R swings through with knee bent
-    'thigh.L': [-3, 0, 0], 'shin.L': [8, 0, 0], 'thigh.R': [-6, 0, 0], 'shin.R': [58, 0, 0],
-    hips: [3, 0, -3], chest: [0, 0, 3], ...arms(0, 10),
-  } },
-  { t: 0.37, root: [0.015, 0.006, 0], pose: {   // L pushes, R reaches forward, knee extending
-    'thigh.L': [10, 0, 0], 'shin.L': [4, 0, 0], 'thigh.R': [-26, 0, 0], 'shin.R': [26, 0, 0],
-    hips: [3, 4, -2], chest: [0, -4, 2], ...arms(-16, 8),
-  } },
-]
+// Whole-body walk/run references are retargeted together in gait.ts.
+const walk = bakeGait('walk')
+const run = bakeGait('run')
 const mirrorKeys = (keys: Key[], half: number): Key[] =>
   keys.map(k => ({ ...k, t: k.t + half, pose: mirrorPose(k.pose), root: k.root && ([-k.root[0], k.root[1], k.root[2]] as Vec3) }))
-
-const walk = makeClip('walk', [...walkHalf, ...mirrorKeys(walkHalf, 0.5)], { loop: true, duration: 1.0 })
-
-// ---------------------------------------------------------------- run (0.6 s)
-const lean: Pose = { spine: [6, 0, 0], chest: [6, 0, 0], head: [-6, 0, 0] }
-const pump = (fwd: number): Pose => ({
-  'upper_arm.L': [-72, fwd, 0], 'upper_arm.R': [-72, fwd, 0],
-  'forearm.L': [0, 0, -95], 'forearm.R': [0, 0, 95],
-})
-const runHalf: Key[] = [
-  { t: 0, root: [0, -0.02, 0], pose: {          // L foot strike under the body, R leg trailing
-    ...lean, 'thigh.L': [-30, 0, 0], 'shin.L': [18, 0, 0], 'thigh.R': [28, 0, 0], 'shin.R': [40, 0, 0],
-    hips: [8, -8, 0], chest: [6, 8, 0], ...pump(40),
-  } },
-  { t: 0.08, root: [0, -0.03, 0], pose: {      // stance leg loaded
-    ...lean, 'thigh.L': [-12, 0, 0], 'shin.L': [30, 0, 0], 'thigh.R': [10, 0, 0], 'shin.R': [85, 0, 0],
-    hips: [8, -4, -3], chest: [6, 4, 3], ...pump(20),
-  } },
-  { t: 0.17, root: [0, 0.02, 0], pose: {        // toe-off, going airborne
-    ...lean, 'thigh.L': [22, 0, 0], 'shin.L': [20, 0, 0], 'thigh.R': [-28, 0, 0], 'shin.R': [95, 0, 0],
-    hips: [8, 2, -2], chest: [6, -2, 2], ...pump(-10),
-  } },
-  { t: 0.24, root: [0, 0.06, 0], pose: {        // flight: R knee high, L heel kicked back
-    ...lean, 'thigh.L': [30, 0, 0], 'shin.L': [70, 0, 0], 'thigh.R': [-48, 0, 0], 'shin.R': [70, 0, 0],
-    hips: [8, 6, 0], chest: [6, -6, 0], ...pump(-35),
-  } },
-]
-const run = makeClip('run', [...runHalf, ...mirrorKeys(runHalf, 0.3)], { loop: true, duration: 0.6 })
 
 // ---------------------------------------------------------------- jump (1.1 s)
 const jump = makeClip('jump', [

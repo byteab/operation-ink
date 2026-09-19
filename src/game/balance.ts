@@ -8,7 +8,7 @@ export const WEAPON_RULES = {
   pistol: { label: 'Pistol', capacity: 12, reload: 1.85, interval: 0.25, range: 110, damage: 30, automatic: false, kick: 0.03, settle: 0.55 },
   ak: { label: 'AK rifle', capacity: 30, reload: 2.3, interval: 0.12, range: 170, damage: 34, automatic: true, kick: 0.022, settle: 0.6 },
   smg: { label: 'SMG', capacity: 24, reload: 2.05, interval: 0.085, range: 100, damage: 24, automatic: true, kick: 0.012, settle: 0.65 },
-  shotgun: { label: 'Pump shotgun', capacity: 6, reload: 0.65, interval: 0.9, range: 32, damage: 14, automatic: false, kick: 0.055, settle: 0.7 },
+  shotgun: { label: 'Pump shotgun', capacity: 6, reload: 0.65, interval: 0.9, range: 32, damage: 18, automatic: false, kick: 0.055, settle: 0.7 },
   sniper: { label: 'Sniper rifle', capacity: 5, reload: 2.9, interval: 1.35, range: 220, damage: 65, automatic: false, kick: 0.048, settle: 0.85 },
 } as const
 
@@ -45,6 +45,17 @@ export const ENEMY_COMBAT = {
 } as const
 
 export const SHOTGUN_PELLETS = 8
+// Buckshot expands from the muzzle: about 38 cm across at 10 m. Aiming does
+// not change the barrel/choke, so ADS uses the same cone as hip fire.
+export const SHOTGUN_BALLISTICS = { halfAngle: 1.1 * Math.PI / 180, fullDamageRange: 8, minimumDamageScale: 0.4 } as const
+
+/** Pattern density does most of the range balancing; individual pellets also lose energy. */
+export function shotgunDamageMultiplier(distance: number) {
+  const travel = Math.max(0, Math.min(1, (distance - SHOTGUN_BALLISTICS.fullDamageRange) /
+    (WEAPON_RULES.shotgun.range - SHOTGUN_BALLISTICS.fullDamageRange)))
+  return 1 - travel * (1 - SHOTGUN_BALLISTICS.minimumDamageScale)
+}
+
 export const WEAPON_SLOTS = 4
 export function startingLoadout(): WeaponItem[] {
   return [

@@ -163,7 +163,32 @@ const dieBack = makeClip('dieBack', [
   K(1.4, { head: [-18, 44, 0], neck: [-12, 0, 0], 'upper_arm.L': [-10, 4, 0], 'upper_arm.R': [-30, -4, 0], 'forearm.L': [-25, 0, 0], 'forearm.R': [-55, 0, 0], 'shin.L': [8, 0, 0], 'shin.R': [4, 0, 0] }, [0, -0.71, 0.58]),
 ])
 
-export const clips = { flinchHead, flinchBody, flinchArm, flinchLeg, dieHead, dieBody, dieArm, dieLeg, dieBack }
+/** Close shotgun impact: compression, airborne recoil, trailing limbs, back/shoulder contact, settle. */
+const dieShotgun = makeClip('dieShotgun', [
+  K(0, { ...hang, hips: [0, 0, 0] }, [0, 0, 0]),
+  { ...K(0.055, { ...hang, chest: [-18, -4, 0], head: [-18, 8, 5], hips: [-7, 0, -3],
+    'thigh.L': [-12, 0, 0], 'thigh.R': [-9, 0, 0], 'shin.L': [22, 0, 0], 'shin.R': [18, 0, 0] }, [0, -0.035, -0.08]), ease: 'linear' },
+  { ...K(0.17, { hips: [-32, 3, -6], spine: [-6, 0, 0], chest: [-10, 0, 0], head: [-14, 8, 8],
+    'thigh.L': [-42, 0, -5], 'thigh.R': [-30, 0, 5], 'shin.L': [48, 0, 0], 'shin.R': [32, 0, 0],
+    'upper_arm.L': [-28, -80, 0], 'upper_arm.R': [-38, 76, 0], 'forearm.L': [0, 0, -45], 'forearm.R': [0, 0, 32] }, [0.025, 0.21, -0.38]), ease: 'linear' },
+  K(0.32, { hips: [-66, 8, -9], chest: [8, 0, 0], head: [10, 8, 8],
+    'thigh.L': [-62, 0, -8], 'thigh.R': [-44, 0, 5], 'shin.L': [38, 0, 0], 'shin.R': [54, 0, 0],
+    'upper_arm.L': [-12, -88, -12], 'upper_arm.R': [-22, 82, 10], 'forearm.L': [0, 0, -38], 'forearm.R': [0, 0, 52] }, [0.06, 0.31, -0.82]),
+  { ...K(0.5, { hips: [-96, 10, -12], spine: [8, 0, 0], chest: [10, 0, 0], head: [22, 12, 8],
+    'thigh.L': [-48, 0, -8], 'thigh.R': [-60, 0, 6], 'shin.L': [48, 0, 0], 'shin.R': [34, 0, 0],
+    'upper_arm.L': [-22, -76, -12], 'upper_arm.R': [-15, 70, 8], 'forearm.L': [0, 0, -55], 'forearm.R': [0, 0, 35] }, [0.105, 0.12, -1.2]), ease: 'linear' },
+  { ...K(0.73, { hips: [-99, 12, -8], spine: [3, 0, 0], chest: [6, 0, 0], head: [28, 18, 10],
+    'thigh.L': [-36, 0, -10], 'thigh.R': [-45, 0, 7], 'shin.L': [50, 0, 0], 'shin.R': [60, 0, 0],
+    'upper_arm.L': [-42, -48, -8], 'upper_arm.R': [-32, 56, 12], 'forearm.L': [0, 0, -65], 'forearm.R': [0, 0, 52] }, [0.14, -0.62, -1.55]), ease: 'linear' },
+  K(0.82, { hips: [-86, 12, -10], head: [32, 20, 12], 'thigh.L': [-48, 0, -10], 'thigh.R': [-32, 0, 7] }, [0.15, -0.56, -1.63]),
+  K(1.02, { hips: [-90, 12, -8], spine: [0, 0, 0], chest: [0, 0, 0], head: [18, 28, 8],
+    'thigh.L': [-12, 0, -8], 'thigh.R': [-23, 0, 5], 'shin.L': [22, 0, 0], 'shin.R': [44, 0, 0],
+    'upper_arm.L': [-56, -8, -8], 'upper_arm.R': [-63, 12, 6], 'forearm.L': [-6, 0, -28], 'forearm.R': [0, 0, 25] }, [0.16, -0.65, -1.7]),
+  K(1.4, { head: [16, 32, 8], 'thigh.L': [-5, 0, -8], 'thigh.R': [-14, 0, 5], 'shin.L': [12, 0, 0], 'shin.R': [28, 0, 0],
+    'upper_arm.L': [-62, 0, -8], 'upper_arm.R': [-70, 8, 6], 'forearm.L': [-8, 0, -18], 'forearm.R': [0, 0, 16] }, [0.16, -0.65, -1.72]),
+])
+
+export const clips = { flinchHead, flinchBody, flinchArm, flinchLeg, dieHead, dieBody, dieArm, dieLeg, dieBack, dieShotgun }
 
 // ---------------------------------------------------------------- helper + actions
 
@@ -193,7 +218,31 @@ export async function hitRegion(ctx: Ctx, region: Region, lethal: boolean) {
 }
 
 const regions: Region[] = ['head', 'body', 'arm', 'leg']
+let shotgunFX: { revision: number; next: number } | null = null
+export function hitShotgun(ctx: Ctx) {
+  ctx.weapons.guns?.release?.()
+  for (const [x, y, amount] of [[-0.35, 0.35, 1], [0.4, 0.1, 0.85], [0, 0.65, 0.8]]) {
+    const pos = ctx.rig.bones.chest.getWorldPosition(new THREE.Vector3())
+    ctx.fx.blood?.spray(pos, new THREE.Vector3(x, y, -1).transformDirection(ctx.rig.root.matrixWorld), amount)
+  }
+  void ctx.player.play(dieShotgun, { once: true, fade: 0.035 })
+  shotgunFX = { revision: ctx.player.revision, next: 0 }
+}
+
+export function update(_dt: number, ctx: Ctx) {
+  if (!shotgunFX) return
+  if (ctx.player.revision !== shotgunFX.revision || ctx.player.current?.getClip() !== dieShotgun) { shotgunFX = null; return }
+  const marks = [0.12, 0.26, 0.44, 0.73]
+  while (shotgunFX.next < marks.length && ctx.player.current.time >= marks[shotgunFX.next]) {
+    const index = shotgunFX.next++, pos = ctx.rig.bones.chest.getWorldPosition(new THREE.Vector3())
+    if (index < 3) ctx.fx.blood?.spray(pos, new THREE.Vector3(0.1, 0.05, -1).transformDirection(ctx.rig.root.matrixWorld), 0.42 - index * 0.08)
+    else { ctx.fx.blood?.splat(pos, 0.27); ctx.fx.blood?.pool(pos, 4) }
+  }
+  if (shotgunFX.next === marks.length) shotgunFX = null
+}
+
 export const actions: Action[] = [
+  { group: 'Damage', label: 'Shotgun: airborne knockback', hotkey: '6', run: hitShotgun },
   ...regions.map((r): Action => ({ group: 'Damage', label: `Flinch: ${r}`, run: ctx => hitRegion(ctx, r, false) })),
   ...regions.map((r, i): Action => ({ group: 'Damage', label: `Die: ${r}`, hotkey: String(i + 1), run: ctx => hitRegion(ctx, r, true) })),
   { group: 'Damage', label: 'Die: from behind', hotkey: '5', run: async ctx => {
