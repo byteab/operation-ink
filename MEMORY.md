@@ -82,3 +82,12 @@ Inspected read-only on 2026-09-19 by the environment-inspector subagent. No appl
 - Sniper scope starts at 4× and adjusts from 2× to 8× in 1× steps while holding right click: Q / wheel down zooms out; E / wheel up zooms in. Held Q/E repeats. Inputs only affect an active sniper scope; wheel handling is limited to the game canvas and leaves modifier shortcuts alone.
 - Scope HUD shows live magnification and control hints. Optical FOV and mouse sensitivity follow the selected magnification. Releasing aim or reloading preserves the equipped scope setting; changing weapons or restoring a checkpoint resets it to 4×. Leaving scope always restores the original camera FOV.
 - Build, weapon/loadout/shotgun-ballistics checks and polish weapon checks passed, covering zoom bounds, inactive/reload input, picked-up sniper zoom, sensitivity, FOV restoration and AK checkpoint selection. No browser verification was performed.
+
+## Armored rescue transport
+
+- Replaced the open Willys escape jeep with the user's Humvee reference shape: enclosed two-door cabin with solid rear quarter panels, sloped hood/rear, split windshield, large treaded wheels. No roof gun or mount.
+- User clarification: the entire vehicle must be white with drawn lines, like the other objects; no gray shading or colored fills, including tires and interior. It uses shared Draft paper materials, with unfilled window apertures.
+- The passenger door automatically opens as the hostage approaches, closes after boarding, and resets on restart. Existing seat/footwell anchors and escape route are preserved.
+- The user explicitly authorized agent-browser verification for this task. Build and rescue checks passed; agent-browser visual checks and staged boarding/escape/restart checks passed. Evidence and scope: `docs/rescue-transport/README.md`.
+
+- Vehicle detail corrections: shortened side steps to the front-door span, leaving 0.437 m clearance from both tire envelopes, and added chassis brackets. Replaced the floating steering contour with a solid white rim, three spokes, hub, column and dashboard bracket; checked both geometry connections and side/driver views in agent-browser.

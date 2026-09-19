@@ -14,6 +14,7 @@ import { advanceMission, completeEscape, damageMission, initialMission, loadedCo
 import { HostageEscort } from './hostages'
 import { SecuritySystem } from './security'
 import { RESCUE_LAYOUT } from './rescue-layout'
+import { updateRescueJeepDoor } from './rescue-jeep'
 import type { EnemySnapshot, MissionWorld, Shot, SoundEvent, Station, Vec3, WeaponSnapshot } from './types'
 
 type Checkpoint = { mission: MissionState; weapons: WeaponSnapshot; enemies: EnemySnapshot[]; doors: boolean[]; position: Vec3; quaternion: [number,number,number,number]; blood?: BloodSnapshot }
@@ -287,7 +288,11 @@ export class MissionRuntime {
         setDoorOpen(door, released)
       })
       rescue.jeep.position.set(...RESCUE_LAYOUT.escapeRoute[0])
-      if (resetEscort) for (const wheel of rescue.jeep.userData.wheels as THREE.Group[] ?? []) wheel.rotation.z = 0
+      if (resetEscort) {
+        for (const wheel of rescue.jeep.userData.wheels as THREE.Group[] ?? []) wheel.rotation.z = 0
+        const door = rescue.jeep.userData.passengerDoor as THREE.Group
+        door.rotation.y = 0
+      }
     }
     if (resetEscort) this.escort.sync(this.state)
     this.security.sync(this.state)
@@ -349,6 +354,10 @@ export class MissionRuntime {
       const danger = this.gunfireUntil > this.state.elapsed
       this.updateEscape(dt)
       this.escort.update(dt, this.state, body.position, danger)
+      if (this.world.rescue) {
+        const hostage = this.state.hostages[0]
+        updateRescueJeepDoor(this.world.rescue.jeep, hostage.position, hostage.status === 'loaded', dt)
+      }
       this.blood.update(dt)
       this.impacts.update(dt)
       const speed=Math.hypot(body.velocity.x,body.velocity.z)
