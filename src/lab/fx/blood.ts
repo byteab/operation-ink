@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { penPalette } from '../../render/ballpoint'
 import type { Action, Ctx } from '../registry'
 import { chooseStamp, createStampSurface, type StampKind } from './blood-stamps'
 
@@ -18,7 +19,7 @@ export type Blood = {
 const MAX_DROPS = 800, MAX_DECALS = 400, MAX_POOLS = 32
 const GRAVITY = 11, DRAG = 0.9, DROP_LIFE = 4
 const GORE = { low: 0.5, mid: 1, high: 1.8 } as const
-const DARK = new THREE.Color(0x5c0910), BRIGHT = new THREE.Color(0xd8141c), POOL = new THREE.Color(0x7d0d14)
+const DARK = new THREE.Color(penPalette.dark), BRIGHT = new THREE.Color(penPalette.ink), POOL = new THREE.Color(penPalette.ink)
 
 const settings: Blood['settings'] = { enabled: true, intensity: 1, gore: 'mid' }
 
@@ -54,9 +55,9 @@ function init(ctx: Ctx) {
     mesh.instanceColor.setUsage(THREE.DynamicDrawUsage)
     return mesh
   }
-  drops = instanced(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial(), MAX_DROPS)
+  drops = instanced(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ toneMapped: false }), MAX_DROPS)
   drops.name = 'blood: droplets'
-  rim = new THREE.InstancedMesh(new THREE.SphereGeometry(1.35, 8, 6), new THREE.MeshBasicMaterial({ color: 0x3a0308, side: THREE.BackSide }), MAX_DROPS)
+  rim = new THREE.InstancedMesh(new THREE.SphereGeometry(1.35, 8, 6), new THREE.MeshBasicMaterial({ color: penPalette.dark, side: THREE.BackSide, toneMapped: false }), MAX_DROPS)
   rim.instanceMatrix = drops.instanceMatrix  // share the buffer: one matrix write per droplet
   rim.count = 0
   rim.frustumCulled = false

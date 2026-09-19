@@ -16,6 +16,13 @@ function roadWheel(outside = 1) {
   for (const side of [-1, 1]) circle(wheel, 0.411, side * 0.125)
   circle(wheel, 0.218, outside * 0.15)
   circle(wheel, 0.079, outside * 0.15)
+  for (let mark = 0; mark < 22; mark++) {
+    const angle = mark / 22 * Math.PI * 2
+    wheel.line([[Math.sin(angle) * 0.25, Math.cos(angle) * 0.25, outside * 0.144],
+      [Math.sin(angle + 0.12) * 0.397, Math.cos(angle + 0.12) * 0.397, outside * 0.144]], 'mesh')
+    if (mark % 3 === 0) wheel.line([[Math.sin(angle + 0.19) * 0.26, Math.cos(angle + 0.19) * 0.26, outside * 0.147],
+      [Math.sin(angle + 0.04) * 0.39, Math.cos(angle + 0.04) * 0.39, outside * 0.147]], 'mesh')
+  }
   for (let tread = 0; tread < 4; tread++) {
     const angle = tread / 4 * Math.PI * 2
     const x = Math.sin(angle) * 0.411, y = Math.cos(angle) * 0.411
@@ -24,7 +31,7 @@ function roadWheel(outside = 1) {
   return wheel.finish()
 }
 
-/** White paper panels with sparse pen contours. Local +X is forward. */
+/** Warm paper panels with sparse pen contours. Local +X is forward. */
 export function createRescueJeep() {
   const root = new THREE.Group()
   root.name = 'Willys rescue utility jeep'
@@ -46,6 +53,8 @@ export function createRescueJeep() {
     [1.79, 1.13, 0.735]], 'paper', 'detail')
   body.face([[0.43, 0.585, -0.79], [0.43, 1.13, -0.79], [0.43, 1.13, 0.79],
     [0.43, 0.585, 0.79]], 'paper', 'detail')
+  body.hatch([0.5, 1.147, -0.67], [0.55, 0, 0], [0, 0, 0.38],
+    { spacing: 0.085, inset: 0.025 })
   for (const side of [-1, 1]) {
     const z = side * 0.79
     body.face([[-1.785, 0.585, z], [-1.785, 1.06, z], [-0.625, 1.06, z],
@@ -61,6 +70,8 @@ export function createRescueJeep() {
     body.face([[-1.63, 1.06, z], [-1.63, 1.06, side * 0.95],
       [-0.61, 1.06, side * 0.95], [-0.61, 1.06, z]], 'paper', 'detail')
     body.line([[-0.56, 0.53, z], [0.32, 0.53, z]], 'detail')
+    body.hatch([-1.7, 0.65, side * 0.807], [0.61, 0, 0], [0, 0.3, 0],
+      { spacing: 0.09, inset: 0.025 })
   }
   body.face([[-1.785, 0.585, -0.79], [-1.785, 0.585, 0.79],
     [-1.785, 1.06, 0.79], [-1.785, 1.06, -0.79]], 'paper', 'detail')
@@ -91,6 +102,8 @@ export function createRescueJeep() {
       [-0.055, 0.77, z + 0.285], [-0.645, 0.77, z + 0.285]], 'paper', 'detail')
     cabin.face([[-0.645, 0.77, z - 0.285], [-0.72, 1.27, z - 0.285],
       [-0.72, 1.27, z + 0.285], [-0.645, 0.77, z + 0.285]], 'paper', 'detail')
+    cabin.hatch([-0.57, 0.787, z - 0.23], [0.25, 0, 0], [0, 0, 0.43],
+      { spacing: 0.075, inset: 0.02 })
   }
   cabin.face([[-1.6, 0.795, -0.62], [-1.075, 0.795, -0.62],
     [-1.075, 0.795, 0.62], [-1.6, 0.795, 0.62]], 'paper', 'detail')

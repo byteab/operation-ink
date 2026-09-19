@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { box, dark, edge, gun, metal, part, tube, wood, type Gun, type V } from './common'
+import { createPenLines, createPenSilhouette, penSeed } from '../../../render/ballpoint'
+import { box, dark, gun, metal, part, tube, wood, type Gun, type V } from './common'
 
 /** Extrude a side profile in (forward, up) coordinates, centred across the gun. */
 function profile(shape: THREE.Shape, width: number, pos: V, material = metal) {
@@ -159,7 +160,11 @@ export function buildAk(): Gun {
     magazineShape.lineTo(0.056, -0.195)
     magazineShape.bezierCurveTo(-0.008, -0.133, -0.026, -0.075, -0.026, 0.01)
     magazineShape.closePath()
-    magazine.add(profile(magazineShape, 0.032, [0, 0, 0], dark))
+    const magazineBody = profile(magazineShape, 0.032, [0, 0, 0], dark)
+    // The curved sidewall has no hard edge at its view-dependent silhouette.
+    // A hull covers that contour without drawing extrusion triangulation.
+    magazineBody.add(createPenSilhouette(magazineBody.geometry))
+    magazine.add(magazineBody)
     // Two pressed ribs per side follow the same continuous sweep.
     for (const x of [-0.0165, 0.0165]) {
       for (const offset of [-0.007, 0.011]) {
@@ -169,7 +174,9 @@ export function buildAk(): Gun {
           new THREE.Vector3(x, -0.129, offset + 0.031),
           new THREE.Vector3(x, -0.171, offset + 0.067),
         )
-        magazine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rib.getPoints(14)), edge))
+        const ribInk = createPenLines(rib.getPoints(14), penSeed(`ak-magazine-rib:${x}:${offset}`))
+        ribInk.name = 'AK magazine pressed rib'
+        magazine.add(ribInk)
       }
     }
     parts.magazine = magazine

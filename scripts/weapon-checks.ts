@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
+import { penPalette } from '../src/render/ballpoint'
 import { CollisionWorld } from '../src/player/collision'
 import { FirstPersonWeapons } from '../src/game/weapons'
 import { rayCapsuleDistance } from '../src/game/hit-reactions'
@@ -164,7 +165,7 @@ test('Pickup accepts the action selector facing edge and rejects targets beyond 
   weapons.dispose()
 })
 
-test('All weapon poses retain fixed bone lengths and solid black depth-tested arms', () => {
+test('All weapon poses retain fixed bone lengths and outlined paper arms', () => {
   const { weapons, scene, step, aimPickup, camera } = setup()
   // Inspect implementation geometry as a regression check, not a substitute for viewport review.
   const rig = scene.getObjectByName('First-person stickman arms')!
@@ -183,7 +184,7 @@ test('All weapon poses retain fixed bone lengths and solid black depth-tested ar
       for (const [i, limb] of limbs.entries()) {
         assert(Math.abs(limb.scale.y - (i % 2 ? 0.36 : 0.34)) < 0.0001, `${name} limb ${i} changed to ${limb.scale.y}`)
         const material = limb.material as THREE.MeshBasicMaterial
-        assert.equal(material.color.getHex(), 0)
+        assert.equal(material.color.getHex(), penPalette.paper)
         assert.equal(material.type, 'MeshBasicMaterial')
         assert(material.depthTest)
       }

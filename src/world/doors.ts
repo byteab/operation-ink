@@ -42,6 +42,8 @@ export function createDoor({ name, x, z, floor, width = 1.35, height = 2.35,
     const z = side * 0.055
     leaf.line([[0.12, 0.16, z], [width - 0.12, 0.16, z],
       [width - 0.12, height - 0.16, z], [0.12, height - 0.16, z]], 'detail', true)
+    leaf.hatch([0.16, 0.2, side * 0.061], [Math.min(width * 0.27, 0.48), 0, 0], [0, 0.6, 0],
+      { spacing: 0.095, inset: 0.025 })
     leaf.beam([width - 0.3, 1.05, side * 0.11], [width - 0.13, 1.05, side * 0.11], 0.045, 'paper', 'detail')
     if (industrial) for (const y of [0.55, height - 0.55]) {
       leaf.box(width - 0.15, 0.055, 0.035, width / 2, y, z, 'concrete', 'detail')

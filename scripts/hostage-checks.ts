@@ -10,7 +10,7 @@ import { createCompound } from '../src/world/compound'
 import { CollisionWorld } from '../src/player/collision'
 import { setDoorOpen, updateDoors } from '../src/world/doors'
 import type { Vec3 } from '../src/game/types'
-import { HOSTAGE_GREEN, STAND_UP_SECONDS } from '../src/game/hostage-actor'
+import { HOSTAGE_INK, STAND_UP_SECONDS } from '../src/game/hostage-actor'
 
 const bytes = readFileSync('public/models/stickman.glb'), load = GLTFLoader.prototype.loadAsync
 GLTFLoader.prototype.loadAsync = async function () {
@@ -62,7 +62,7 @@ function release(state: EscortMissionState) {
   world.refresh()
 }
 
-check('one green hostage uses the real enemy skinned GLB and remains seated in jail', () => {
+check('one solid black hostage uses the real enemy skinned GLB and remains seated in jail', () => {
   const state = fresh(); escort.sync(state)
   const before = structuredClone(state)
   tick(state, 2)
@@ -74,7 +74,7 @@ check('one green hostage uses the real enemy skinned GLB and remains seated in j
     assert(actor.root.userData.hostage && actor.root.userData.noCollision)
     assert(!actor.root.getObjectByName('gun'))
     assert(actor.rig.mesh.isSkinnedMesh)
-    assert.equal((actor.rig.mesh.material as THREE.MeshBasicMaterial).color.getHex(), HOSTAGE_GREEN)
+    assert.equal((actor.rig.mesh.material as THREE.MeshBasicMaterial).color.getHex(), HOSTAGE_INK)
     assert.equal(actor.root.userData.animation, 'hostage-seated')
     const hip = actor.rig.bones.hips.getWorldPosition(new THREE.Vector3())
     assert(Math.abs(hip.y - (RESCUE_LAYOUT.hostageSpawns[0][1] + 0.449)) < 0.025, `Seated hip ${hip.y}`)

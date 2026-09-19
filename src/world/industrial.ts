@@ -26,6 +26,9 @@ export function fence(name: string, points: PlanPoint[], height = 2.5) {
       g.box(0.36, 0.18, 0.36, p[0], 0.09, p[2], 'concrete', 'detail')
       g.beam(point(u, 0.08), point(u, height + 0.05), 0.11)
       g.line([point(u, height), point(u, height + 0.38, 0.24)], 'detail')
+      if (i % 2 === 0) for (const y of [0.22, height - 0.14]) {
+        g.line([point(u - 0.07, y - 0.06, 0.075), point(u + 0.08, y + 0.05, 0.075)], 'detail')
+      }
     }
     for (const y of [0.2, height - 0.12]) g.line([point(0, y), point(length, y)], 'detail')
     for (const t of [0.5, 1]) g.line([point(0, height + 0.38 * t, 0.24 * t), point(length, height + 0.38 * t, 0.24 * t)], 'mesh')
@@ -82,6 +85,14 @@ export function fuelTank(index: number, x: number, z: number) {
   g.cylinder(r, h, 0, floor + h / 2, 0)
   g.cylinder(r, 0.8, 0, floor + h + 0.4, 0, 'paper', 0.6)
   for (const y of [floor + 0.23, floor + h * 0.45]) g.ring(r + 0.012, y, 0, 0, 'detail')
+  // Curved hatch trails follow the tank's surface instead of filling it with flat grey.
+  for (const sector of [0.3, 2.7, 4.5]) for (let mark = 0; mark < 7; mark++) {
+    const angle = sector + mark * 0.043
+    g.line(Array.from({ length: 4 }, (_, i): Point => {
+      const a = angle + i * 0.032
+      return [Math.cos(a) * (r + 0.019), floor + 0.34 + i * 0.22, Math.sin(a) * (r + 0.019)]
+    }), 'mesh')
+  }
   g.cylinder(0.48, 0.22, 0, floor + h + 0.9, 0, 'paper')
   g.cylinder(0.09, 0.9, 1.3, floor + h + 0.8, -0.2, 'paper')
   ladder(g, 0, r + 0.35, floor, h + floor)
@@ -193,6 +204,13 @@ export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = DEFA
   g.cylinder(WATER_TANK_RADIUS, 0.65, 0, deck + 4.735, 0, 'paper', 0.35)
   g.cylinder(0.2, 0.35, 0, deck + 5.16, 0)
   g.ring(WATER_TANK_RADIUS + 0.015, deck + 0.56, 0, 0, 'detail')
+  for (const sector of [0.5, 2.9, 4.7]) for (let mark = 0; mark < 6; mark++) {
+    g.line(Array.from({ length: 4 }, (_, i): Point => {
+      const a = sector + mark * 0.05 + i * 0.035
+      return [Math.cos(a) * (WATER_TANK_RADIUS + 0.022), deck + 0.63 + i * 0.19,
+        Math.sin(a) * (WATER_TANK_RADIUS + 0.022)]
+    }), 'mesh')
+  }
   g.beam([0.7, 0.22, -0.7], [0.7, deck + 0.1, -0.7], 0.18, 'paper', 'detail')
   ladder(g, 0, WATER_RADIUS + 0.4, 0.22, floor, 0.95, 0.9)
   // Stand-off brackets reach the support frame behind the ladder, never its rungs.
@@ -220,6 +238,10 @@ export function watchTower(x: number, z: number, ziplineTarget: PlanPoint = DEFA
     }
   }
   g.box(WATCH_HALF_WIDTH * 2, 0.26, WATCH_HALF_WIDTH * 2, 0, deck, 0)
+  for (const side of [-1, 1]) {
+    g.hatch([-WATCH_HALF_WIDTH + 0.12, deck - 0.1, side * (WATCH_HALF_WIDTH + 0.016)],
+      [2.6, 0, 0], [0, 0.2, 0], { spacing: 0.12, inset: 0.015 })
+  }
   g.box(1.2, 0.26, 0.6, 0, deck, WATCH_HALF_WIDTH - 0.02, 'paper', 'detail')
   const rails = new Draft('Observation tower · open deck and parapets')
   rails.userData = { environment: true, kind: 'walkway', floorHeight: floor, ladderOpeningWidth: 1.2, ziplineOpeningWidth: 2 }

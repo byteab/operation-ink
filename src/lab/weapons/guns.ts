@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { applyPenMaterial, penPalette } from '../../render/ballpoint'
 import { makeClip, type Key, type Pose } from '../clip'
 import { hang } from '../clips/idle'
 import { enterPosture, postureClips, weaponPosture, type Posture } from '../postures'
@@ -153,16 +154,32 @@ type Motion = {
 const motions: Motion[] = []
 const timers: { at: number; op: Operation; fn: () => void }[] = []
 const shellGeom = new THREE.CylinderGeometry(0.005, 0.005, 0.02, 8)
-const shellMat = new THREE.MeshBasicMaterial({ color: 0xd9b23c })
+const shellMat = applyPenMaterial(new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }), { density: 0.48, scale: 200, seed: 911 })
 const shotgunShellGeom = new THREE.CylinderGeometry(0.007, 0.007, 0.028, 10)
-const shotgunShellMat = new THREE.MeshBasicMaterial({ color: 0xa94e38 })
+const shotgunShellMat = applyPenMaterial(new THREE.MeshBasicMaterial({ color: penPalette.dark, toneMapped: false }), { density: 0.72, scale: 180, seed: 919 })
 const flashTex = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 64
   const g = c.getContext('2d')!
-  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-  grad.addColorStop(0, 'rgba(255,255,230,1)'); grad.addColorStop(0.35, 'rgba(255,210,80,0.9)'); grad.addColorStop(1, 'rgba(255,150,30,0)')
-  g.fillStyle = grad; g.fillRect(0, 0, 64, 64)
-  return new THREE.CanvasTexture(c)
+  g.strokeStyle = `#${penPalette.ink.toString(16).padStart(6, '0')}`
+  g.lineCap = 'round'
+  // A fixed uneven burst of pen marks replaces the soft orange flash glow.
+  for (let pass = 0; pass < 2; pass++) for (let ray = 0; ray < 9; ray++) {
+    const angle = ray * Math.PI * 2 / 9 + Math.sin(ray * 7) * 0.13 + pass * 0.045
+    const length = 19 + Math.sin(ray * 13) * 8
+    g.globalAlpha = pass ? 0.45 : 0.95; g.lineWidth = pass ? 1 : 2
+    g.beginPath()
+    g.moveTo(32 + Math.cos(angle) * 5, 32 + Math.sin(angle) * 5)
+    g.lineTo(32 + Math.cos(angle) * 13 + pass, 32 + Math.sin(angle) * 13 - pass)
+    g.lineTo(32 + Math.cos(angle) * length, 32 + Math.sin(angle) * length)
+    g.stroke()
+  }
+  g.globalAlpha = 0.9; g.lineWidth = 1.5
+  for (let line = 0; line < 7; line++) {
+    g.beginPath(); g.moveTo(24 + line, 29 + line); g.lineTo(35 + line, 23 + line); g.stroke()
+  }
+  const texture = new THREE.CanvasTexture(c)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
 })()
 
 function restClip() { return inPosture(bodyPosture === 'prone' ? (gun?.userData.twoHanded ? clips.gun_aim2 : clips.gun_aim1) : gun?.userData.twoHanded ? clips.gun_lowReady : clips.gun_lower1) }
@@ -250,12 +267,12 @@ function eject(g: Gun, point = g.userData.eject, revolver = false) {
 function bang(g: Gun) {
   const ray = muzzle(g)
   const size = g.userData.twoHanded ? 0.16 : 0.1
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false }))
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false, toneMapped: false }))
   flash.scale.setScalar(size); flash.position.copy(ray.origin).addScaledVector(ray.direction, size * 0.3)
   fx.add(flash); fades.push({ obj: flash, t0: time, dur: 0.04 })
   const tracer = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([ray.origin, ray.origin.clone().addScaledVector(ray.direction, 8)]),
-    new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true }))
+    new THREE.LineBasicMaterial({ color: penPalette.ink, transparent: true, toneMapped: false }))
   fx.add(tracer); fades.push({ obj: tracer, t0: time, dur: 0.08 })
   if (SHELL[g.userData.cls] === 'shot') eject(g)
   move(g.userData.parts.slide, 'z', -0.03, 0.06)

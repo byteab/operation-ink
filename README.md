@@ -1,6 +1,6 @@
 # Operation Safe Return
 
-A playable first-person hostage rescue in the paper-and-ink military compound. Reach the underground detention cells, release the green prisoner seated in cell 01, escort him to the jeep, open the east gate, and escape together. Prepare the route by disabling surveillance in the security cabin or opening the gate early. Alarms activate a finite four-soldier barracks response.
+A playable first-person hostage rescue in the paper-and-ink military compound. Reach the underground detention cells, release the unarmed prisoner seated in cell 01, escort him to the jeep, open the east gate, and escape together. Prepare the route by disabling surveillance in the security cabin or opening the gate early. Alarms activate a finite four-soldier barracks response.
 
 ```sh
 npm install
@@ -11,7 +11,7 @@ Open the local URL shown by Vite. Click **Begin mission**. You start behind the 
 
 **Controls:** WASD move, mouse look, Shift sprint, Space jump, left click fire, right click hold aim, F use/pick up, R reload, 1–4 select weapon slot, G drop, Esc pause. Pause includes retry checkpoint, full restart, volume/mute, and reduced motion. You start with 1 pistol, 2 pump shotgun, 3 AK and 4 SMG, with ammunition for each. No starting sniper. Four slots; a pickup swaps the selected weapon onto the ground when full. The shotgun fires eight pellets with short-range damage falloff, pumps between shots, and reloads one shell at a time; firing interrupts its reload while preserving loaded shells. Ammunition stays with each weapon. Retry restores the insertion checkpoint, including enemies, doors, hostages, cameras, alarm, gate and jeep.
 
-The single hostage uses the same skinned stickman model as enemies, colored green and unarmed. He waits on a chair behind the barred door in cell 01, stands before following, and takes cover during nearby gunfire. Lead him along the marked stair and surface route; walk back or use the regroup panel if he falls behind. He boards the passenger side of the Willys-inspired jeep and sits down. Once he is aboard and the gate is open, **F Board jeep** at the driver's side starts a short scripted drive outside the compound. No kill quota is required. See the [single-hostage revision and visual checks](docs/hostage-rescue/REVISION-SINGLE-HOSTAGE.md).
+The single hostage uses the same skinned stickman model as enemies, solid black and unarmed. He waits on a chair behind the barred door in cell 01, stands before following, and takes cover during nearby gunfire. Lead him along the marked stair and surface route; walk back or use the regroup panel if he falls behind. He boards the passenger side of the Willys-inspired jeep and sits down. Once he is aboard and the gate is open, **F Board jeep** at the driver's side starts a short scripted drive outside the compound. No kill quota is required. See the [single-hostage revision and visual checks](docs/hostage-rescue/REVISION-SINGLE-HOSTAGE.md).
 
 - [Rescue design and agent architecture](docs/hostage-rescue/DESIGN.md)
 - [Rescue map and geometry](docs/hostage-rescue/MAP.md)
@@ -51,7 +51,7 @@ The 15–30-minute first-time pacing goal is provisional pending human playtesti
 
 # Compound environment
 
-A fully 3D military rail compound with first-person exploration, drawn with unlit paper surfaces and fine, depth-tested outlines. The supplied map determines the building footprints, tank farm, railway, workshop, towers and connected fence boundaries. The original prototype is preserved at `doc/helpers-assets/index.html`.
+A fully 3D military rail compound with first-person exploration, drawn with near-white paper surfaces and bold, depth-tested blue outlines. The supplied map determines the building footprints, tank farm, railway, workshop, towers and connected fence boundaries. The original prototype is preserved at `doc/helpers-assets/index.html`.
 
 A short driveway and the open outer gate lead from the northern road to the mess hall's west ladder. The second, inner service-yard gate is closed.
 
@@ -118,7 +118,7 @@ Bookmarks are also available through `?view=overview`, `?view=yard`, `?view=rail
 - `src/world/doors.ts` and `src/interactions.ts`: separate hinged door leaves, occlusion-aware picking, door motion and interior cutaway.
 - `src/world/industrial.ts`: fences, gates, storage tanks, braced towers, standard-gauge track and loading canopy.
 - `src/world/ladders.ts`: shared pipe ladders with round rails, curved handholds and 35 cm rung spacing.
-- `src/render/ink.ts`: batched opaque surfaces and screen-space line materials, plus back-face silhouettes for curved objects. Architectural strokes are 1.05 CSS pixels; secondary details use lighter, finer strokes. Depth-tested surfaces hide occluded lines. Mesh tessellation is never rendered as a wireframe.
+- `src/render/ink.ts`: batched opaque surfaces and screen-space line materials, plus back-face silhouettes for curved objects. Architectural and road-edge strokes are 2.2 CSS pixels; secondary details use lighter, finer strokes. Depth-tested surfaces hide occluded lines. Mesh tessellation is never rendered as a wireframe.
 - `src/camera.ts`: orbit, free inspection and orthographic plan cameras.
 - `src/player/`: grounded capsule movement, nearby geometry collision trees, moving door collision, ladder traversal, mouse capture, and interaction prompts. Simulation uses steps of at most 1/120 second.
 

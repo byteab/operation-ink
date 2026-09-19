@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { applyPenMaterial, penPalette } from '../render/ballpoint'
 import { loadStickman, BONE_NAMES, type Rig } from '../lab/rig'
 import { Player } from '../lab/player'
 import { makeClip, poseQuat, type Pose } from '../lab/clip'
@@ -52,7 +53,7 @@ async function animations(rig: Rig): Promise<Library> {
   })
 }
 
-/** A real independently loaded lab skeleton, with isolated opaque black materials. */
+/** A real independently loaded lab skeleton, with isolated solid black materials. */
 export class EnemyActor {
   readonly root: THREE.Group
   readonly player: Player
@@ -96,13 +97,13 @@ export class EnemyActor {
     // Material.clone does not preserve callbacks. Keep the original dual-quaternion shader setup.
     this.material.onBeforeCompile = original.onBeforeCompile
     this.material.customProgramCacheKey = original.customProgramCacheKey.bind(original)
-    this.material.color.setHex(0x000000)
+    this.material.color.setHex(penPalette.character)
     this.material.toneMapped = false
     this.material.depthTest = this.material.depthWrite = true
     rig.mesh.material = this.material
     this.root.traverse(object => {
       if (object instanceof THREE.SkinnedMesh && object !== rig.mesh) {
-        // A flat silhouette needs no inverted hull: keeping it would add a grey rim to solid black.
+        // The opaque black body already supplies a clean silhouette.
         object.visible = false
       }
     })
@@ -110,7 +111,7 @@ export class EnemyActor {
     this.gun.position.copy(lib.poses.mountPosition)
     this.gun.quaternion.copy(lib.poses.mountQuaternion)
     rig.bones['hand.R'].add(this.gun)
-    const flashMaterial = new THREE.MeshBasicMaterial({ color: 0xf4c65a, toneMapped: false })
+    const flashMaterial = applyPenMaterial(new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }), { density: 0.5, scale: 90, seed: 617 })
     this.flash = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 4), flashMaterial)
     this.flash.position.copy(this.gun.userData.muzzle)
     this.flash.scale.set(0.65, 0.65, 1.7)

@@ -33,6 +33,8 @@ function wall(name: string, length: number, height: number, x: number, z: number
   for (const depth of [-0.12, 0.12]) {
     g.line([[-length / 2, floor, depth], [-length / 2, floor + height, depth],
       [length / 2, floor + height, depth], [length / 2, floor, depth]])
+    if (cutaway) g.hatch([-length / 2 + 0.15, floor + height - 0.34, depth + Math.sign(depth) * 0.015],
+      [Math.min(length * 0.25, 2.8), 0, 0], [0, 0.24, 0], { spacing: 0.19, inset: 0.025 })
     for (const o of openings) {
       const left = o.center - o.width / 2, right = o.center + o.width / 2
       const bottom = floor + o.bottom, top = bottom + o.height
@@ -51,6 +53,8 @@ function wall(name: string, length: number, height: number, x: number, z: number
     glass.userData.kind = 'window'
     // Fill the opening behind the frame so the sill and header leave no exposed gaps.
     glass.box(o.width, o.height, 0.025, o.center, floor + o.bottom + o.height / 2, 0, 'glass', 'detail')
+    for (const side of [-1, 1]) glass.hatch([o.center - o.width / 2 + 0.14, floor + o.bottom + 0.12, side * 0.029],
+      [o.width * 0.26, 0, 0], [0, o.height * 0.46, 0], { spacing: 0.12, inset: 0.025 })
     for (const u of [o.center - o.width / 2 + 0.035, o.center + o.width / 2 - 0.035, o.center]) {
       glass.box(0.07, o.height, 0.16, u, floor + o.bottom + o.height / 2, 0, 'paper', 'detail')
     }
@@ -315,6 +319,12 @@ export function messHall(spec: BuildingSpec): THREE.Group {
   // Restrained expansion joints read as concrete roof, while the broad route stays clear.
   for (const x of [-7, 0]) roof.line([[x, roofY + 0.014, -halfD + 0.2], [x, roofY + 0.014, halfD - 0.2]], 'mesh')
   roof.line([[-halfW + 0.2, roofY + 0.014, 0], [7.45, roofY + 0.014, 0]], 'mesh')
+  for (const [x, z, width, depth] of [[-halfW + 0.25, -halfD + 0.4, 3.7, 1.3],
+    [-3.8, halfD - 1.4, 2.6, 0.95], [2.5, -halfD + 0.3, 2.2, 0.8]]) {
+    roof.hatch([x, roofY + 0.018, z], [width, 0, 0], [0, 0, depth], { spacing: 0.23, inset: 0.04 })
+  }
+  roof.hatch([-halfW + 0.3, roofY + 0.18, halfD - 0.137], [3, 0, 0], [0, 0.49, 0],
+    { spacing: 0.18, inset: 0.035 })
   g.add(roof.finish())
 
   const headhouse = new THREE.Group()
@@ -332,6 +342,8 @@ export function messHall(spec: BuildingSpec): THREE.Group {
   )
   const hutRoof = new Draft('Rooftop stair enclosure · cap')
   hutRoof.box(hutMaxX - hutMinX + 0.25, 0.18, hutMaxZ - hutMinZ + 0.25, hutX, roofY + hutH + 0.09, hutZ, 'roof')
+  hutRoof.hatch([hutMinX + 0.05, roofY + hutH + 0.196, hutMinZ + 0.15], [1.15, 0, 0], [0, 0, 1.8],
+    { spacing: 0.18, inset: 0.035 })
   headhouse.add(hutRoof.finish())
   g.add(headhouse)
 

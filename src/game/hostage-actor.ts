@@ -1,10 +1,11 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 import { loadStickman, type Rig } from '../lab/rig'
 import { GAIT_SPEED } from '../lab/gait'
 import { makeClip, type Key, type Pose } from '../lab/clip'
 import { Player } from '../lab/player'
 
-export const HOSTAGE_GREEN = 0x29964b
+export const HOSTAGE_INK = penPalette.character
 export const STAND_UP_SECONDS = 1.65
 export const BOARD_SECONDS = 0.9
 
@@ -19,13 +20,13 @@ export class HostageActor {
 
   private constructor(readonly rig: Rig, private clips: Record<string, THREE.AnimationClip>) {
     this.root = rig.root
-    this.root.name = 'Green hostage'
+    this.root.name = 'Black stickman hostage'
     this.root.userData = { actor: true, hostage: true, noCollision: true, model: 'stickman.glb' }
     const original = rig.mesh.material as THREE.MeshBasicMaterial
     this.material = original.clone()
     this.material.onBeforeCompile = original.onBeforeCompile
     this.material.customProgramCacheKey = original.customProgramCacheKey.bind(original)
-    this.material.color.setHex(HOSTAGE_GREEN)
+    this.material.color.setHex(HOSTAGE_INK)
     this.material.toneMapped = false
     rig.mesh.material = this.material
     this.root.traverse(object => {

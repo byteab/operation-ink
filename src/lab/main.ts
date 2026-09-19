@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { palette } from '../render/ink'
+import { penPalette } from '../render/ballpoint'
 import { Player } from './player'
 import type { Ctx } from './registry'
 import { loadStickman, setOutlineResolution } from './rig'
@@ -15,7 +16,7 @@ renderer.setClearColor(palette.paper)
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color(palette.paper)
-scene.add(new THREE.GridHelper(8, 16, 0xc3cbc7, 0xe1e6e2))
+scene.add(new THREE.GridHelper(8, 16, penPalette.light, penPalette.faint))
 
 const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 100)
 camera.position.set(0, 1.1, 4)

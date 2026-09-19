@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 import { EnvironmentCamera } from '../camera'
 import { FirstPersonController } from '../player/controller'
 import { SnapTurn, thumbstick, VRRig } from './locomotion'
@@ -24,7 +25,7 @@ export class VRWalkthrough {
   private label = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.15),
     new THREE.MeshBasicMaterial({ map: this.labelTexture, transparent: true, depthTest: false, depthWrite: false }))
   private curtain = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12),
-    new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, depthTest: false, depthWrite: false }))
+    new THREE.MeshBasicMaterial({ color: penPalette.dark, side: THREE.BackSide, depthTest: false, depthWrite: false }))
   private lastLabel = ''
 
   constructor(private renderer: THREE.WebGLRenderer, scene: THREE.Scene,
@@ -160,9 +161,9 @@ export class VRWalkthrough {
     this.lastLabel = text
     const context = this.labelCanvas.getContext('2d')!
     context.clearRect(0, 0, 1536, 240)
-    context.fillStyle = 'rgba(250,251,249,0.94)'
+    context.fillStyle = '#faf8f2f0'
     context.fillRect(0, 0, 1536, 240)
-    context.fillStyle = '#263b37'
+    context.fillStyle = '#2645a4'
     context.font = '44px system-ui, sans-serif'
     context.textAlign = 'center'
     context.fillText(text, 768, 94, 1450)

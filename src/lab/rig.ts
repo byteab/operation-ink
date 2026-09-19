@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { penPalette } from '../render/ballpoint'
 
 /**
  * BONE AXIS CONVENTIONS — verified empirically in the lab bone inspector (2026-09-13).
@@ -55,7 +56,7 @@ export type Rig = {
 /** Rest pose of the loaded rig. Set by loadStickman(); clip.ts reads it, so build clips after the rig loads. */
 export let rest: Rig['rest'] | undefined
 
-const fill = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false })
+const fill = new THREE.MeshBasicMaterial({ color: penPalette.character, toneMapped: false })
 
 // Dual-quaternion skinning (Blender "Preserve Volume"): glTF only carries weights and Three.js skins with linear blending,
 // which collapses the elbow/shoulder at 90 deg and candy-wraps the upper arm on twist. Rewrites the three skinning chunks.
@@ -119,7 +120,7 @@ fill.onBeforeCompile = (shader) => { shader.vertexShader = dualQuaternionSkinnin
 
 // Inverted-hull outline: back faces pushed out by `width` px along the skinned normal (same idea as ink.ts, plus skinning).
 const outline = new THREE.ShaderMaterial({
-  uniforms: { ink: { value: new THREE.Color(0x000000) }, resolution: { value: new THREE.Vector2(1, 1) }, width: { value: 1.2 }, ...dqUniforms },
+  uniforms: { ink: { value: new THREE.Color(penPalette.character) }, resolution: { value: new THREE.Vector2(1, 1) }, width: { value: 1.2 }, ...dqUniforms },
   vertexShader: dualQuaternionSkinning(`
     #include <common>
     #include <skinning_pars_vertex>
@@ -215,6 +216,15 @@ export async function loadStickman(): Promise<Rig> {
   shell.frustumCulled = false
   shell.renderOrder = 1
   shell.name = 'Stickman outline'
+  const outlineViewport = new THREE.Vector4()
+  shell.onBeforeRender = (renderer, _scene, camera) => {
+    // Keep the optional lab contour accurate for each viewport, including XR eyes.
+    renderer.getViewport(outlineViewport)
+    const viewport = (camera as THREE.PerspectiveCamera).viewport
+    setOutlineResolution(renderer.xr.isPresenting && viewport ? viewport.z : outlineViewport.z,
+      renderer.xr.isPresenting && viewport ? viewport.w : outlineViewport.w)
+    outline.uniformsNeedUpdate = true
+  }
   mesh.parent!.add(shell)
 
   const bones = {} as Rig['bones']

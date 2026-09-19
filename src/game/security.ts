@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 import type { CollisionWorld } from '../player/collision'
 import type { EnemyDirector } from './ai'
 import type { MissionState } from './mission'
@@ -36,8 +37,8 @@ export class SecuritySystem {
       if (state.camerasActive) camera.pivot.rotation.y = spec.yaw + Math.sin(state.elapsed * 0.35 + RESCUE_LAYOUT.cameras.indexOf(spec) * 1.7) * spec.arc
       if (changed) {
         for (const material of Array.isArray(camera.lamp.material) ? camera.lamp.material : [camera.lamp.material]) {
-          if ('color' in material) (material as THREE.MeshBasicMaterial).color.setHex(state.camerasActive ? 0x56d46a : 0x26332b)
-          if ('emissive' in material) (material as THREE.MeshStandardMaterial).emissive.setHex(state.camerasActive ? 0x184c20 : 0x000000)
+          if ('color' in material) (material as THREE.MeshBasicMaterial).color.setHex(state.camerasActive ? penPalette.ink : penPalette.paper)
+          if ('emissive' in material) (material as THREE.MeshStandardMaterial).emissiveIntensity = 0
         }
       }
     }

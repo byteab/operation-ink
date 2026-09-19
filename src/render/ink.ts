@@ -3,16 +3,19 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { penPalette, penRandom, penSeed, sketchSegments } from './ballpoint'
 
 export type Point = [number, number, number]
 export type Fill = 'paper' | 'roof' | 'concrete' | 'glass' | 'green' | 'rock'
 export type Stroke = 'edge' | 'detail' | 'mesh' | 'landscape'
 
 export const palette = {
-  paper: 0xfafbf9, roof: 0xf6f7f4, concrete: 0xf3f4f0,
-  glass: 0xf0f3f2, green: 0xe4eade, rock: 0xf2f3ee,
-  ink: 0x3e4951,
+  paper: penPalette.paper, roof: penPalette.paper, concrete: penPalette.paper,
+  glass: penPalette.paper, green: penPalette.paper, rock: penPalette.paper,
+  ink: penPalette.ink,
 }
+
+export type HatchOptions = { spacing?: number; inset?: number; seed?: number; cross?: boolean; stroke?: Stroke }
 
 const fills = Object.fromEntries(
   (['paper', 'roof', 'concrete', 'glass', 'green', 'rock'] as Fill[]).map(name => [name,
@@ -24,15 +27,30 @@ const fills = Object.fromEntries(
 ) as Record<Fill, THREE.MeshBasicMaterial>
 
 const strokes: Record<Stroke, LineMaterial> = {
-  edge: new LineMaterial({ color: palette.ink, linewidth: 1.05 }),
-  detail: new LineMaterial({ color: 0x6b767c, linewidth: 0.75 }),
-  mesh: new LineMaterial({ color: 0x929b9b, linewidth: 0.55 }),
-  landscape: new LineMaterial({ color: 0x8d9a87, linewidth: 0.7 }),
+  edge: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 2.2 }),
+  detail: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 1.35 }),
+  mesh: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 0.72 }),
+  landscape: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 1.3 }),
 }
 for (const material of Object.values(strokes)) {
   material.depthTest = true
   material.depthWrite = false
   material.alphaToCoverage = true
+  material.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('uniform float linewidth;', `uniform float linewidth;
+        attribute float instancePenWidth;
+        attribute vec2 instancePenOffset;`)
+      .replace('// ndc space', `// Stable pen deviation in pixels, without shifting the line's depth.
+        vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
+        penDirection /= max(length(penDirection), 0.0001);
+        vec2 penNormal = vec2(-penDirection.y, penDirection.x);
+        clipStart.xy += penNormal * instancePenOffset.x * 2.0 / resolution * clipStart.w;
+        clipEnd.xy += penNormal * instancePenOffset.y * 2.0 / resolution * clipEnd.w;
+        // ndc space`)
+      .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth;')
+  }
+  material.customProgramCacheKey = () => 'ballpoint-world-strokes-v1'
 }
 
 // Smooth objects need a moving silhouette, not a wireframe of their tessellation.
@@ -41,7 +59,7 @@ const silhouette = new THREE.ShaderMaterial({
   uniforms: {
     ink: { value: new THREE.Color(palette.ink) },
     resolution: { value: new THREE.Vector2(1, 1) },
-    width: { value: 0.75 },
+    width: { value: 1.15 },
   },
   vertexShader: `
     uniform vec2 resolution;
@@ -53,7 +71,8 @@ const silhouette = new THREE.ShaderMaterial({
       vec4 tip = projectionMatrix * vec4(view.xyz + n, 1.0);
       vec2 direction = (tip.xy * clip.w - clip.xy * tip.w) * resolution;
       direction /= max(length(direction), 0.0001);
-      clip.xy += direction * width * 2.0 / resolution * clip.w;
+      float pressure = 0.88 + 0.12 * sin(position.y * 8.7 + position.x * 3.1 + position.z * 5.3);
+      clip.xy += direction * width * pressure * 2.0 / resolution * clip.w;
       gl_Position = clip;
     }
   `,
@@ -79,6 +98,7 @@ export class Draft extends THREE.Group {
   private surfaces = new Map<Fill, THREE.BufferGeometry[]>()
   private contours = new Map<Stroke, number[]>()
   private shells: THREE.BufferGeometry[] = []
+  private hatchIndex = 0
 
   constructor(name: string, x = 0, z = 0, angle = 0) {
     super()
@@ -93,6 +113,34 @@ export class Draft extends THREE.Group {
     this.contours.set(stroke, data)
     for (let i = 1; i < points.length; i++) data.push(...points[i - 1], ...points[i])
     if (close && points.length > 2) data.push(...points[points.length - 1], ...points[0])
+  }
+
+  /** Sparse diagonal marks on a local patch. u and v are full surface span vectors. */
+  hatch(origin: Point, u: Point, v: Point, options: HatchOptions = {}) {
+    const width = Math.hypot(...u), height = Math.hypot(...v)
+    const inset = Math.max(0, options.inset ?? 0.12)
+    const w = width - inset * 2, h = height - inset * 2
+    if (w <= 0 || h <= 0) return
+    const random = penRandom(options.seed ?? penSeed(`${this.name}:hatch:${this.hatchIndex++}`))
+    const point = (x: number, y: number): Point => [
+      origin[0] + u[0] * (x + inset) / width + v[0] * (y + inset) / height,
+      origin[1] + u[1] * (x + inset) / width + v[1] * (y + inset) / height,
+      origin[2] + u[2] * (x + inset) / width + v[2] * (y + inset) / height,
+    ]
+    const spacing = Math.max(0.035, options.spacing ?? 0.8, (w + h) / 180)
+    for (const slope of options.cross ? [0.76, -0.84] : [0.76]) {
+      const reach = Math.abs(slope) * h
+      for (let intercept = -reach; intercept <= w + reach; intercept += spacing * (0.85 + random() * 0.3)) {
+        if (random() < 0.12) continue
+        let low = Math.max(0, Math.min(-intercept / slope, (w - intercept) / slope))
+        let high = Math.min(h, Math.max(-intercept / slope, (w - intercept) / slope))
+        if (high <= low) continue
+        const length = high - low
+        low += length * random() * 0.1
+        high -= length * random() * 0.16
+        this.line([point(intercept + slope * low, low), point(intercept + slope * high, high)], options.stroke ?? 'mesh')
+      }
+    }
   }
 
   ring(radius: number, y: number, x = 0, z = 0, stroke: Stroke = 'edge', segments = 80) {
@@ -170,6 +218,7 @@ export class Draft extends THREE.Group {
       const mesh = new THREE.Mesh(merged, silhouette)
       mesh.name = `${this.name}: smooth silhouettes`
       mesh.renderOrder = 1
+      mesh.userData.noCollision = true
       mesh.onBeforeRender = (renderer, _scene, camera) => {
         const viewport = (camera as THREE.PerspectiveCamera).viewport
         if (renderer.xr.isPresenting && viewport) {
@@ -182,10 +231,14 @@ export class Draft extends THREE.Group {
     }
     for (const [stroke, segments] of this.contours) {
       if (!segments.length) continue
-      const geometry = new LineSegmentsGeometry().setPositions(segments)
+      const marks = sketchSegments(segments, penSeed(`${this.name}:${stroke}`), stroke)
+      const geometry = new LineSegmentsGeometry().setPositions(marks.positions).setColors(marks.colors)
+      geometry.setAttribute('instancePenWidth', new THREE.InstancedBufferAttribute(new Float32Array(marks.widths), 1))
+      geometry.setAttribute('instancePenOffset', new THREE.InstancedBufferAttribute(new Float32Array(marks.offsets), 2))
       const ink = new LineSegments2(geometry, strokes[stroke])
       ink.name = `${this.name}: ${stroke} ink`
       ink.renderOrder = 2
+      ink.userData.noCollision = true
       const updateResolution = ink.onBeforeRender
       ;(ink as THREE.Mesh).onBeforeRender = (renderer, _scene, camera) => {
         updateResolution.call(ink, renderer)
