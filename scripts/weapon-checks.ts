@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import * as THREE from 'three'
 import { penPalette } from '../src/render/ballpoint'
 import { CollisionWorld } from '../src/player/collision'
-import { FirstPersonWeapons } from '../src/game/weapons'
+import { FirstPersonWeapons, WEAPON_RULES } from '../src/game/weapons'
 import { rayCapsuleDistance } from '../src/game/hit-reactions'
 import type { Shot, SoundEvent, WeaponFrame, WeaponContext } from '../src/game/types'
 
@@ -280,6 +280,70 @@ test('Pistol recoil settles with variable persistent displacement; the next shot
       weapons.trigger(true); step(1 / 60); weapons.trigger(false)
       assert(new THREE.Ray(shots[2].origin, shots[2].direction).distanceToPoint(visibleTarget) < 1e-8, 'recovery must not move aim before resolving a queued shot')
       weapons.dispose()
+    }
+  } finally { Math.random = random }
+})
+
+test('Shotgun blasts kick harder than AK shots, recover smoothly and preserve sight alignment', () => {
+  const random = Math.random
+  const measure = (name: 'shotgun' | 'ak', variation: number, aiming: boolean, fps = 60, reducedMotion = false) => {
+    Math.random = () => variation
+    const { weapons, camera, world, scene, frame, shots } = setup()
+    try {
+      weapons.restore({ slots: [{ id: 'recoil-check', name, magazine: 6, reserve: 0 }], selected: 0, pickups: [], nextId: 1 })
+      Object.assign(frame, { aiming, reducedMotion })
+      const advance = (seconds: number) => {
+        for (let t = 0; t < seconds - 1e-8; t += 1 / fps) weapons.update(Math.min(1 / fps, seconds - t), frame)
+      }
+      advance(0.4)
+      const mount = scene.getObjectByName('Firing hand grip mount')!
+      const before = camera.quaternion.clone(), gunRest = mount.position.z
+      const target = () => camera.position.clone().addScaledVector(camera.getWorldDirection(new THREE.Vector3()), WEAPON_RULES[name].range)
+      const fire = () => {
+        const visibleTarget = target(), firstRay = shots.length
+        weapons.trigger(true); weapons.trigger(false); weapons.update(1 / fps, frame)
+        assert.equal(shots.length - firstRay, name === 'shotgun' ? 8 : 1)
+        assert(new THREE.Ray(shots[firstRay].origin, shots[firstRay].direction).distanceToPoint(visibleTarget) < 1e-8,
+          'Kick must follow the shot; central pellets still follow the displayed sight')
+      }
+      fire()
+      const pitch = () => new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').x
+      const peak = pitch(), gunTravel = mount.position.z - gunRest
+      let previous = peak
+      for (let i = 0; i < 5; i++) {
+        advance(0.1)
+        assert(pitch() >= -1e-8 && pitch() <= previous + 1e-8, 'Recovery must not overshoot or add a second kick')
+        previous = pitch()
+      }
+      const afterHalfSecond = pitch()
+      advance(1)
+      const settled = pitch(), rest = camera.quaternion.clone()
+      advance(1)
+      assert(camera.quaternion.angleTo(rest) < 0.00001, 'Camera must stop drifting before another blast')
+      if (reducedMotion) {
+        assert(camera.quaternion.angleTo(before) < 1e-8, 'Reduced motion must suppress camera kick and recovery')
+        assert.equal(gunTravel, 0, 'Reduced motion must suppress the larger gun kick')
+      } else {
+        assert(settled > 0 && settled < peak * 0.5)
+        assert(Math.abs(mount.position.z - gunRest) < 1e-8, 'Gun must return to rest before the next shot')
+      }
+      fire()
+      assert.equal(weapons.current!.magazine, 4, 'Two blasts still consume exactly two shells')
+      return { peak, afterHalfSecond, settled, gunTravel }
+    } finally { weapons.dispose(); world.dispose() }
+  }
+  try {
+    for (const aiming of [false, true]) {
+      const ak = measure('ak', 0.95, aiming)
+      const shotgun = measure('shotgun', 0.05, aiming)
+      assert(shotgun.peak > ak.peak * 3, 'Even the weakest shotgun kick must clearly exceed the strongest AK kick')
+      assert(shotgun.gunTravel > ak.gunTravel * 1.5, 'The visible gun must support the heavier camera kick')
+      assert(shotgun.peak > 0.08 && shotgun.peak < 0.14, 'Shotgun kick stays strong but bounded')
+      assert(shotgun.settled < 0.025, 'The larger transient must not leave excessive permanent climb')
+      const lowRate = measure('shotgun', 0.5, aiming, 30)
+      const highRate = measure('shotgun', 0.5, aiming, 144)
+      assert(Math.abs(lowRate.afterHalfSecond - highRate.afterHalfSecond) < 1e-6, 'Recovery must be frame-rate independent')
+      measure('shotgun', 0.95, aiming, 60, true)
     }
   } finally { Math.random = random }
 })

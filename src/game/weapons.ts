@@ -294,7 +294,9 @@ export class FirstPersonWeapons {
         (this.pendingShot || (this.held && WEAPON_RULES[item.name].automatic))) this.shoot(item)
     else if (this.settle.pitch || this.settle.yaw) {
       // Resolve fire against the displayed sight before recovery moves it on this frame.
-      const fraction = 1 - Math.exp(-delta / 0.09)
+      // A shotgun blast has a heavier recovery than an automatic's short pulse.
+      const recovery = this.current?.name === 'shotgun' ? 0.16 : 0.09
+      const fraction = 1 - Math.exp(-delta / recovery)
       this.nudge(-this.settle.pitch * fraction, -this.settle.yaw * fraction)
       this.settle.pitch *= 1 - fraction; this.settle.yaw *= 1 - fraction
       if (Math.abs(this.settle.pitch) + Math.abs(this.settle.yaw) < 1e-6) this.settle.pitch = this.settle.yaw = 0
@@ -418,7 +420,7 @@ export class FirstPersonWeapons {
     if (this.context.world.rayDistance(eye, bridge.clone().normalize(), bridge.length() + 0.02) < bridge.length() ||
         this.context.world.rayDistance(origin, direction, 0.15) < 0.15) { this.obstructed = true; return }
     item.magazine--
-    this.recoil = 1
+    this.recoil = item.name === 'shotgun' ? 1.7 : 1
     this.flashTime = 0.045
     if (item.name === 'shotgun') {
       const right = new THREE.Vector3().crossVectors(direction, Math.abs(direction.y) > 0.98 ? new THREE.Vector3(1, 0, 0) : up).normalize()
@@ -432,8 +434,9 @@ export class FirstPersonWeapons {
         this.context.onShot({ origin: origin.clone(), direction: ray, range: rules.range, damage: rules.damage, weapon: item.name, pelletIndex: pellet })
       }
     } else this.context.onShot({ origin, direction, range: rules.range, damage: rules.damage, weapon: item.name })
-    // The sight jumps with the shot, then most of it settles back: pistols snap, automatics climb.
-    const pitch = rules.kick * (0.8 + Math.random() * 0.4), yaw = (Math.random() - 0.5) * rules.kick
+    // Shotguns punch upward; limit their sideways pull so the bigger kick stays controllable.
+    const pitch = rules.kick * (0.8 + Math.random() * 0.4)
+    const yaw = (Math.random() - 0.5) * rules.kick * (item.name === 'shotgun' ? 0.55 : 1)
     this.nudge(pitch, yaw)
     this.settle.pitch += pitch * rules.settle; this.settle.yaw += yaw * 0.35
     this.context.emit({ kind: `shot-${item.name}`, position: origin.clone(), radius: item.name === 'pistol' ? 38 : 55, text: `${rules.label} fired` })

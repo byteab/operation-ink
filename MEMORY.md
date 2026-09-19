@@ -91,3 +91,8 @@ Inspected read-only on 2026-09-19 by the environment-inspector subagent. No appl
 - The user explicitly authorized agent-browser verification for this task. Build and rescue checks passed; agent-browser visual checks and staged boarding/escape/restart checks passed. Evidence and scope: `docs/rescue-transport/README.md`.
 
 - Vehicle detail corrections: shortened side steps to the front-door span, leaving 0.437 m clearance from both tire envelopes, and added chassis brackets. Replaced the floating steering contour with a solid white rim, three spokes, hub, column and dashboard bracket; checked both geometry connections and side/driver views in agent-browser.
+
+## Shotgun recoil
+
+- Shotgun camera kick is now 0.11 radians (twice the previous amount; five times an AK shot at the same random sample), with a 0.16 s recovery time constant and 84% pitch recovery. The gun kick amplitude is 1.7; sideways kick is scaled by 0.55 to stay controlled. Ballistics and firing rate are unchanged; reduced motion suppresses the stronger camera and gun movement.
+- Build, weapon/loadout/ballistics and polish weapon checks passed. Agent-browser verified the peak/recovery comparison and normal firing input; evidence and scope are in `docs/shotgun-recoil/README.md`.
