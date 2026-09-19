@@ -434,6 +434,11 @@ export function createMissionWorld(): MissionWorld {
   // The mess hall is west of the tank, so this post must use the west catwalk
   // to watch the dining building without the tank blocking its own sightline.
   const waterSniperPost: Vec3 = [7.25, 12.615, -34.05]
+  // Adjacent points follow the middle of the catwalk, clear of both tank and rail.
+  const waterSniperPatrol: Vec3[] = Array.from({ length: 16 }, (_, i) => {
+    const angle = Math.PI + i / 16 * Math.PI * 2
+    return [10.95 + Math.cos(angle) * 3.7, waterSniperPost[1], -34.05 + Math.sin(angle) * 3.7]
+  })
   const messHallCenter: PlanPoint = [-34.2, -46.65]
   const enemies = [
     enemy('yard-patrol', 'Mess-yard patrol', [[-34, 0, -29], [-23, 0, -29], [-23, 0, -21], [-42, 0, -21]]),
@@ -478,8 +483,8 @@ export function createMissionWorld(): MissionWorld {
     enemy('southwest-stores-room', 'Southwest stores guard', [[-58.05, 0.65, 64.5], [-55.55, 0.65, 64.5]], 'smg'),
     enemy('gatehouse-room', 'Gatehouse radio watch', [[-5.15, 0.28, 24.75], [-5.15, 0.28, 26.05]], 'pistol'),
     // The source map has one water tower and one observation tower. Use both
-    // existing supported decks, with fixed posts rather than ground navigation.
-    { ...enemy('water-sniper', 'Water-tower marksman', [waterSniperPost], 'sniper'), role: 'sniper' as const,
+    // existing supported decks; marksmen never navigate to ground targets.
+    { ...enemy('water-sniper', 'Water-tower marksman', waterSniperPatrol, 'sniper'), role: 'sniper' as const, patrolMode: 'perimeter' as const,
       facing: Math.atan2(messHallCenter[0] - waterSniperPost[0], messHallCenter[1] - waterSniperPost[2]) },
     { ...enemy('watch-sniper', 'Observation-tower marksman', [[-48.2, 6.735, 16.9]], 'sniper'), role: 'sniper' as const, facing: Math.PI * 0.75 },
     ...([[140, FLOOR, 1.3], [146, FLOOR, 1.3], [140, FLOOR, 5], [146, FLOOR, 5]] as Vec3[]).map((position, index) =>

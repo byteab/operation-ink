@@ -8,7 +8,7 @@ export type SoundEvent = { kind: string; position?: THREE.Vector3; radius?: numb
 export type EmitSound = (event: SoundEvent) => void
 export type StationKind = 'radio' | 'release' | 'brake' | 'signal' | 'extract' | 'supply' | 'distraction' | 'hostage' | 'cameras' | 'alarm' | 'gate' | 'jeep' | 'rally'
 export type Station = { id: string; kind: StationKind; object: THREE.Object3D; point: THREE.Vector3; label: string }
-export type EnemySpec = { id: string; name: string; position: Vec3; patrol: Vec3[]; weapon: WeaponName; reserve?: boolean; alarmExit?: Vec3; facing?: number; role?: 'sniper' | 'guard' }
+export type EnemySpec = { id: string; name: string; position: Vec3; patrol: Vec3[]; weapon: WeaponName; reserve?: boolean; alarmExit?: Vec3; facing?: number; role?: 'sniper' | 'guard'; patrolMode?: 'perimeter' }
 export type MissionWorld = { root: THREE.Group; stations: Station[]; enemies: EnemySpec[]; spawn: Vec3; lookAt: Vec3; bounds: { minX: number; maxX: number; minZ: number; maxZ: number }; rescue?: { gate: THREE.Group; jeep: THREE.Group; cameras: { id: string; pivot: THREE.Group; lamp: THREE.Mesh }[]; cellDoors: THREE.Group[] } }
 export type PlayerSense = { feet: THREE.Vector3; eye: THREE.Vector3; velocity: THREE.Vector3; alive: boolean; radioEnabled: boolean }
 export type Shot = { origin: THREE.Vector3; direction: THREE.Vector3; range: number; damage: number; weapon?: WeaponName; pelletIndex?: number }

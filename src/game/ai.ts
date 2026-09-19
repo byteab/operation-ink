@@ -60,6 +60,7 @@ export type Enemy = {
   lastKnown: THREE.Vector3 | null
   timer: number
   waypoint: number
+  patrolStop: number
   path: THREE.Vector3[]
   pathTarget: THREE.Vector3 | null
   repath: number
@@ -114,7 +115,7 @@ const tuple = (point: THREE.Vector3): Vec3 => [point.x, point.y, point.z]
 const vector = (value: unknown) => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite) ? new THREE.Vector3(...value as Vec3) : null
 const number = (value: unknown, fallback = 0) => typeof value === 'number' && Number.isFinite(value) ? value : fallback
 const NUMBERS = ['repath', 'stuck', 'senseTimer', 'lostFor', 'shotTimer', 'shots', 'magazine', 'reloadTimer', 'calloutTimer', 'communicationTimer', 'wait',
-  'visitedWaypoints', 'distanceWalked', 'footstepDistance', 'pathFailures', 'tacticTimer', 'burst', 'aimTime', 'blockedFor', 'contactMemory', 'suppress', 'settledFor', 'hitPause', 'moveSpeed', 'searchIndex',
+  'patrolStop', 'visitedWaypoints', 'distanceWalked', 'footstepDistance', 'pathFailures', 'tacticTimer', 'burst', 'aimTime', 'blockedFor', 'contactMemory', 'suppress', 'settledFor', 'hitPause', 'moveSpeed', 'searchIndex',
   'scanTimer', 'scanDuration', 'scanCooldown', 'scanYaw', 'defensiveTimer'] as const
 
 export class EnemyDirector {
@@ -150,7 +151,7 @@ export class EnemyDirector {
       const enemy: Enemy = {
         spec, actor, position, yaw: spec.facing ?? 0, health: ENEMY_HEALTH,
         state: spec.reserve ? 'reserve' : spec.patrol.length > 1 ? 'patrol' : 'guard',
-        suspicion: 0, lastKnown: null, timer: 0, waypoint: spec.patrol.length > 1 ? 1 : 0,
+        suspicion: 0, lastKnown: null, timer: 0, waypoint: spec.patrol.length > 1 ? 1 : 0, patrolStop: 0,
         path: [], pathTarget: null, repath: 0, stuck: 0, senseTimer: (i % 6) * 0.016,
         canSee: false, lostFor: 0, shotTimer: 0, shots: 0, magazine: WEAPON[spec.weapon].magazine, reloadTimer: 0, calloutTimer: 0,
         communicationTimer: 0, wait: 0.5 + i * 0.13, dropped: false, random: 7391 + i * 3571,
@@ -158,6 +159,10 @@ export class EnemyDirector {
         tactic: 'hold', tacticTimer: 0, tacticPoint: null, burst: 0, aimTime: 0, blockedFor: 0, contactMemory: 0, suppress: 0, settledFor: 0, hitPause: 0, moveSpeed: 0,
         searchPoints: [], searchIndex: 0, woundArm: false, woundLeg: false, deathClip: 'dieBody', speaker: i % 4, noticedBodies: [],
         scanTimer: 0, scanDuration: 0, scanCooldown: 0, scanYaw: 0, defensiveTimer: 0,
+      }
+      if (spec.patrolMode === 'perimeter') {
+        enemy.wait = 2 + this.random(enemy) * 2
+        this.nextPatrolStop(enemy, 0)
       }
       actor.root.rotation.y = enemy.yaw
       this.enemies.push(enemy)
@@ -415,6 +420,8 @@ export class EnemyDirector {
         const post = enemy.post ?? new THREE.Vector3(...enemy.spec.position)
         if (enemy.position.distanceTo(post) > 0.6) moving = this.move(enemy, post, this.speed(enemy, 1.25), dt)
         else this.face(enemy, enemy.position.clone().add(new THREE.Vector3(Math.sin(enemy.spec.facing ?? 0), 0, Math.cos(enemy.spec.facing ?? 0))), dt)
+      } else if (enemy.spec.patrolMode === 'perimeter') {
+        moving = this.perimeterPatrol(enemy, dt)
       } else {
         const route = enemy.spec.patrol
         if (route.length) {
@@ -448,6 +455,40 @@ export class EnemyDirector {
       enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel' ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
       enemy.actor.update(dt, enemy.state, moving, enemy.canSee && enemy.lastKnown ? enemy.lastKnown.clone().add(new THREE.Vector3(0, 1.65, 0)) : undefined, enemy.moveSpeed)
     }
+  }
+
+  private nextPatrolStop(enemy: Enemy, from: number) {
+    // Walk past intermediate points before choosing another 3–7 second lookout.
+    const count = enemy.spec.patrol.length
+    enemy.patrolStop = (from + 2 + Math.floor(this.random(enemy) * 4)) % count
+  }
+
+  private perimeterPatrol(enemy: Enemy, dt: number) {
+    const route = enemy.spec.patrol
+    if (route.length < 2) return false
+    if (enemy.wait > 0) {
+      enemy.wait = Math.max(0, enemy.wait - dt)
+      if (enemy.visitedWaypoints > 0) {
+        // Look out over the compound, rather than staring at the tank or path.
+        const center = new THREE.Vector3()
+        for (const point of route) center.add(new THREE.Vector3(...point))
+        center.multiplyScalar(1 / route.length)
+        this.face(enemy, enemy.position.clone().multiplyScalar(2).sub(center), dt, 1.8)
+      }
+      return false
+    }
+    const destination = new THREE.Vector3(...route[enemy.waypoint % route.length])
+    if (enemy.position.distanceTo(destination) < 0.3) {
+      if (enemy.waypoint === enemy.patrolStop) {
+        enemy.wait = 3 + this.random(enemy) * 4
+        this.nextPatrolStop(enemy, enemy.waypoint)
+      }
+      enemy.waypoint = (enemy.waypoint + 1) % route.length
+      enemy.visitedWaypoints++
+      enemy.path = []; enemy.pathTarget = null
+      return false
+    }
+    return this.move(enemy, destination, this.speed(enemy, 1.25), dt)
   }
 
   // ---------------------------------------------------------------- combat tactics
@@ -711,7 +752,10 @@ export class EnemyDirector {
   }
 
   private move(enemy: Enemy, destination: THREE.Vector3, speed: number, dt: number) {
-    if (enemy.spec.role === 'sniper' || enemy.hitPause > 0) return false
+    if (enemy.hitPause > 0) return false
+    // Only authored perimeter patrols let a marksman leave his current post.
+    // Combat, sounds and alarms never send him chasing targets off the tower.
+    if (enemy.spec.role === 'sniper' && (enemy.spec.patrolMode !== 'perimeter' || enemy.state !== 'patrol')) return false
     if (!this.stand(enemy)) return false
     const recovered = this.navigation.recoverDoorOverlap(enemy.position)
     if (recovered && this.separated(enemy, recovered, this.lastPlayer?.feet)) {
@@ -752,6 +796,8 @@ export class EnemyDirector {
       return true
     }
     enemy.stuck += dt
+    // Wait for a blocked catwalk to clear; don't sidestep toward its open edges.
+    if (enemy.spec.patrolMode === 'perimeter') return false
     if (enemy.stuck > 0.75) {
       if (!next) {
         // A door can swing across an existing route. Replan around the actual
@@ -1145,6 +1191,11 @@ export class EnemyDirector {
       enemy.post = vector(saved.post)
       for (const field of NUMBERS) enemy[field] = number(saved[field])
       enemy.random = number(saved.random, 7391)
+      // Older checkpoints recorded the water marksman as a fixed guard.
+      if (enemy.spec.patrolMode === 'perimeter' && saved.patrolStop === undefined) {
+        this.nextPatrolStop(enemy, enemy.waypoint)
+        if (enemy.state === 'guard' && !enemy.post) enemy.state = 'patrol'
+      }
       enemy.canSee = !!saved.canSee; enemy.dropped = !!saved.dropped; enemy.reserveRoute = !!saved.reserveRoute
       enemy.alarmResponse = !!saved.alarmResponse
       enemy.alarmExit = vector(saved.alarmExit)

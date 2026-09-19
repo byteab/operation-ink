@@ -37,7 +37,8 @@ check('Two supported tower sniper posts have open outward sightlines',()=>{
   const snipers=mission.enemies.filter(npc=>npc.role==='sniper')
   assert.equal(snipers.length,2)
   for(const npc of snipers){
-    assert.equal(npc.weapon,'sniper');assert.equal(npc.patrol.length,1)
+    assert.equal(npc.weapon,'sniper')
+    assert.equal(npc.patrol.length,npc.id==='water-sniper'?16:1)
     const feet=new THREE.Vector3(...npc.position)
     assert(feet.y>6);assert(Math.abs(world.floor(feet,.1,.3)-feet.y)<.03)
     const target=feet.clone().add(new THREE.Vector3(Math.sin(npc.facing!)*20,-feet.y+1.4,Math.cos(npc.facing!)*20))
