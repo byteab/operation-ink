@@ -1,5 +1,0 @@
-# Interface direction
-
-Keep the existing paper world (#fafbf9), ink (#172720), muted green (#365947), concrete (#dfe5df) and alert rust (#984638). Use Georgia for the mission name and the existing system sans for legible instruction text; no remote font dependency. A field briefing is a two-part layout: mission orders left, actual schematic map right. A single large STOP signal motif connects it to the physical dispatch console. During play, a narrow objective line sits top-left, vitality and ammunition occupy the bottom corners, and the action prompt remains near the sightline. The screen centre belongs to the world. Pause provides the same field map with settings and recovery controls.
-
-These choices follow the actual level's printed field orders and railway semantics. Borders divide briefing/map/settings; no decorative stat cards or unrelated dashboard chrome. Compact layouts stack the map and briefing and scroll within the pause sheet. Motion is limited to existing interaction pulse, damage feedback and weapon handling; reduced motion is available manually and follows the OS by default.

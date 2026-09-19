@@ -1,6 +1,6 @@
 # Stickman animation lab
 
-`npm run dev` → http://localhost:5173/lab.html. Full-screen ink/paper render of `public/models/stickman.glb`
+`npm run dev` → http://localhost:5173/lab.html. Full-screen solid-black rendering of `public/models/stickman.glb` on paper
 with a panel on the right. `window.__lab` is the `Ctx` in dev.
 
 ## Files
@@ -13,6 +13,7 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `player.ts` | `Player`: `play`, `queue`, `stop`, `setSpeed`, `update`; `fade` default |
 | `registry.ts` | `Ctx`, `Action`, `Updater`; globs `clips/*.ts`, `actions/*.ts`, `fx/*.ts`, `weapons/*.ts` |
 | `clips/idle.ts` | worked example: `hang` pose, `idle` clip, "Idle" action |
+| `gait.ts` | bakes narrow walk/run foot paths, forward knee poles, pelvis height and fixed-length leg rotations into shared clips |
 | `actions/scenario.ts` | game-like combos (shot → flinch/death + blood, armed patrol, alert + burst, reset) and "Export clips JSON" |
 | `panel.tsx` | preact panel: camera presets, speed/crossfade, action buttons, bone inspector |
 | `main.ts` | renderer, scene, orbit camera, rAF loop, hotkeys |
@@ -108,6 +109,61 @@ Mirror rule (verified exact on arms and legs): swap `.L`/`.R`, keep x, negate y 
 - No additive layering in `Player`: one active action plus crossfade.
 - Hotkeys are ignored while a text input is focused; buttons blur themselves after click.
 
+## Walking and running
+
+The shared GLB's hip contour and upper-arm weight transition were refined after
+the gait revision. The reproducible Blender script and before/after verification
+are documented in [the contour notes](../../docs/character-contours/README.md).
+The current [shoulder proportions](../../docs/character-shoulder-proportions/README.md)
+put arm attachments at ±15.5 cm, with a flatter shoulder slope and smaller,
+lower armpit openings matching the annotated reference. The loaded rig now shortens
+both arms by 8% from shoulder to wrist while preserving the shoulder attachment,
+hand size and original GLB. Mesh vertices and joints are rebound together before
+animation and weapon poses are built.
+Regenerate exported clips against this model; weapon holds are solved from its
+loaded joint positions.
+
+The GLB's resting hip/knee/ankle centres are at ±8/10/15 cm. Its wide rest stance
+is useful for other poses but should not define forward locomotion. `gait.ts`
+uses upper-body motion from the [CC0 Quaternius library](data/README.md),
+coordinated with support-driven walking and running. Grounded foot paths follow
+parallel lanes (18/17 cm apart), with fixed-length legs and forward knee poles.
+The baked ordinary quaternion and hips-position tracks are shared by the lab,
+game and JSON export, without runtime IK or a modified GLB.
+
+Walking lasts 0.86 s at 1.0 m/s; running lasts 0.82 s at 2.8 m/s. `GAIT_SPEED` is
+shared with enemies and the hostage so stance-foot speed matches root travel.
+Above normal speed, the playback control increases horizontal stride length as
+well as cadence. At 2×, walking takes 50% longer steps at 1.33× cadence; running
+takes 40% longer steps at 1.43× cadence. Cached variants retain fixed leg lengths
+and grounded caps. Speed edits preserve step phase, pause freezes the current
+stride, and speeds below 1× remain slow-motion previews. Mission movement and
+armed-patrol scenarios use the same stride adaptation.
+The model has rounded leg ends and no foot bones: ground clearance is calibrated
+to those caps. These clips target level ground, without terrain adaptation.
+
+The [longer-stride revision](../../docs/character-long-stride/README.md) removes
+the extra vertical pulse between footfalls. Only planted feet constrain the
+pelvis; airborne legs lift to accommodate their reach instead of pulling the
+body down. Walking rises over the straight support leg with a single smooth
+arc and 2.6 cm foot recovery. Running uses a longer flight arc and slower cycle,
+with 70–91 cm forward/back foot travel across 1×–2×. Ground contact shortens as
+running stride grows, keeping body travel at 1.2 cm at every speed. Normal
+walking body travel is 3.24 cm. Pelvis/shoulder counter-rotation and opposite arm
+swing follow the step phase, with more arm travel for longer strides. Running
+retains a straight 14° forward body line and 8° head tilt. Both loops use 121
+keys, including their matching endpoints. Fill and outline remain pure black.
+
+Run `npm run test:gait` for real-GLB checks covering knee bend, landing speed,
+support contact, step width, torso/head stability, one rise per step, bone lengths,
+foot sliding, loop closure, export and game consumers.
+`scripts/check-lab-gait.js` exercises the real lab controls and playback at 1×,
+1.5× and 2× through agent-browser. Current evidence is in
+`docs/character-long-stride/`.
+For front/side contact sheets, reload `/lab.html` and evaluate
+`scripts/capture-lab-gait.js` through agent-browser. Review full-speed playback as
+well as contact sheets; the technical checks cannot establish animation quality.
+
 ## Guns
 
 Pistol and revolver silhouettes are about 26 cm long, with grips fitted to the existing fist. Each builder uses +Z
@@ -124,8 +180,9 @@ This is necessary even for static poses: Three's mixer can skip unchanged track 
 solved support arm during the bolt cycle, while the free hand follows the bolt handle.
 
 The loaded rig rebases each wrist 8 cm toward the visible hand and recalculates its inverse bind matrices, preserving
-the rest mesh. Grip contact is then 3.5 cm along hand-local +Y, inside the visible fist. Weapon poses solve the
-unchanged arm lengths with explicit wrist orientations and outward/downward elbow directions. Ordinary body clips
+the source rest mesh. The arm shortening is then applied before the final rebind.
+Grip contact is 3.5 cm along hand-local +Y, inside the visible fist. Weapon poses solve the
+loaded arm lengths with explicit wrist orientations and outward/downward elbow directions. Ordinary body clips
 receive a weapon carry correction; crossfades start from the last corrected arm pose. Entering a weapon action
 from movement interpolates the visible gun transform while maintaining hand contact. Equipping establishes a
 safe hold immediately, since the lab has no draw animation.
@@ -169,3 +226,33 @@ Reload the page to remove the contact sheet. Before running the capture script, 
 `stance: 'hip'`. For example, `{ mode: 'fire', names: ['shotgun', 'sniper'], times: [0.04, 0.4, 0.7] }`
 shows recoil and manual cycling. Inspect multiple views: correct attachment coordinates alone cannot establish
 that the stock, receiver, wrists, and body have a convincing silhouette.
+
+## Combat reactions and firing postures
+
+The **Combat stance** group selects Stand, Shallow crouch, One knee, or Prone.
+Equip any weapon, select a stance, then use Fire (`F`), aim/hip holds, reload, or
+automatic fire (SMG/AK). These operations retain the lower-body stance. Prone uses
+a forward supported hold even when Hip fire or Lower gun is selected. Holster and
+Reset scene restore standing; switching weapons keeps the selected posture.
+
+**Behaviour** and **Scenario** expose three missed-shot responses: a shallow crouch
+with a left/right scan, a fast prone drop, and a one-knee drop. Each stays in its
+defensive stance. Fire, reload, and auto commands during the transition queue until
+the character settles. Stop, locomotion, another stance, holster, and death cancel
+the old reaction. Standing from prone passes through kneeling.
+
+**Shotgun: airborne knockback** (`6`) / **Shot: shotgun blast** releases the weapon,
+dips the torso, throws the body backward with legs and arms lifting together, and
+settles after a staggered back/shoulder impact. It adds multiple initial blood fans,
+three airborne trail emissions, and an impact splash/pool. All effects respect
+blood settings, playback speed, pause, interruption, and existing particle limits.
+
+`postures.ts` authors the lower body and bakes posture-specific weapon performances
+with fixed arm lengths and a forward muzzle. Static postures and generated weapon
+variants are available in the clip export; support/mechanism contact uses the same
+weapon IK as standing. The game enemy director now uses these shared poses for
+near-miss reactions and firing, plus the shotgun death clip. Shared walk/run clips
+also feed the game characters. See [mission integration](../../docs/character-combat/game-integration.md).
+
+Verification and visual evidence: [combat notes](../../docs/character-combat/README.md).
+Run `scripts/check-lab-combat.js` through agent-browser after a fresh lab load.
