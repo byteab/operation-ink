@@ -49,7 +49,8 @@ function wall(name: string, length: number, height: number, x: number, z: number
   for (const o of openings.filter(o => o.window)) {
     const glass = new Draft(`${name} · window ${o.center}`)
     glass.userData.kind = 'window'
-    glass.box(o.width - 0.12, o.height - 0.12, 0.025, o.center, floor + o.bottom + o.height / 2, 0, 'glass', 'detail')
+    // Fill the opening behind the frame so the sill and header leave no exposed gaps.
+    glass.box(o.width, o.height, 0.025, o.center, floor + o.bottom + o.height / 2, 0, 'glass', 'detail')
     for (const u of [o.center - o.width / 2 + 0.035, o.center + o.width / 2 - 0.035, o.center]) {
       glass.box(0.07, o.height, 0.16, u, floor + o.bottom + o.height / 2, 0, 'paper', 'detail')
     }
