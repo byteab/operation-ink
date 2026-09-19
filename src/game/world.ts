@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { Draft, type Point } from '../render/ink'
+import { penPalette } from '../render/ballpoint'
 import { crates, steps } from '../world/architecture'
 import { createDoor } from '../world/doors'
 import { fence, gate, type PlanPoint } from '../world/industrial'
@@ -26,19 +27,42 @@ function sign(text: string, position: Point, width = 3.8, angle = 0, subtitle = 
   canvas.height = 192
   const context = canvas.getContext('2d')
   if (!context) return root
-  context.fillStyle = '#f1f3ee'
+  const css = (color: number) => `#${color.toString(16).padStart(6, '0')}`
+  context.fillStyle = css(penPalette.paper)
   context.fillRect(0, 0, canvas.width, canvas.height)
-  context.strokeStyle = '#3e4951'
-  context.lineWidth = 5
-  context.strokeRect(8, 8, 752, 176)
-  context.fillStyle = '#26343b'
-  context.textAlign = 'center'
+  context.strokeStyle = css(penPalette.ink)
+  context.lineWidth = 3
+  context.lineCap = context.lineJoin = 'round'
+  context.beginPath()
+  context.moveTo(10, 14); context.lineTo(277, 10); context.lineTo(756, 13)
+  context.lineTo(758, 181); context.lineTo(418, 179); context.lineTo(9, 183); context.lineTo(10, 10)
+  context.stroke()
+  context.globalAlpha = 0.42
+  context.beginPath(); context.moveTo(17, 17); context.lineTo(246, 14)
+  context.moveTo(751, 109); context.lineTo(753, 186); context.stroke()
+  context.globalAlpha = 1
+  context.fillStyle = css(penPalette.dark)
+  context.textAlign = 'left'
   context.textBaseline = 'middle'
-  context.font = `600 ${text.length > 20 ? 41 : 53}px monospace`
-  context.fillText(text, 384, subtitle ? 71 : 98, 722)
+  const letter = (value: string, size: number, y: number) => {
+    context.font = `${size}px "Chalkboard SE", "Comic Sans MS", cursive`
+    const widths = [...value].map(character => context.measureText(character).width + 1.5)
+    const fullWidth = widths.reduce((sum, width) => sum + width, 0)
+    const scale = Math.min(1, 712 / fullWidth)
+    let x = (768 - fullWidth * scale) / 2
+    for (const [index, character] of [...value].entries()) {
+      context.save()
+      context.translate(x, y + Math.sin(index * 2.3 + value.length) * 1.4)
+      context.rotate(Math.sin(index * 4.7) * 0.014)
+      context.scale(scale, 1)
+      context.fillText(character, 0, 0)
+      context.restore()
+      x += widths[index] * scale
+    }
+  }
+  letter(text, text.length > 20 ? 41 : 53, subtitle ? 71 : 98)
   if (subtitle) {
-    context.font = '27px monospace'
-    context.fillText(subtitle, 384, 137, 712)
+    letter(subtitle, 27, 137)
   }
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
@@ -87,7 +111,11 @@ function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
       const wx = direction * (w / 2 - 1.65)
       walls.box(1.6, 1.0, 0.035, wx, 2.1, side * (d / 2 + 0.13), 'glass', 'detail')
       walls.line([[wx, 1.6, side * (d / 2 + 0.153)], [wx, 2.6, side * (d / 2 + 0.153)]], 'mesh')
+      walls.hatch([wx - 0.67, 1.7, side * (d / 2 + 0.16)], [0.48, 0, 0], [0, 0.6, 0],
+        { spacing: 0.12, inset: 0.03 })
     }
+    walls.hatch([-w / 2 + 0.2, ROOF - 0.48, side * (d / 2 + 0.132)], [Math.min(w * 0.32, 3.2), 0, 0],
+      [0, 0.23, 0], { spacing: 0.2, inset: 0.025 })
   }
   for (const side of [-1, 1]) {
     walls.box(0.22, height, d, side * w / 2, FLOOR + height / 2, 0, 'paper', false)
@@ -98,6 +126,8 @@ function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
   const roof = new Draft(`${name} · flat roof`)
   roof.userData.cutaway = true
   roof.box(w + 0.45, 0.2, d + 0.45, 0, ROOF - 0.1, 0, 'roof')
+  roof.hatch([-w / 2 + 0.1, ROOF + 0.016, -d / 2 + 0.2], [Math.min(w * 0.3, 3.4), 0, 0],
+    [0, 0, 1.15], { spacing: 0.23, inset: 0.04 })
   // Maintenance roof has a safe observation edge and a real ladder gap.
   if (role === 'maintenance') {
     for (const side of [-1, 1]) roof.box(w + 0.2, 0.72, 0.16, 0, ROOF + 0.36, side * (d / 2 + 0.05), 'paper', 'detail')
@@ -336,7 +366,7 @@ function securityCameras() {
     casing.box(0.4, 0.3, 0.7, 0, 0, 0.25, 'roof', 'detail')
     casing.box(0.24, 0.2, 0.04, 0, 0, 0.62, 'concrete', 'detail')
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6),
-      new THREE.MeshBasicMaterial({ color: 0x3baf68, toneMapped: false }))
+      new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }))
     lamp.position.set(0.15, -0.08, 0.63)
     pivot.add(casing.finish(), lamp)
     root.add(mount.finish(), pivot)

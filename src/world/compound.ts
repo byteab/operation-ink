@@ -46,7 +46,10 @@ function yard() {
   // Sparse slab joints only on the loading court; open yards remain quiet.
   const [cx, cz] = mapPoint(924, 583)
   g.box(54, 0.045, 10, cx, 0.02, cz, 'concrete', false)
-  for (const x of [cx - 24, cx - 12, cx, cx + 12, cx + 24]) g.line([[x, 0.05, cz - 5], [x, 0.05, cz + 5]], 'mesh')
+  for (const x of [cx - 24, cx - 12, cx, cx + 12, cx + 24]) g.line([[x, 0.05, cz - 5], [x, 0.05, cz + 5]], 'detail')
+  for (const [x, z, width] of [[cx - 22, cz - 4.7, 3.8], [cx + 5, cz + 2.8, 2.4], [cx + 19, cz - 4.3, 2.8]]) {
+    g.hatch([x, 0.052, z], [width, 0, 0.3], [0.7, 0, 1.1], { spacing: 0.28, inset: 0.06 })
+  }
   return g.finish()
 }
 
@@ -67,7 +70,14 @@ function accessRoad() {
     shoulderB.push(p.clone().addScaledVector(n, 3.95).toArray())
     if (i < count && i % 5 === 0) {
       const end = curve.getPoint(Math.min(1, (i + 1.7) / count))
-      g.line([[p.x, 0.045, p.z], [end.x, 0.045, end.z]], 'mesh')
+      g.line([[p.x, 0.045, p.z], [end.x, 0.045, end.z]], 'detail')
+    }
+    if (i > 0 && i < count && i % 13 === 0) {
+      const start = p.clone().addScaledVector(n, i % 2 ? -3.15 : 2.65)
+      const end = start.clone().addScaledVector(tangent, 1.8 + i % 3).addScaledVector(n, -0.5)
+      g.line([[start.x, 0.048, start.z], [end.x, 0.048, end.z]], 'landscape')
+      g.line([[start.x + n.x * 0.2, 0.048, start.z + n.z * 0.2],
+        [end.x - tangent.x * 0.45, 0.048, end.z - tangent.z * 0.45]], 'landscape')
     }
   }
   const vertices: Point[] = [], indices: number[] = []
@@ -77,7 +87,7 @@ function accessRoad() {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices.flat(), 3))
   geo.setIndex(indices); geo.computeVertexNormals()
   g.solid(geo, [0, 0, 0], 'concrete', false)
-  g.line(left, 'detail'); g.line(right, 'detail')
+  g.line(left, 'edge'); g.line(right, 'edge')
   g.line(shoulderA, 'landscape'); g.line(shoulderB, 'landscape')
 
   // The entrance drive reaches the ladder forecourt through the open outer gate;
@@ -94,7 +104,7 @@ function accessRoad() {
     driveRight.push(p.clone().addScaledVector(normal, 2.7).toArray())
     if (i > 0) g.face([driveLeft[i - 1], driveRight[i - 1], driveRight[i], driveLeft[i]], 'concrete', false)
   }
-  g.line(driveLeft, 'mesh'); g.line(driveRight, 'mesh')
+  g.line(driveLeft, 'edge'); g.line(driveRight, 'edge')
   return g.finish()
 }
 
@@ -121,8 +131,29 @@ function landscaping() {
       const y = h * (0.38 + i * 0.20)
       const cone = new THREE.ConeGeometry(radius, height, 40)
       g.solid(cone, [x, y, z], 'green', false, [0, 0, 0], true)
-      // A softly scalloped lower rim, never a triangulated foliage wireframe.
-      g.ring(radius, y - height / 2, x, z, 'landscape', 48)
+      // Loose downward branch marks sit on the original cone: tree collision stays exact.
+      // Each short trail resembles a student drawing a pine one branch at a time.
+      const bottom = y - height / 2
+      for (let branch = 0; branch < 8; branch++) {
+        const angle = branch / 8 * Math.PI * 2 + i * 0.39 + px * 0.013
+        const trail: Point[] = []
+        for (let step = 0; step < 5; step++) {
+          const t = 0.14 + step * 0.205
+          const turn = angle + (step % 2 ? 0.075 : -0.055)
+          const r = radius * t + 0.028
+          trail.push([x + Math.cos(turn) * r, bottom + height * (1 - t), z + Math.sin(turn) * r])
+        }
+        g.line(trail, 'landscape')
+        const tip = trail[trail.length - 1]
+        g.line([tip, [tip[0] + Math.cos(angle) * h * 0.035, tip[1] - h * 0.055,
+          tip[2] + Math.sin(angle) * h * 0.035]], 'landscape')
+      }
+      const rim: Point[] = Array.from({ length: 24 }, (_, branch) => {
+        const a = branch / 24 * Math.PI * 2
+        const r = radius * (branch % 2 ? 1.04 : 0.97)
+        return [x + Math.cos(a) * r, bottom + (branch % 2 ? -0.025 : 0.085), z + Math.sin(a) * r]
+      })
+      g.line(rim, 'landscape', true)
     }
   }
   const rocks = [[1120, 971, 3.1], [1152, 947, 2.5], [1171, 976, 2], [1223, 86, 2.8], [1270, 79, 2],

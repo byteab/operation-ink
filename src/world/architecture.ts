@@ -21,6 +21,12 @@ function windowFrame(g: Draft, x: number, y: number, z: number, w = 1.4, h = 1.3
   g.line([point(a + 0.09, y + 0.09, 0.008), point(b - 0.09, y + 0.09, 0.008),
     point(b - 0.09, y + h - 0.09, 0.008), point(a + 0.09, y + h - 0.09, 0.008)], 'detail', true)
   g.line([point(0, y + 0.08, 0.01), point(0, y + h - 0.08, 0.01)], 'detail')
+  // A few diagonal pen strokes darken one corner; the rest remains bare paper.
+  for (const sign of [-1, 1]) {
+    const origin = point(sign < 0 ? a + 0.16 : 0.16, y + 0.15, 0.02)
+    g.hatch(origin, side ? [0, 0, w * 0.25] : [w * 0.25, 0, 0], [0, h * 0.45, 0],
+      { spacing: 0.12, inset: 0.03 })
+  }
   if (side) g.box(0.12, 0.09, w + 0.15, x, y - 0.025, z, 'paper', 'detail')
   else g.box(w + 0.15, 0.09, 0.12, x, y - 0.025, z, 'paper', 'detail')
 }
@@ -82,6 +88,17 @@ export function roof(g: Draft, w: number, d: number, eave: number, rise: number,
         g.line([[sx, edgeY + 0.015, z + side * D], [sx, top + 0.015, z]], 'mesh')
       }
     }
+    // Small, separated shading patches follow the roof pitch, leaving broad white areas.
+    const patchCount = Math.max(1, Math.min(5, Math.ceil(w / 8)))
+    for (let i = 0; i < patchCount; i++) {
+      const patchWidth = Math.min(2.8, w * 0.38)
+      const sx = x - W + 0.3 + (2 * W - patchWidth - 0.6) * (i + 0.2) / patchCount
+      const reach = i % 2 ? 0.23 : 0.38
+      g.hatch([sx, edgeY + 0.018, z + side * D], [patchWidth, 0, 0],
+        [0, (top - edgeY) * reach, -side * D * reach], { spacing: 0.21, inset: 0.04, seed: i + 11 })
+    }
+    g.hatch([x - W + 0.18, edgeY - 0.12, z + side * (D + 0.016)], [Math.min(w, 3.4), 0, 0],
+      [0, 0.1, 0], { spacing: 0.16, inset: 0.01 })
   }
   g.line([[x - W, top + 0.015, z], [x + W, top + 0.015, z]])
 }
@@ -192,6 +209,8 @@ export function container(name: string, x: number, z: number, w = 6.1, d = 2.45,
   for (const side of [-1, 1]) {
     for (let u = -w / 2 + 0.45; u < w / 2; u += 0.62) g.line([[u, 0.3, side * (d / 2 + 0.015)], [u, 2.4, side * (d / 2 + 0.015)]], 'mesh')
     for (const y of [0.2, 2.46]) g.line([[-w / 2, y, side * (d / 2 + 0.02)], [w / 2, y, side * (d / 2 + 0.02)]], 'detail')
+    g.hatch([-w / 2 + 0.15, 0.25, side * (d / 2 + 0.023)], [Math.min(1.6, w * 0.35), 0, 0],
+      [0, 0.7, 0], { spacing: 0.16, inset: 0.025 })
   }
   const end = w / 2 + 0.02
   g.line([[end, 0.17, 0], [end, 2.48, 0]], 'detail')
@@ -273,6 +292,8 @@ export function crates(g: Draft, x: number, z: number, count = 3, fill: Fill = '
     const sx = x + i * 1.1, h = i === 1 ? 1.65 : 0.85
     g.box(1, h, 0.95, sx, floor + h / 2 + 0.1, z, fill, 'detail')
     for (const y of [floor + 0.28, floor + h - 0.04]) g.line([[sx - 0.48, y, z + 0.48], [sx + 0.48, y, z + 0.48]], 'detail')
+    g.hatch([sx - 0.46, floor + 0.15, z + 0.49], [0.37, 0, 0], [0, Math.min(0.48, h - 0.1), 0],
+      { spacing: 0.085, inset: 0.025, seed: i + 7 })
     g.box(1.05, 0.1, 1.05, sx, floor + 0.05, z, 'concrete', 'detail')
   }
 }

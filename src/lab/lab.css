@@ -1,18 +1,19 @@
-:root { color-scheme: light; background: #fafbf9; }
+@import "../render/paper.css";
 * { box-sizing: border-box; }
-html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; font: 12px/1.4 system-ui, sans-serif; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; font: 12px/1.4 var(--notes); }
 body { display: flex; }
 #lab { flex: 1; min-width: 0; height: 100%; display: block; outline: none; touch-action: none; cursor: grab; }
 #lab:active { cursor: grabbing; }
-#panel { width: 300px; height: 100%; overflow-y: auto; background: #1f2428; color: #d8dde2; padding: 8px 12px 24px; user-select: none; }
-#panel h3 { margin: 14px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a949c; }
-#panel button { background: #2d343a; color: inherit; border: 1px solid #3d454c; border-radius: 4px; padding: 4px 8px; margin: 0 4px 4px 0; cursor: pointer; font: inherit; }
-#panel button:hover { background: #3a424a; }
-#panel kbd { font: 10px monospace; color: #8a949c; margin-left: 4px; }
+#panel { width: 300px; height: 100%; overflow-y: auto; background: var(--paper); color: var(--ink-deep); padding: 8px 12px 24px; border-left: 1px dashed var(--ink-rule); user-select: none; }
+#panel h3 { margin: 14px 0 6px; font-size: 11px; font-family: var(--hand); font-size: 17px; color: var(--ink-muted); }
+#panel button { background: transparent; color: inherit; border: 1px solid var(--ink-rule); border-radius: 4px; padding: 4px 8px; margin: 0 4px 4px 0; cursor: pointer; font: inherit; }
+#panel button:hover { background: var(--paper-shade); }
+#panel kbd { font: 10px monospace; color: var(--ink-muted); margin-left: 4px; }
 #panel label { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
-#panel label span { width: 64px; color: #aab2b8; }
+#panel label span { width: 64px; color: var(--ink-muted); }
 #panel label output { width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 #panel input[type=range] { flex: 1; min-width: 0; }
 #panel details { margin: 2px 0; }
-#panel summary { cursor: pointer; color: #aab2b8; }
-#panel summary.active { color: #ffd479; }
+#panel summary { cursor: pointer; color: var(--ink-muted); }
+#panel summary.active { color: var(--ink); text-decoration: underline; font-weight: 700; }
+#panel button:focus-visible, #panel summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

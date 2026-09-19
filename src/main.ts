@@ -20,7 +20,7 @@ renderer.setClearColor(palette.paper)
 renderer.shadowMap.enabled = false
 
 const scene = new THREE.Scene()
-scene.name = 'Line-art environment study'
+scene.name = 'Blue ballpoint compound'
 scene.background = new THREE.Color(palette.paper)
 const compound = createCompound()
 const missionWorld = new URLSearchParams(location.search).get('explore') === '1' ? null : createMissionWorld()
@@ -139,7 +139,7 @@ import.meta.hot?.dispose(() => {
   interactions.dispose()
   const materials = new Set<THREE.Material>()
   scene.traverse(object => {
-    if (object instanceof THREE.Mesh) {
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
       object.geometry.dispose()
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material)
     }

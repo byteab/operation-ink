@@ -32,9 +32,9 @@ function noise(x: number, y: number, seed: number) {
   return a + (b - a) * fx + (c - a + (a - b - c + d) * fx) * fy
 }
 
-/** Bake a liquid footprint once. Smooth unions merge the fluid before shading, so
- * overlapping lobes have no internal outlines. Noise models uneven paper uptake;
- * curved, tapering rivulets and detached microdrops break up the impact silhouette.
+/** Bake a pen-scribbled impact footprint once. Uneven crossed strokes leave the
+ * paper visible inside connected marks; a broken contour catches their edges.
+ * The original footprint and particle limits still control gameplay feedback.
  * R stores coverage, G stores pigment density (data, not display colours).
  */
 function bakeStamp(seed: number, kind: StampKind) {
@@ -97,9 +97,13 @@ function bakeStamp(seed: number, kind: StampKind) {
     const broad = noise(u * 9, v * 9, seed), grain = noise(u * 83, v * 83, seed + 3)
     const fine = noise(u * 173, v * 173, seed + 7)
     const distance = field[i] + (broad - 0.5) * 0.065 + (grain - 0.5) * 0.022 + (fine - 0.5) * 0.008
-    // A very narrow porous fringe, not a dark stroke around the stain.
+    // The stroke pattern is baked per stamp, so it never crawls as the camera moves.
     const edge = THREE.MathUtils.clamp(0.5 - distance / (pool ? 0.027 : 0.019), 0, 1)
-    const coverage = edge * edge * (3 - 2 * edge)
+    const hatchA = THREE.MathUtils.smoothstep(Math.cos((u + v * 0.72) * 153 + Math.sin(v * 27) * 0.7), 0.67, 0.94)
+    const hatchB = THREE.MathUtils.smoothstep(Math.cos((u - v * 0.83) * 119 + Math.sin(u * 33 + seed) * 0.9), 0.78, 0.97)
+    const contour = THREE.MathUtils.clamp(1 - Math.abs(distance) / 0.019, 0, 1) * (0.35 + grain * 0.6)
+    const scribble = Math.max(hatchA * (0.65 + broad * 0.35), hatchB * 0.88, contour)
+    const coverage = edge * edge * (3 - 2 * edge) * scribble
     const depth = THREE.MathUtils.clamp(-distance * 7, 0, 1)
     const density = THREE.MathUtils.clamp(0.32 + depth * 0.36 + (broad - 0.5) * 0.3 + (grain - 0.5) * 0.12, 0, 1)
     // Transparent padding keeps mipmaps/anisotropic sampling inside each tile.

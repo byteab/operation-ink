@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
@@ -226,7 +227,7 @@ export class MissionRuntime {
       this.audio.play({kind:'impact',position:end,radius:18})
       this.impacts.emit(end, shot.direction)
     }
-    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([shot.origin,end]),new THREE.LineBasicMaterial({color:0x898d78,transparent:true,opacity:0.35}))
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([shot.origin,end]),new THREE.LineBasicMaterial({color:penPalette.ink,transparent:true,opacity:0.35}))
     line.userData.noCollision=true; this.scene.add(line); this.traces.push({line,time:0.055})
   }
 
@@ -359,7 +360,7 @@ export class MissionRuntime {
       this.hitFlash-=dt
     }
     const crosshair=document.querySelector<HTMLElement>('.crosshair')!
-    crosshair.style.background=this.hitFlash>0?'#984638':''
+    crosshair.classList.toggle('confirmed-hit', this.hitFlash > 0)
     this.hud.update(dt,this.state,{playing:this.player.playing,enabled:this.player.enabled&&!this.player.immersive,
       label:this.weapons.label,ammo:this.weapons.ammo,reloading:this.weapons.reloading,blocked:this.weapons.blocked,
       alert:this.ai.alertLevel,position:this.player.body.position,yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y,deaths:this.deaths,ready:this.ready})

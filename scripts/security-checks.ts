@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
+import { penPalette } from '../src/render/ballpoint'
 import { EnemyDirector } from '../src/game/ai'
 import type { EnemyActor } from '../src/game/actors'
 import { initialMission } from '../src/game/mission'
@@ -84,13 +85,13 @@ console.log('PASS Camera dwell, wall occlusion, reacquisition, frozen last-known
 {
   const f = await fixture()
   f.security.sync(f.state)
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), 0x56d46a)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.ink)
   f.state.camerasActive = false
   const yaw = f.pivot.rotation.y
   f.step(3)
   assert.equal(f.state.alarm, 'inactive')
   assert.equal(f.pivot.rotation.y, yaw, 'disabled cameras stop sweeping')
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), 0x26332b)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.paper)
   f.security.trigger(f.state, f.eye.clone().setY(0))
   f.state.alarm = 'silenced'; f.state.silencedElapsed = 0; f.security.sync(f.state)
   assert(f.ai.enemies.filter(enemy => enemy.state !== 'reserve').every(enemy => enemy.state === 'search'))
@@ -108,7 +109,7 @@ console.log('PASS Camera dwell, wall occlusion, reacquisition, frozen last-known
   assert.deepEqual(f.ai.snapshot(), snapshot, 'alarm response ownership survives checkpoint snapshots')
   f.security.reset()
   const initial = initialMission(); f.security.sync(initial)
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), 0x56d46a)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.ink)
   assert.equal(initial.alarm, 'inactive')
   assert.equal(initial.reservesDispatched, 0)
   f.dispose()

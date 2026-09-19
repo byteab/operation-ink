@@ -57,6 +57,8 @@ class Furnishing extends Draft {
       g.box(1.12, 0.13, 2.2, 0, y, 0, 'roof', 'detail')
       g.box(1.04, 0.18, 2.09, 0, y + 0.13, 0, 'paper', 'detail')
       g.box(1.035, 0.025, 1.35, 0, y + 0.235, 0.3, 'green', 'detail')
+      g.hatch([-0.46, y + 0.262, -0.29], [0.32, 0, 0], [0, 0, 0.7],
+        { spacing: 0.095, inset: 0.025 })
       g.box(0.7, 0.12, 0.39, 0, y + 0.26, -0.72, 'paper', 'detail')
       g.beam([-0.51, y + 0.36, -1.06], [0.51, y + 0.36, -1.06], 0.065, 'paper', 'detail')
     }

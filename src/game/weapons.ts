@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { applyPenMaterial, createPenSilhouette, penPalette } from '../render/ballpoint'
 import { disposeGun, type Gun } from '../lab/weapons/models'
 import type { WeaponContext, WeaponFrame, WeaponItem, WeaponSnapshot } from './types'
 import { WEAPON_RULES, WEAPON_SLOTS, SHOTGUN_PELLETS, SHOTGUN_BALLISTICS, startingLoadout } from './balance'
@@ -23,12 +24,17 @@ export class FirstPersonWeapons {
   private leftHand = new THREE.Group()
   private supportFingers = new THREE.Group()
   private pistolSupport = new THREE.Group()
-  private armMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 })
-  private limbGeometry = new THREE.CylinderGeometry(0.027, 0.030, 1, 10)
-  private jointGeometry = new THREE.SphereGeometry(0.031, 10, 8)
-  private palmGeometry = new THREE.SphereGeometry(1, 10, 8)
+  private armMaterial = new THREE.MeshBasicMaterial({
+    color: penPalette.paper, toneMapped: false,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+  })
+  // Full upper arms taper through the elbow to a narrower wrist; IK still owns length.
+  private upperArmGeometry = new THREE.CylinderGeometry(0.055, 0.075, 1, 24)
+  private forearmGeometry = new THREE.CylinderGeometry(0.035, 0.057, 1, 24)
+  private jointGeometry = new THREE.SphereGeometry(0.057, 20, 16)
+  private palmGeometry = new THREE.SphereGeometry(1, 20, 16)
   private flashGeometry = this.makeFlashGeometry()
-  private flashMaterial = new THREE.MeshBasicMaterial({ color: 0xffd682, transparent: true, opacity: 0.95, side: THREE.DoubleSide })
+  private flashMaterial = applyPenMaterial(new THREE.MeshBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.95, side: THREE.DoubleSide, toneMapped: false }), { density: 0.47, scale: 90, seed: 829 })
   private flash = new THREE.Mesh(this.flashGeometry, this.flashMaterial)
   private arms: [Arm, Arm]
   private model: Gun | null = null
@@ -84,11 +90,19 @@ export class FirstPersonWeapons {
   get slots(): readonly (WeaponItem | null)[] { return this.inventory }
 
   private makeArm(shoulder: THREE.Vector3, pole: THREE.Vector3): Arm {
-    const upper = new THREE.Mesh(this.limbGeometry, this.armMaterial)
-    const fore = new THREE.Mesh(this.limbGeometry, this.armMaterial)
-    const elbow = new THREE.Mesh(this.jointGeometry, this.armMaterial)
+    const upper = this.armShape(this.upperArmGeometry)
+    const fore = this.armShape(this.forearmGeometry)
+    const elbow = this.armShape(this.jointGeometry)
     this.root.add(upper, fore, elbow)
     return { shoulder, pole, upper, fore, elbow }
+  }
+
+  private armShape(geometry: THREE.BufferGeometry) {
+    const mesh = new THREE.Mesh(geometry, this.armMaterial)
+    const contour = createPenSilhouette(geometry, 2.4)
+    contour.name = 'First-person arm contour'
+    mesh.add(contour)
+    return mesh
   }
 
   private makeFlashGeometry() {
@@ -104,9 +118,9 @@ export class FirstPersonWeapons {
   }
 
   private mitten(parent: THREE.Group, position: [number, number, number], scale: [number, number, number]) {
-    const shape = new THREE.Mesh(this.palmGeometry, this.armMaterial)
+    const shape = this.armShape(this.palmGeometry)
     shape.position.set(...position)
-    shape.scale.set(...scale)
+    shape.scale.set(scale[0] * 1.12, scale[1] * 1.06, scale[2] * 1.08)
     parent.add(shape)
   }
 
@@ -134,7 +148,7 @@ export class FirstPersonWeapons {
     mesh.quaternion.setFromUnitVectors(up, direction.normalize())
   }
 
-  /** A two-bone solve keeps both sticks exactly 34/36 cm long throughout all poses. */
+  /** A two-bone solve keeps upper arms/forearms exactly 34/36 cm long throughout all poses. */
   private placeArm(arm: Arm, wrist: THREE.Vector3) {
     const direction = wrist.clone().sub(arm.shoulder)
     const distance = direction.length()
@@ -529,7 +543,7 @@ export class FirstPersonWeapons {
     for (const { model } of this.loose.values()) disposeGun(model)
     this.loose.clear()
     this.root.removeFromParent()
-    for (const geometry of [this.limbGeometry, this.jointGeometry, this.palmGeometry, this.flashGeometry]) geometry.dispose()
+    for (const geometry of [this.upperArmGeometry, this.forearmGeometry, this.jointGeometry, this.palmGeometry, this.flashGeometry]) geometry.dispose()
     this.armMaterial.dispose()
     this.flashMaterial.dispose()
   }

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 import { Capsule } from 'three/addons/math/Capsule.js'
 import { EnemyActor, type ActorPostureSnapshot } from './actors'
 import type { Posture } from '../lab/postures'
@@ -893,7 +894,7 @@ export class EnemyDirector {
     enemy.actor.shoot()
     this.context.emit({ kind: `enemy-shot-${enemy.spec.weapon}`, position: muzzle.clone(), radius: enemy.spec.weapon === 'sniper' ? 120 : 36 })
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]),
-      new THREE.LineBasicMaterial({ color: 0x8b6c42, transparent: true, opacity: 0.4, depthTest: true }))
+      new THREE.LineBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.4, depthTest: true }))
     this.context.scene.add(line)
     this.traces.push({ line, life: 0.085 })
     if (!hitPlayer) {

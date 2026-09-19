@@ -1,11 +1,12 @@
 import * as THREE from 'three'
+import { penPalette } from '../render/ballpoint'
 
 type Chip = { position: THREE.Vector3; velocity: THREE.Vector3; life: number; size: number }
 
 /** Bounded paper/ink chips. Origins come from the authoritative world raycast. */
 export class MissionImpacts {
   readonly mesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0),
-    new THREE.MeshBasicMaterial({ color: 0x77664c, toneMapped: false }), 80)
+    new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }), 80)
   private chips: Chip[] = []
   private matrix = new THREE.Matrix4()
   private rotation = new THREE.Quaternion()
