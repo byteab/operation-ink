@@ -1,12 +1,12 @@
 :root {
   color-scheme: light;
-  --paper: #faf8f2;
-  --paper-shade: #f5f1e6;
-  --ink: #2645a4;
-  --ink-deep: #192f78;
-  --ink-muted: #4f639e;
-  --ink-light: #7184b8;
-  --ink-rule: #7184b880;
+  --paper: #ffffff;
+  --paper-shade: #f5f5f5;
+  --ink: #000000;
+  --ink-deep: #000000;
+  --ink-muted: #555555;
+  --ink-light: #808080;
+  --ink-rule: #80808080;
   --hand: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
   --notes: "Trebuchet MS", "Segoe UI", sans-serif;
   background: var(--paper);

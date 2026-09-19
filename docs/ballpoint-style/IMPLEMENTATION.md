@@ -1,10 +1,26 @@
 # Ballpoint style preview
 
-The revised preview uses blue environment outlines on near-white paper (`#faf8f2`), solid black NPC characters, fuller FPS arms with blue outlines and paper interiors, and guns with plain paper faces and stronger continuous blue outlines. This follows the user's corrections after the previews. The local game is available at `http://localhost:5173/`.
+The revised preview uses black environment outlines on white paper (`#ffffff`), solid black NPC characters, fuller FPS arms with black outlines and paper interiors, and guns with plain paper faces and stronger continuous black outlines. Blood uses red droplets, splashes and pools. This follows the user's corrections after the previews. The local game is available at `http://localhost:5173/`.
 
 The user will review the actual look before browser verification begins. No browser was opened and no screenshot, GPU shader compilation, frame-rate measurement or visual pass has been claimed.
 
-## Changes
+## Red blood revision
+
+- Added a shared blood palette with fresh red droplets (`#cc1717`), darker rims/shading (`#7a0c0c`) and red stains/pools (`#a81010`) in the mission and animation lab.
+- Blood emission, collision, spreading, particle limits and checkpoint behavior remain unchanged.
+- `npm run build`, the existing blood-feedback and shotgun-feedback checks, and `git diff --check` passed after the color revisions. Browser/GPU verification has not been performed.
+
+## White paper revision
+
+- Set the scene, paper surfaces, UI backgrounds, browser theme and VR label background to white, retaining existing opacity. Shaded panels and paper grain now use neutral gray to remove the yellow tint.
+
+## Black ink revision
+
+- Replaced the shared blue rendering and UI palette with black main/dense ink, neutral gray lighter marks and muted text. Updated translucent UI effects and made VR label text follow the shared palette.
+- Paper, line widths, pressure variation, perspective taper, geometry and gameplay remain unchanged.
+- `npm run build` and `git diff --check` passed. No old blue palette values remain in `src`. Browser/GPU verification has not been performed.
+
+## Earlier changes (blue ink now superseded by black)
 
 - `src/render/ballpoint.ts` centralizes the palette, stable randomness, retraced contour geometry and surface-attached hatching. The hatch decorator remains available for blue effects; characters and guns no longer use it.
 - `src/render/ink.ts` retains solid opaque collision surfaces and batched line meshes. Lines have bounded, stable screen-space deviation, per-segment pressure and selective retracing. Main building and road outlines are now 2.2 CSS px (previous preview: 1.18), with less pressure fading; detail lines are 1.35 px. Road and driveway edges use the main contour role. `Draft.hatch` supplies sparse authored shading.

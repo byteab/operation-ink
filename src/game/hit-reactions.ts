@@ -1,7 +1,6 @@
 import * as THREE from 'three'
-import { penPalette } from '../render/ballpoint'
 import type { BoneName, Rig } from '../lab/rig'
-import { createStampSurface } from '../lab/fx/blood-stamps'
+import { bloodPalette, createStampSurface } from '../lab/fx/blood-stamps'
 import type { CollisionWorld } from '../player/collision'
 import type { Vec3, WeaponName } from './types'
 
@@ -125,7 +124,7 @@ export class MissionBlood {
   private shotgunBursts: ShotgunBurst[] = []
   private seed = 17923
   private surface = createStampSurface(this.stainLimit)
-  private drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 5, 4), new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }), this.dropLimit)
+  private drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 5, 4), new THREE.MeshBasicMaterial({ color: bloodPalette.fresh, toneMapped: false }), this.dropLimit)
   private marks = new THREE.InstancedMesh(this.surface.geometry, this.surface.material, this.stainLimit)
   private matrix = new THREE.Matrix4()
   private position = new THREE.Vector3()
@@ -311,7 +310,7 @@ export class MissionBlood {
       this.orientation.setFromAxisAngle(up, mark.angle)
       this.scale.set(mark.size, 1, mark.size * 1.15)
       this.marks.setMatrixAt(index, this.matrix.compose(this.position, this.orientation, this.scale))
-      this.marks.setColorAt(index, new THREE.Color(penPalette.ink))
+      this.marks.setColorAt(index, new THREE.Color(bloodPalette.stain))
       this.surface.stamps.setXY(index, mark.stamp, 1)
     })
     this.marks.instanceMatrix.needsUpdate = this.surface.stamps.needsUpdate = true

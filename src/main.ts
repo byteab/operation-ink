@@ -20,7 +20,7 @@ renderer.setClearColor(palette.paper)
 renderer.shadowMap.enabled = false
 
 const scene = new THREE.Scene()
-scene.name = 'Blue ballpoint compound'
+scene.name = 'Black ballpoint compound'
 scene.background = new THREE.Color(palette.paper)
 const compound = createCompound()
 const missionWorld = new URLSearchParams(location.search).get('explore') === '1' ? null : createMissionWorld()

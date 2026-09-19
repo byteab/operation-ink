@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <filter id="fibres" x="0" y="0" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency=".64 .38" numOctaves="3" seed="17" stitchTiles="stitch"/>
-    <feColorMatrix type="matrix" values="0 0 0 0 .40 0 0 0 0 .30 0 0 0 0 .16 .45 .35 .20 0 0"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .30 0 0 0 0 .30 0 0 0 0 .30 .45 .35 .20 0 0"/>
   </filter>
   <rect width="256" height="256" filter="url(#fibres)" opacity=".65"/>
 </svg>

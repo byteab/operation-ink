@@ -1,8 +1,8 @@
 body[data-mission="true"] { color: var(--ink-deep); font-family: var(--notes); }
-body[data-mission="true"] #walk-pause { padding: 74px 24px 28px; background: #faf8f2c9; align-items: center; }
-body[data-mission="true"] .walk-card { width: min(1040px,100%); border-radius: 4px 7px 3px 6px; display: grid; grid-template-columns: 0.9fr 1.1fr; padding: 0; box-shadow: 3px 4px 0 #2645a417; overflow: hidden; }
+body[data-mission="true"] #walk-pause { padding: 74px 24px 28px; background: #ffffffc9; align-items: center; }
+body[data-mission="true"] .walk-card { width: min(1040px,100%); border-radius: 4px 7px 3px 6px; display: grid; grid-template-columns: 0.9fr 1.1fr; padding: 0; box-shadow: 3px 4px 0 #00000017; overflow: hidden; }
 .mission-orders { padding: 35px 38px; }
-.mission-reference { padding: 35px 30px; border-left: 1px dashed var(--ink-rule); background: #f5f1e6; }
+.mission-reference { padding: 35px 30px; border-left: 1px dashed var(--ink-rule); background: #f5f5f5; }
 .mission-number { font: 17px var(--hand); color: var(--ink-muted); }
 body[data-mission="true"] .walk-card h1 { font: 600 38px/1.1 var(--hand); margin: 15px 0 20px; color: var(--ink-deep); letter-spacing: 0; overflow-wrap: anywhere; }
 body[data-mission="true"] .walk-card p { font-size: 12px; line-height: 1.65; color: var(--ink-muted); }
@@ -32,33 +32,33 @@ body[data-mission="true"] .walk-heading .walk-eyebrow { display: none; }
 body[data-mission="true"] #walk-status { font-size: 10px; color: var(--ink-muted); }
 body[data-mission="true"] #walk-hud[data-playing="false"] .walk-heading { display: none; }
 #mission-hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; font-size: 12px; color: var(--ink-deep); }
-.mission-objective { position: absolute; left: 28px; top: 24px; max-width: calc(100% - 220px); background: #faf8f2e8; border-bottom: 1px solid var(--ink-rule); padding: 8px 12px 10px; }
+.mission-objective { position: absolute; left: 28px; top: 24px; max-width: calc(100% - 220px); background: #ffffffe8; border-bottom: 1px solid var(--ink-rule); padding: 8px 12px 10px; }
 .mission-objective span,.mission-vitals span,.mission-weapon span,.mission-weapon small { display: block; font-size: 10px; color: var(--ink-muted); }
 .mission-objective strong { display: block; font: 600 20px/1.15 var(--hand); margin: 3px 0; }
 .mission-objective small { font-size: 10px; color: var(--ink-muted); }
-.mission-vitals { position: absolute; left: 28px; bottom: 26px; min-width: 90px; padding: 8px 12px; background: #faf8f2ed; border-bottom: 1px solid var(--ink-rule); }
+.mission-vitals { position: absolute; left: 28px; bottom: 26px; min-width: 90px; padding: 8px 12px; background: #ffffffed; border-bottom: 1px solid var(--ink-rule); }
 .mission-vitals strong { font-weight: 400; font-size: 30px; font-variant-numeric: tabular-nums; }
 .mission-vitals .danger { color: var(--ink-deep); font-weight: 700; text-decoration: underline double; text-underline-offset: 4px; }
-.mission-health-bar { height: 4px; transform: rotate(-0.8deg); margin-top: 5px; background: linear-gradient(to right, var(--ink) var(--health,100%), #7184b833 var(--health,100%)); }
-.mission-health-bar.danger { outline: 1px dashed var(--ink); outline-offset: 2px; background: linear-gradient(to right, var(--ink-deep) var(--health), #7184b833 var(--health)); }
+.mission-health-bar { height: 4px; transform: rotate(-0.8deg); margin-top: 5px; background: linear-gradient(to right, var(--ink) var(--health,100%), #80808033 var(--health,100%)); }
+.mission-health-bar.danger { outline: 1px dashed var(--ink); outline-offset: 2px; background: linear-gradient(to right, var(--ink-deep) var(--health), #80808033 var(--health)); }
 .mission-scope { position: fixed; inset: 0; z-index: 1; pointer-events: none; display: grid; place-items: center; overflow: hidden; }
 .mission-scope[hidden] { display: none; }
-.scope-lens { width: min(76vw,76vh); height: min(76vw,76vh); border: 3px solid var(--ink-deep); border-radius: 50%; box-shadow: 0 0 0 100vmax #192f78f0, inset 0 0 28px #2645a455; position: relative; overflow: hidden; }
+.scope-lens { width: min(76vw,76vh); height: min(76vw,76vh); border: 3px solid var(--ink-deep); border-radius: 50%; box-shadow: 0 0 0 100vmax #000000f0, inset 0 0 28px #00000055; position: relative; overflow: hidden; }
 .scope-lens i { position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid var(--ink-deep); }
 .scope-lens b { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid var(--ink-deep); }
 .scope-lens span { position: absolute; bottom: 13%; left: 54%; font: 11px monospace; color: var(--ink-deep); }
 body.mission-scoped .crosshair { visibility: hidden; }
-body.mission-scoped .mission-weapon { padding: 8px 12px; background: #faf8f2ed; }
+body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; }
 .mission-weapon { position: absolute; right: 30px; bottom: 26px; text-align: right; }
 .mission-weapon strong { font-size: 28px; font-weight: 400; font-variant-numeric: tabular-nums; }
-#mission-caption { position: absolute; left: 50%; bottom: 105px; transform: translateX(-50%); max-width: 620px; width: max-content; padding: 9px 15px; background: #faf8f2ef; border: 1px solid var(--ink-rule); text-align: center; font-size: 12px; line-height: 1.5; }
-#mission-alert { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); color: var(--ink-deep); background: #faf8f2e8; padding: 5px 10px; font-size: 11px; border-bottom: 2px solid var(--ink); }
+#mission-caption { position: absolute; left: 50%; bottom: 105px; transform: translateX(-50%); max-width: 620px; width: max-content; padding: 9px 15px; background: #ffffffef; border: 1px solid var(--ink-rule); text-align: center; font-size: 12px; line-height: 1.5; }
+#mission-alert { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); color: var(--ink-deep); background: #ffffffe8; padding: 5px 10px; font-size: 11px; border-bottom: 2px solid var(--ink); }
 #mission-alert::before { content: "!"; display: inline-block; margin-right: 8px; font-weight: 700; border: 1px solid currentColor; border-radius: 45% 50% 42% 48%; width: 15px; text-align: center; }
 #mission-alert:empty { display: none; }
 #mission-debrief { margin: 14px 0; border-left: 2px solid var(--ink-deep); padding: 10px; background: var(--paper-shade); font-size: 12px; line-height: 1.6; }
 .action-icon { width: 23px; height: 25px; display: block; }
 .action-icon svg { width: 100%; height: 100%; }
-.mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #2645a460; opacity: 0; }
+.mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000060; opacity: 0; }
 .hurt .mission-damage { opacity: 1; }
 body[data-reduced-motion="true"] #action-marker,body[data-reduced-motion="true"] #action-prompt kbd { animation: none; }
 body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; gap: 12px; bottom: 25px; }
@@ -69,7 +69,7 @@ body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; ga
   .mission-objective { left: 15px; max-width: calc(100% - 160px); padding: 8px 10px; }
   .mission-objective strong { font-size: 12px; }.mission-objective small { font-size: 9px; }
   body[data-mission="true"] .walk-controls { bottom: 10px; font-size: 8px; padding: 5px; }
-  .mission-vitals,.mission-weapon { bottom: 63px; }.mission-vitals { left: 18px; }.mission-weapon { right: 18px; background: #faf8f2ed; padding: 8px 12px; }
+  .mission-vitals,.mission-weapon { bottom: 63px; }.mission-vitals { left: 18px; }.mission-weapon { right: 18px; background: #ffffffed; padding: 8px 12px; }
   body[data-mission="true"] .walk-heading { bottom: 150px; left: 18px; }
   #mission-caption { max-width: calc(100% - 35px); bottom: 145px; font-size: 11px; }
 }

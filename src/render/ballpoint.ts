@@ -3,14 +3,14 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 
-/** Blue pen scenery on faintly warm paper, with solid black characters. */
+/** Black pen scenery on white paper, with solid black characters. */
 export const penPalette = {
-  paper: 0xfaf8f2,
+  paper: 0xffffff,
   character: 0x000000,
-  ink: 0x2645a4,
-  dark: 0x192f78,
-  light: 0x7184b8,
-  faint: 0xb5bdd0,
+  ink: 0x000000,
+  dark: 0x000000,
+  light: 0x808080,
+  faint: 0xbdbdbd,
 } as const
 
 export type PenRole = 'edge' | 'detail' | 'mesh' | 'landscape'
@@ -229,7 +229,7 @@ export function createPenLines(points: readonly THREE.Vector3[], seed: number, r
   const marks = sketchSegments(segments, seed, role, 0.07,
     { retraceScale: 0, deviationScale: 0.12, pressureScale: 0.25 })
   const line = createPenStrokeMesh(marks, width)
-  line.name = 'Continuous blue pen path'
+  line.name = 'Continuous black pen path'
   return line
 }
 
@@ -239,7 +239,7 @@ function createPenStrokeMesh(marks: SketchSegments, width = 2.1): LineSegments2 
   lineGeometry.setAttribute('instancePenWidth', new THREE.InstancedBufferAttribute(new Float32Array(widths), 1))
   lineGeometry.setAttribute('instancePenOffset', new THREE.InstancedBufferAttribute(new Float32Array(marks.offsets), 2))
   const line = new LineSegments2(lineGeometry, edgeMaterial)
-  line.name = 'Continuous blue pen edges'
+  line.name = 'Continuous black pen edges'
   line.userData.noCollision = true
   line.renderOrder = 2
   ;(line as THREE.Mesh).onBeforeRender = (renderer, _scene, camera) => {
@@ -292,7 +292,7 @@ export function createPenSilhouette(geometry: THREE.BufferGeometry, width = 2.1,
   }
   const hullMaterial = material
   const shell = new THREE.Mesh(geometry, hullMaterial)
-  shell.name = 'Blue pen silhouette'
+  shell.name = 'Black pen silhouette'
   shell.userData.noCollision = true
   shell.renderOrder = 1
   shell.onBeforeRender = (renderer, _scene, camera) => {

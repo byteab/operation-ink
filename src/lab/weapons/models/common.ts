@@ -12,14 +12,14 @@ export type Gun = THREE.Group & {
   }
 }
 
-// Plain paper faces hide rear edges; blue contours alone describe every gun part.
+// Plain paper faces hide rear edges; black contours alone describe every gun part.
 export const metal = new THREE.MeshBasicMaterial({ color: penPalette.paper, toneMapped: false,
   polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
 export const dark = metal
 export const wood = metal
 export type V = [number, number, number]
 
-/** Plain occluding paper faces and blue contours; materials are shared, geometry belongs to the gun. */
+/** Plain occluding paper faces and black contours; materials are shared, geometry belongs to the gun. */
 export function part(geom: THREE.BufferGeometry, mat: THREE.Material, pos: V, rot: V = [0, 0, 0]) {
   // Push opaque paper a small depth-buffer amount behind its true edges. Keep
   // normal depth testing so fingers, other gun parts and world cover still occlude.

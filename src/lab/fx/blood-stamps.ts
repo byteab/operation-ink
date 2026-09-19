@@ -1,5 +1,11 @@
 import * as THREE from 'three'
 
+export const bloodPalette = {
+  fresh: 0xcc1717,
+  dark: 0x7a0c0c,
+  stain: 0xa81010,
+} as const
+
 const TILE = 256, COLUMNS = 8, ROWS = 4
 const TAU = Math.PI * 2
 export type StampKind = 'splash' | 'pool' | 'drop'

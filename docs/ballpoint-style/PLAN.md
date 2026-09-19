@@ -1,6 +1,6 @@
-# Blue ballpoint game style
+# Ballpoint game style
 
-Status: revised following user feedback on the previews. Current direction: near-white paper, black characters, fuller outlined FPS arms, untextured guns with stronger continuous blue contours, and stronger blue building/road outlines. Browser verification remains paused for user review. See [implementation and checks](IMPLEMENTATION.md).
+Status: the latest user revision replaces all blue ink with black, with neutral gray for lighter marks and secondary UI. This supersedes the blue palette and blue-ink guidance recorded below. A subsequent background revision uses pure white paper (#ffffff), neutral light-gray panel shading and neutral paper grain, superseding the warm-paper values below. Blood uses red droplets, splashes and pools in both the game and lab, overriding the earlier single-ink guidance. Geometry, stroke weights and distance taper remain unchanged. Browser verification remains paused for user review. See [implementation and checks](IMPLEMENTATION.md).
 
 ## Intent and reference
 

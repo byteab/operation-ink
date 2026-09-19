@@ -25,7 +25,7 @@ The water-tower marksman walks around the catwalk and pauses at varied lookout p
 
 The compound now has 37 active guards and four inspection reserves, including 17 indoor guards in the opening mess hall, homes, barracks, warehouses and utility rooms. The three guards closest to the starting ladder were removed; authored spawns and patrols stay at least 12 metres away. Enemies must aim for at least 800 ms after acquiring or reacquiring the player before firing. Nearby guards coordinate one flanker with a teammate holding the firing lane, avoid occupied cover, and seek shelter when wounded or reloading. Search teams check separate points. Guards who see a fallen teammate investigate its location and remember the discovery across checkpoints; bodies do not reveal the player's hidden position. Wire fences and wire gates block movement but let bullets and enemy sight pass; solid posts, walls and closed doors still provide cover. A nearby missed shot makes an unaware guard scan the area before investigating the bullet's path. `npm run test:ai` checks patrol navigation and squad tactics; `npm run test:expansion` checks the expanded combat and traversal features.
 
-Confirmed hits produce larger blood sprays and immediate pigment splashes; lethal hits leave a spreading pool. Effects are bounded and restore with checkpoints. Local body/head impact cues and a distinct kill confirmation remain audible at long range and obey the volume, mute and pause controls. Guards vary their idle looks, keep weapons ready while searching, and visibly scan after a near miss.
+Confirmed hits produce larger red blood sprays and immediate red pigment splashes; lethal hits leave a spreading red pool. Effects are bounded and restore with checkpoints. Local body/head impact cues and a distinct kill confirmation remain audible at long range and obey the volume, mute and pause controls. Guards vary their idle looks, keep weapons ready while searching, and visibly scan after a near miss.
 
 - [Gameplay polish implementation and balance](docs/gameplay-polish/IMPLEMENTATION.md)
 - [Gameplay polish verification and evidence](docs/gameplay-polish/VERIFICATION.md)
@@ -51,7 +51,7 @@ The 15–30-minute first-time pacing goal is provisional pending human playtesti
 
 # Compound environment
 
-A fully 3D military rail compound with first-person exploration, drawn with near-white paper surfaces and bold, depth-tested blue outlines. The supplied map determines the building footprints, tank farm, railway, workshop, towers and connected fence boundaries. The original prototype is preserved at `doc/helpers-assets/index.html`.
+A fully 3D military rail compound with first-person exploration, drawn with white paper surfaces and bold, depth-tested black outlines. The supplied map determines the building footprints, tank farm, railway, workshop, towers and connected fence boundaries. The original prototype is preserved at `doc/helpers-assets/index.html`.
 
 A short driveway and the open outer gate lead from the northern road to the mess hall's west ladder. The second, inner service-yard gate is closed.
 

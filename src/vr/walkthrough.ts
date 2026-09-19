@@ -161,9 +161,9 @@ export class VRWalkthrough {
     this.lastLabel = text
     const context = this.labelCanvas.getContext('2d')!
     context.clearRect(0, 0, 1536, 240)
-    context.fillStyle = '#faf8f2f0'
+    context.fillStyle = '#fffffff0'
     context.fillRect(0, 0, 1536, 240)
-    context.fillStyle = '#2645a4'
+    context.fillStyle = `#${penPalette.ink.toString(16).padStart(6, '0')}`
     context.font = '44px system-ui, sans-serif'
     context.textAlign = 'center'
     context.fillText(text, 768, 94, 1450)
