@@ -29,7 +29,7 @@ The relaxed look-around loop lasts 9.6 s. Its pelvis and feet stay planted while
 unequally timed glances, the shoulders follow 0.17 s later, and subtle breathing continues through the holds.
 Every root sample is explicit, including the matching loop endpoints, so looking cannot slide the stance
 or jump on repeat. The same clip is used by idle guards. Check it with `scripts/check-lab-relaxed-look.js`
-through agent-browser and `scripts/enemy-motion-checks.ts`; preview and results are in `docs/character-relaxed-look/`.
+through agent-browser and `scripts/enemy-motion-checks.ts`.
 
 ## Adding things (drop a file in, no edits to existing files)
 
@@ -103,7 +103,7 @@ Character faces **+Z**. `.L` bones are at world +X (screen-right in the "front" 
 | hips / spine / chest / neck | leans forward (+Z) | turns toward the character's left (+X) | leans sideways toward the character's right (−X) |
 | head | nods down | **turns head** to the character's left (+X) | tilts ear to the right shoulder |
 
-Deviation from `doc/HANDOFF-stickman.md`: head turn is **Y**, not Z. Everything else matched.
+Deviation from the original rig handoff: head turn is **Y**, not Z. Everything else matched.
 
 Mirror rule (verified exact on arms and legs): swap `.L`/`.R`, keep x, negate y and z → `mirrorPose()`.
 
@@ -120,9 +120,8 @@ Mirror rule (verified exact on arms and legs): swap `.L`/`.R`, keep x, negate y 
 ## Walking and running
 
 The shared GLB's hip contour and upper-arm weight transition were refined after
-the gait revision. The reproducible Blender script and before/after verification
-are documented in [the contour notes](../../docs/character-contours/README.md).
-The current [shoulder proportions](../../docs/character-shoulder-proportions/README.md)
+the gait revision. The reproducible Blender script is `scripts/refine-stickman-contours.py`.
+The current shoulder proportions
 put arm attachments at ±15.5 cm, with a flatter shoulder slope and smaller,
 lower armpit openings matching the annotated reference. The loaded rig now shortens
 both arms by 8% from shoulder to wrist while preserving the shoulder attachment,
@@ -224,7 +223,7 @@ ribcage, roll toward a relaxed resting pose, then release the limbs at staggered
 pass adds a damped torso response and fixed-length floor contacts, baked at 120 Hz into ordinary clips;
 pause, export, game mirroring and saved-pose restoration need no separate simulation state.
 Run `npm run test:deaths` for the real-mesh and mission checks, or `scripts/check-lab-deaths.js` through
-agent-browser for normal-speed button playback. Visual evidence and notes: `docs/character-death-settle/`.
+agent-browser for normal-speed button playback.
 
 For regression checks, start the dev server, open and reload `/lab.html` in agent-browser, then run from the project root:
 
@@ -280,7 +279,6 @@ with fixed arm lengths and a forward muzzle. Static postures and generated weapo
 variants are available in the clip export; support/mechanism contact uses the same
 weapon IK as standing. The game enemy director now uses these shared poses for
 near-miss reactions and firing, plus the shotgun death clip. Shared walk/run clips
-also feed the game characters. See [mission integration](../../docs/character-combat/game-integration.md).
+also feed the game characters.
 
-Verification and visual evidence: [combat notes](../../docs/character-combat/README.md).
 Run `scripts/check-lab-combat.js` through agent-browser after a fresh lab load.

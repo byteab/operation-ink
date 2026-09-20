@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.local
 localonly
+artifacts
+__pycache__
+.claude/settings.local.json

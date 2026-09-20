@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:vr": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "tsc --noEmit && vite build",
+    "test": "fail=0; for f in scripts/*-checks.ts; do node scripts/check-player.mjs $f > /dev/null 2>&1 && echo \"ok   $f\" || { echo \"FAIL $f\"; fail=1; }; done; exit $fail",
     "test:player": "node scripts/check-player.mjs",
     "test:fall-damage": "node scripts/check-player.mjs scripts/fall-damage-checks.ts && node scripts/check-player.mjs scripts/player-death-runtime-checks.ts",
     "test:gait": "node scripts/check-player.mjs scripts/gait-checks.ts",

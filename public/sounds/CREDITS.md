@@ -19,7 +19,7 @@ The earlier gameplay-polish revision added no downloaded assets. `src/game/audio
 
 - `igi/*.wav` — extracted from the user-supplied Project IGI installation archive `project-igi-files/pc/common/sounds/sounds.res`. These are Project IGI recordings, separate from the CC0 and CC BY assets credited above; no open-content license was supplied for this bank.
 - 50 clips retain the original PCM and sample rate. `ak47_single.wav` and `mp5sd_single.wav` combine a short initial burst segment with the original decay tail, using a crossfade and boundary fades.
-- Exact resource names, transformations, and hashes are recorded in [igi/manifest.json](igi/manifest.json). Extraction and integration details: [IGI audio import](../../docs/igi-audio/README.md).
+- Exact resource names, transformations, and hashes are recorded in [igi/manifest.json](igi/manifest.json).
 - The IGI bank now supplies the primary combat, movement, pain, and mechanical effects. Earlier non-vocal effects remain available as fallbacks. `walk_ladder_1` through `walk_ladder_4` supply climbing sounds; `detected_01` through `detected_06` supply spotting/contact vocals; `ai_hit_01` through `ai_hit_03` supply hit reactions and hurt callouts. All character vocals now use only IGI recordings. Generated dialogue and the earlier Hey/pain recordings are removed from served assets, with no legacy or synthesized voice fallback. Unmapped lines retain captions. Procedural music remains in use.
 
 - `igi/alarm_1.wav` — original IGI alarm from the existing extracted archive cache, copied without changing its stereo PCM or 22,050 Hz sample rate. Loops at its original pitch while the compound alarm is active; stops when silenced or gameplay pauses.
