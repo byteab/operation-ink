@@ -27,7 +27,7 @@ const scenery = new Draft('distance-check')
 scenery.box(2, 2, 2, 0, 1, -20)
 scenery.finish()
 for (const material of [defaultEdge.material, defaultShell.material,
-  (scenery.children.find(object => object.name.endsWith('edge ink')) as THREE.Mesh).material] as THREE.ShaderMaterial[]) {
+  (scenery.children.find(object => object.name.endsWith(': ink')) as THREE.Mesh).material] as THREE.ShaderMaterial[]) {
   const scale = taper(shaderFor(material))
   assert.equal(scale(0.5, perspective), 1)
   assert.equal(scale(8, perspective), 1)

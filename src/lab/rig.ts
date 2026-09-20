@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
 import { penPalette } from '../render/ballpoint'
 
 /**
@@ -191,29 +192,47 @@ function shortenArms(root: THREE.Group, mesh: THREE.SkinnedMesh) {
   root.updateMatrixWorld(true)
 }
 
-export async function loadStickman(): Promise<Rig> {
-  const gltf = await new GLTFLoader().loadAsync('/models/stickman.glb')
-  const root = gltf.scene
-  const mesh = root.getObjectByName('Stickman') as THREE.SkinnedMesh
-  if (!mesh?.isSkinnedMesh) throw new Error('stickman.glb: SkinnedMesh "Stickman" not found')
-  if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals()
-  mesh.material = fill
-  mesh.frustumCulled = false
+/**
+ * Culling bounds in root space, shared and read-only. three.js would otherwise measure the pose of the first
+ * frame, and a body lying 2 m from its root would vanish at the screen edge. Clips move joints at most 2.6 m
+ * from this centre (dieShotgun's knockback; next is dieBack at 1.5 m), plus limb thickness and margin.
+ */
+const BODY_BOUNDS = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 3.2)
 
-  // The source rig placed each wrist 8 cm before the visible hand end cap, inside the
-  // forearm. Move the joint to its base and rebind at rest: the silhouette is unchanged,
-  // but wrist rotation now bends the fist instead of the distal forearm.
-  for (const side of ['L', 'R']) {
-    const hand = root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(`hand.${side}`))
-    if (hand instanceof THREE.Bone) hand.position.y += 0.08
-  }
+let source: Promise<THREE.Group> | undefined
+
+/** Fetch, parse and rebind the GLB once. It is never posed or added to a scene; every rig is a clone of it. */
+function stickmanSource() {
+  return source ??= new GLTFLoader().loadAsync(`${import.meta.env?.BASE_URL ?? '/'}models/stickman.glb`).then(gltf => {
+    const root = gltf.scene
+    const mesh = root.getObjectByName('Stickman') as THREE.SkinnedMesh
+    if (!mesh?.isSkinnedMesh) throw new Error('stickman.glb: SkinnedMesh "Stickman" not found')
+    if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals()
+    // The source rig placed each wrist 8 cm before the visible hand end cap, inside the
+    // forearm. Move the joint to its base and rebind at rest: the silhouette is unchanged,
+    // but wrist rotation now bends the fist instead of the distal forearm.
+    for (const side of ['L', 'R']) {
+      const hand = root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(`hand.${side}`))
+      if (hand instanceof THREE.Bone) hand.position.y += 0.08
+    }
+    root.updateMatrixWorld(true)
+    shortenArms(root, mesh)
+    mesh.skeleton.calculateInverses()
+    return root
+  }).catch(error => { source = undefined; throw error })
+}
+
+/** An independent skeleton per call; the rebound geometry and bone inverses are shared and must stay read-only. */
+export async function loadStickman(): Promise<Rig> {
+  const root = cloneSkinned(await stickmanSource()) as THREE.Group
+  const mesh = root.getObjectByName('Stickman') as THREE.SkinnedMesh
+  mesh.material = fill
+  mesh.boundingSphere = BODY_BOUNDS
   root.updateMatrixWorld(true)
-  shortenArms(root, mesh)
-  mesh.skeleton.calculateInverses()
 
   const shell = new THREE.SkinnedMesh(mesh.geometry, outline)
   shell.bind(mesh.skeleton, mesh.bindMatrix)
-  shell.frustumCulled = false
+  shell.boundingSphere = BODY_BOUNDS
   shell.renderOrder = 1
   shell.name = 'Stickman outline'
   const outlineViewport = new THREE.Vector4()

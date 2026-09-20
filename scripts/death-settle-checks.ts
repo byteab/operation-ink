@@ -33,6 +33,8 @@ try {
     for (let i = 0; i <= frames; i++) {
       player.current!.time = i / frames * clip.duration; player.update(0); rig.root.updateMatrixWorld(true)
       const current = [...BONE_NAMES.map(point), foot('L'), foot('R')]
+      // The rig stands at the origin here, so world space is the root space of its fixed culling sphere.
+      for (const p of current) assert(p.distanceTo(rig.mesh.boundingSphere!.center) < rig.mesh.boundingSphere!.radius - 0.3, `${name}: body leaves its culling bounds`)
       if (previous) current.forEach((p, j) => {
         const distance = p.distanceTo(previous![j])
         if (distance > maxStep) { maxStep = distance; stepAt = `${i / frames * clip.duration}:${BONE_NAMES[j] ?? j}` }

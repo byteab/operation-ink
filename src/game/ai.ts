@@ -12,6 +12,8 @@ import type { AIContext, EnemySnapshot, EnemySpec, EnemyState, PlayerSense, Shot
 const ignore = new THREE.Object3D()
 const direction = new THREE.Vector3()
 const eyeOffset = new THREE.Vector3(0, 1.5, 0)
+// Per-frame targets for face and aim, which only read their argument.
+const point = new THREE.Vector3(), aimPoint = new THREE.Vector3()
 const clamp = THREE.MathUtils.clamp
 
 /** The cone operates horizontally; occlusion is a separate, real-geometry test. */
@@ -402,7 +404,7 @@ export class EnemyDirector {
         if (enemy.scanTimer > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel') {
           const progress = 1 - enemy.scanTimer / enemy.scanDuration
           const yaw = enemy.scanYaw + Math.sin(progress * Math.PI * 2) * 0.7
-          this.face(enemy, enemy.position.clone().add(new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))), dt, 2.8)
+          this.face(enemy, point.set(enemy.position.x + Math.sin(yaw), enemy.position.y, enemy.position.z + Math.cos(yaw)), dt, 2.8)
         } else if (enemy.scanTimer <= 0 && enemy.lastKnown) this.face(enemy, enemy.lastKnown, dt, 5)
       } else if (enemy.state === 'investigate') {
         if (enemy.spec.role === 'sniper') {
@@ -418,9 +420,10 @@ export class EnemyDirector {
       } else if (enemy.state === 'search') {
         moving = this.search(enemy, dt)
       } else if (enemy.state === 'guard') {
-        const post = enemy.post ?? new THREE.Vector3(...enemy.spec.position)
-        if (enemy.position.distanceTo(post) > 0.6) moving = this.move(enemy, post, this.speed(enemy, 1.25), dt)
-        else this.face(enemy, enemy.position.clone().add(new THREE.Vector3(Math.sin(enemy.spec.facing ?? 0), 0, Math.cos(enemy.spec.facing ?? 0))), dt)
+        const post = enemy.post ?? point.fromArray(enemy.spec.position)
+        // A queued plan reads its destination later, so it never receives the shared scratch point.
+        if (enemy.position.distanceTo(post) > 0.6) moving = this.move(enemy, enemy.post ?? post.clone(), this.speed(enemy, 1.25), dt)
+        else this.face(enemy, point.set(enemy.position.x + Math.sin(enemy.spec.facing ?? 0), enemy.position.y, enemy.position.z + Math.cos(enemy.spec.facing ?? 0)), dt)
       } else if (enemy.spec.patrolMode === 'perimeter') {
         moving = this.perimeterPatrol(enemy, dt)
       } else {
@@ -454,7 +457,7 @@ export class EnemyDirector {
       enemy.actor.root.position.copy(enemy.position)
       enemy.actor.root.rotation.y = enemy.yaw
       enemy.actor.root.userData.alertScan = enemy.scanTimer > 0 && this.posture(enemy) !== 'prone' && this.posture(enemy) !== 'kneel' ? 1 - enemy.scanTimer / enemy.scanDuration : undefined
-      enemy.actor.update(dt, enemy.state, moving, enemy.canSee && enemy.lastKnown ? enemy.lastKnown.clone().add(new THREE.Vector3(0, 1.65, 0)) : undefined, enemy.moveSpeed)
+      enemy.actor.update(dt, enemy.state, moving, enemy.canSee && enemy.lastKnown ? aimPoint.copy(enemy.lastKnown).setY(enemy.lastKnown.y + 1.65) : undefined, enemy.moveSpeed)
     }
   }
 
@@ -771,7 +774,12 @@ export class EnemyDirector {
     while (enemy.path.length && enemy.position.distanceTo(enemy.path[0]) < 0.24) {
       // Reaching a corner's tolerance radius does not authorize cutting across
       // a door tip (or wall) on the way to the following waypoint.
-      if (enemy.path.length > 1 && !this.navigation.segment(enemy.position, enemy.path[1])) break
+      if (enemy.path.length > 1 && !this.navigation.segment(enemy.position, enemy.path[1])) {
+        // Standing on the corner with the onward leg blocked (a congestion bypass point is only
+        // checked from where it was added) would march on the spot forever: plan again from here.
+        if (enemy.position.distanceTo(enemy.path[0]) < 0.01) { enemy.path = []; enemy.pathTarget = null; enemy.repath = 0; return false }
+        break
+      }
       enemy.path.shift()
     }
     const target = enemy.path[0]
@@ -942,7 +950,6 @@ export class EnemyDirector {
       const from = this.eye(enemy)
       const source = event.position.clone().add(new THREE.Vector3(0, 0.5, 0))
       const distance = from.distanceTo(source)
-      const unobstructed = this.context.world.visible(from, source, ignore)
       // A visible muzzle disturbance within plausible view range is noticeable even when a
       // weapon's ordinary sound radius is shorter. It supplies a location, never a confirmed target.
       const shot = event.kind.includes('shot')
@@ -954,7 +961,9 @@ export class EnemyDirector {
         enemy.contactMemory = COMBAT.contactMemory; enemy.scanTimer = 0; enemy.senseTimer = 0
       }
       else if (enemy.scanTimer > 0) continue
-      if (!visibleShot && !audible(distance, event.radius, unobstructed)) continue
+      // Line of sight only decides the band between the muffled and the open radius; most guards are outside both.
+      if (!visibleShot && !audible(distance, event.radius, distance > event.radius * 0.42 && distance <= event.radius &&
+        this.context.world.visible(from, source, ignore))) continue
       enemy.lastKnown = event.position.clone()
       // Weapon events originate at eye/muzzle height; routes need the surface below that sound.
       const floor = this.context.world.floor(event.position, 0.38, 2.2, 0.1)

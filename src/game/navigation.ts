@@ -6,6 +6,7 @@ import type { EmitSound } from './types'
 
 export type GridPoint = { x: number; z: number }
 const key = (x: number, z: number) => `${x},${z}`
+const none: THREE.Object3D[] = []
 
 /** Bounded A*, also used by deterministic obstacle/doorway regression checks. */
 export function gridPath(start: GridPoint, goal: GridPoint, traversable: (x: number, z: number) => boolean,
@@ -79,6 +80,8 @@ export class EnemyNavigation {
   private routes = new Map<string, THREE.Vector3[]>()
   private doorPositions: { door: THREE.Group; position: THREE.Vector3 }[]
   private doorState = ''
+  private ignored: THREE.Object3D[] = []
+  private operable: boolean[] = []
   private doorRevision = 0
   readonly cellSize = 0.8
   constructor(private world: CollisionWorld, private doors: THREE.Group[], private emit: EmitSound) {
@@ -92,9 +95,18 @@ export class EnemyNavigation {
     this.capsule.end.copy(position).y += 1.74 - this.capsule.radius
     // Only a closed, operable leaf can be removed from a planned route. An open
     // leaf is a real obstacle beside the threshold, as are frames and locked doors.
-    const ignored = planning ? this.doors.filter(door => !door.userData.open && !door.userData.missionLocked)
-      .flatMap(door => door.children.filter(child => child.userData.doorHinge)) : []
-    return this.world.fits(this.capsule, ignored)
+    return this.world.fits(this.capsule, planning ? this.operableLeaves() : none)
+  }
+
+  /** Hinges of closed, unlocked doors; rebuilt only when a door's flags change, because every planning probe asks. */
+  private operableLeaves() {
+    let changed = false
+    for (let i = 0; i < this.doors.length; i++) {
+      const operable = !this.doors[i].userData.open && !this.doors[i].userData.missionLocked
+      if (operable !== this.operable[i]) { this.operable[i] = operable; changed = true }
+    }
+    if (changed) this.ignored = this.doors.filter((_, i) => this.operable[i]).flatMap(door => door.children.filter(child => child.userData.doorHinge))
+    return this.ignored
   }
 
   private refreshDoorState() {
@@ -177,12 +189,13 @@ export class EnemyNavigation {
     if (!start || !goal) return []
     const routeKey = `${key(start.x, start.z)}:${key(goal.x, goal.z)}:${level}`
     const existing = this.routes.get(routeKey)
-    if (existing) return existing.map(point => point.clone()).concat(to.clone())
+    // An empty entry is a search that already exhausted its budget for this door state.
+    if (existing) return existing.length ? existing.map(point => point.clone()).concat(to.clone()) : []
     const bounds = { minX: Math.min(start.x, goal.x) - 19, maxX: Math.max(start.x, goal.x) + 19,
       minZ: Math.min(start.z, goal.z) - 19, maxZ: Math.max(start.z, goal.z) + 19 }
     const route = yield* gridPathJob(start, goal, (x, z) => x >= bounds.minX && x <= bounds.maxX && z >= bounds.minZ && z <= bounds.maxZ && !!sample(x, z),
       (a, b) => this.segment(sample(a.x, a.z)!, sample(b.x, b.z)!), 2200)
-    if (!route.length) return []
+    if (!route.length) { this.routes.set(routeKey, []); return [] }
     // String-pull only a few cells at a time, keeping all wall/door clearance checks.
     const points: THREE.Vector3[] = []
     for (let i = 0; i < route.length;) {

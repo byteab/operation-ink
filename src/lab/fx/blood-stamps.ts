@@ -112,24 +112,42 @@ function bakeStamp(seed: number, kind: StampKind) {
   return pixels
 }
 
+const schedule: (run: (deadline?: IdleDeadline) => void) => void =
+  globalThis.requestIdleCallback?.bind(globalThis) ?? (run => setTimeout(run, 16))
+
+/**
+ * Baking all 32 tiles blocked the first frame for ~230 ms (M4; three times that on a laptop), so they are
+ * baked one at a time in idle moments after load. `finish` bakes whatever is left at once: the surface calls
+ * it before it draws a stain, so a mark can never sample an unbaked tile, however early the first hit is.
+ */
 function makeAtlas() {
-  const width = TILE * COLUMNS, height = TILE * ROWS
+  const width = TILE * COLUMNS, height = TILE * ROWS, tiles = COLUMNS * ROWS
   const data = new Uint8Array(width * height * 4)
-  for (let tile = 0; tile < COLUMNS * ROWS; tile++) {
-    const kind: StampKind = tile < 16 ? 'splash' : tile < 24 ? 'pool' : 'drop'
-    const pixels = bakeStamp(7319 + tile * 1013, kind)
-    for (let y = 0; y < TILE; y++) {
-      const offset = ((Math.floor(tile / COLUMNS) * TILE + y) * width + tile % COLUMNS * TILE) * 4
-      data.set(pixels.subarray(y * TILE * 4, (y + 1) * TILE * 4), offset)
-    }
-  }
   const texture = new THREE.DataTexture(data, width, height)
   texture.magFilter = THREE.LinearFilter
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.generateMipmaps = true
   texture.anisotropy = 4
   texture.needsUpdate = true
-  return texture
+  let tile = 0
+  const bakeTile = () => {
+    const kind: StampKind = tile < 16 ? 'splash' : tile < 24 ? 'pool' : 'drop'
+    const pixels = bakeStamp(7319 + tile * 1013, kind)
+    for (let y = 0; y < TILE; y++) {
+      const offset = ((Math.floor(tile / COLUMNS) * TILE + y) * width + tile % COLUMNS * TILE) * 4
+      data.set(pixels.subarray(y * TILE * 4, (y + 1) * TILE * 4), offset)
+    }
+    if (++tile === tiles) texture.needsUpdate = true
+  }
+  const finish = () => { while (tile < tiles) bakeTile() }
+  const idle = (deadline?: IdleDeadline) => {
+    if (tile >= tiles) return
+    do bakeTile(); while (tile < tiles && deadline && deadline.timeRemaining() > 10)
+    schedule(idle)
+  }
+  schedule(idle)
+  texture.addEventListener('dispose', () => { tile = tiles })
+  return { texture, finish }
 }
 
 export function createStampSurface(capacity: number) {
@@ -137,8 +155,9 @@ export function createStampSurface(capacity: number) {
   const stamps = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 2), 2)
   stamps.setUsage(THREE.DynamicDrawUsage)
   geometry.setAttribute('instanceStamp', stamps)
+  const atlas = makeAtlas()
   const material = new THREE.ShaderMaterial({
-    uniforms: { atlas: { value: makeAtlas() } },
+    uniforms: { atlas: { value: atlas.texture } },
     vertexShader: `
       attribute vec2 instanceStamp;
       varying vec2 stampUv;
@@ -171,5 +190,6 @@ export function createStampSurface(capacity: number) {
     side: THREE.DoubleSide,
     forceSinglePass: true,
   })
+  material.onBeforeRender = (_renderer, _scene, _camera, _geometry, object) => { if ((object as THREE.InstancedMesh).count > 0) atlas.finish() }
   return { geometry, material, stamps }
 }

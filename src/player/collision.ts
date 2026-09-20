@@ -8,6 +8,8 @@ type Collider = {
   inverse: THREE.Matrix4
   tree?: Octree
   dynamic: boolean
+  /** Last capsule query that tested this collider. */
+  query?: number
   blocksSight: boolean
   blocksShots: boolean
 }
@@ -25,6 +27,9 @@ export function followSurface(hit: SurfaceHit): SurfaceHit {
 }
 
 const up = new THREE.Vector3(0, 1, 0)
+const none: never[] = []
+// Shared by every world and region view, because views share collider records.
+let queries = 0
 
 /** Partition triangles without duplicating large coplanar slabs into many octants. */
 function collisionTree(geometry: THREE.BufferGeometry) {
@@ -66,8 +71,15 @@ export class CollisionWorld {
   private groundRay = new THREE.Ray()
   private normal = new THREE.Vector3()
   private spatialRays = false
-  private rayCandidates: THREE.Triangle[] = []
+  // Faces of the last tree query. Never shortened: `length = 0` frees the backing store and every ray would regrow it.
+  private faces: THREE.Triangle[] = []
+  private faceCount = 0
   private rayPoint = new THREE.Vector3()
+  private nearestPoint = new THREE.Vector3()
+  // Static colliders by 8 m XZ cell, so NPC floor probes skip the other ~850 meshes.
+  // `wide` holds moving colliders and slabs spanning many cells; both lists are scanned.
+  private cells: Map<number, Collider[]> | null = null
+  private wide: Collider[] = []
 
   constructor(scene: THREE.Object3D) {
     scene.updateWorldMatrix(true, true)
@@ -103,11 +115,47 @@ export class CollisionWorld {
       inverse: mesh.matrixWorld.clone().invert() })
   }
 
+  private index() {
+    if (this.cells) return this.cells
+    this.cells = new Map(); this.wide = []
+    for (const collider of this.colliders) {
+      const { min, max } = collider.bounds
+      const x0 = Math.floor(min.x / 8), x1 = Math.floor(max.x / 8), z0 = Math.floor(min.z / 8), z1 = Math.floor(max.z / 8)
+      if (collider.dynamic || !((x1 - x0 + 1) * (z1 - z0 + 1) <= 64)) { this.wide.push(collider); continue }
+      for (let i = x0; i <= x1; i++) for (let j = z0; j <= z1; j++) {
+        const key = (i + 32768) * 65536 + j + 32768, list = this.cells.get(key)
+        if (list) list.push(collider); else this.cells.set(key, [collider])
+      }
+    }
+    return this.cells
+  }
+
+  private cell(x: number, z: number) {
+    return this.index().get((Math.floor(x / 8) + 32768) * 65536 + Math.floor(z / 8) + 32768) ?? none
+  }
+
   refresh() {
     for (const collider of this.colliders) if (collider.dynamic) {
       collider.mesh.updateWorldMatrix(true, false)
       collider.bounds.copy(collider.mesh.geometry.boundingBox!).applyMatrix4(collider.mesh.matrixWorld)
       collider.inverse.copy(collider.mesh.matrixWorld).invert()
+    }
+  }
+
+  /** Build, while loading, the few trees (ladder rails, vegetation) whose first sight-line use would cost a 5-25 ms frame. */
+  warm() {
+    for (const collider of this.colliders) {
+      const geometry = collider.mesh.geometry
+      if (!collider.dynamic && (geometry.index ?? geometry.getAttribute('position')).count > 9000) this.tree(collider)
+    }
+  }
+
+  /** Octree.getRayTriangles without its per-ray array and duplicate scan; these trees hold each face in one leaf. */
+  private collect(tree: Octree, ray: THREE.Ray) {
+    for (const subTree of tree.subTrees) {
+      if (!ray.intersectsBox(subTree.box!)) continue
+      if (subTree.triangles.length > 0) for (const face of subTree.triangles) this.faces[this.faceCount++] = face
+      else this.collect(subTree, ray)
     }
   }
 
@@ -131,17 +179,28 @@ export class CollisionWorld {
   }
 
   fits(capsule: Capsule, ignored: readonly THREE.Object3D[] = []) {
-    const bounds = this.capsuleBounds(capsule)
-    for (const collider of this.colliders) if (bounds.intersectsBox(collider.bounds)) {
-      let skip = false
-      for (let object: THREE.Object3D | null = collider.mesh; object; object = object.parent) {
-        if (ignored.includes(object)) { skip = true; break }
+    const bounds = this.capsuleBounds(capsule), cells = this.index(), query = ++queries
+    for (const collider of this.wide) if (this.obstructs(collider, bounds, capsule, ignored)) return false
+    for (let i = Math.floor(bounds.min.x / 8); i <= Math.floor(bounds.max.x / 8); i++) {
+      for (let j = Math.floor(bounds.min.z / 8); j <= Math.floor(bounds.max.z / 8); j++) {
+        for (const collider of cells.get((i + 32768) * 65536 + j + 32768) ?? none) {
+          // A mesh can occupy several of the touched cells.
+          if (collider.query === query) continue
+          collider.query = query
+          if (this.obstructs(collider, bounds, capsule, ignored)) return false
+        }
       }
-      if (skip) continue
-      const hit = this.collision(collider, capsule)
-      if (hit && hit.depth > 0.008) return false
     }
     return true
+  }
+
+  private obstructs(collider: Collider, bounds: THREE.Box3, capsule: Capsule, ignored: readonly THREE.Object3D[]) {
+    if (!bounds.intersectsBox(collider.bounds)) return false
+    for (let object: THREE.Object3D | null = collider.mesh; object; object = object.parent) {
+      if (ignored.includes(object)) return false
+    }
+    const hit = this.collision(collider, capsule)
+    return !!hit && hit.depth > 0.008
   }
 
   resolve(capsule: Capsule, velocity: THREE.Vector3) {
@@ -166,19 +225,34 @@ export class CollisionWorld {
   /** Small support footprint handles stair treads and the edges of platforms. */
   floor(position: THREE.Vector3, above: number, below: number, radius = 0) {
     let height = -Infinity
-    for (const [x, z] of radius ? [[0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius]] : [[0, 0]]) {
-      this.ray.ray.origin.set(position.x + x, position.y + above, position.z + z)
+    const top = position.y + above, bottom = top - (above + below), samples = radius ? 5 : 1
+    for (let sample = 0; sample < samples; sample++) {
+      // Centre, then ±X and ±Z of the support footprint.
+      const x = position.x + (sample === 1 ? radius : sample === 2 ? -radius : 0)
+      const z = position.z + (sample === 3 ? radius : sample === 4 ? -radius : 0)
+      this.ray.ray.origin.set(x, top, z)
       this.ray.ray.direction.set(0, -1, 0)
       this.ray.near = 0
       this.ray.far = above + below
-      for (const collider of this.colliders) {
-        if (collider.bounds.max.y < this.ray.ray.origin.y - this.ray.far || collider.bounds.min.y > this.ray.ray.origin.y) continue
-        if (!this.ray.ray.intersectsBox(collider.bounds)) continue
+      const local = this.cell(x, z)
+      for (let pass = 0; pass < 2; pass++) for (const collider of pass ? local : this.wide) {
+        // A vertical ray meets a box exactly when its column does.
+        const { min, max } = collider.bounds
+        if (max.y < bottom || min.y > top || x < min.x || x > max.x || z < min.z || z > max.z) continue
         this.groundRay.copy(this.ray.ray).applyMatrix4(collider.inverse)
-        const hit = this.tree(collider).rayIntersect(this.groundRay)
-        if (!hit || hit.distance > this.ray.far) continue
-        hit.triangle.getNormal(this.normal).transformDirection(collider.mesh.matrixWorld)
-        if (this.normal.dot(up) > 0.55) height = Math.max(height, hit.position.applyMatrix4(collider.mesh.matrixWorld).y)
+        this.faceCount = 0
+        this.collect(this.tree(collider), this.groundRay)
+        // Octree.rayIntersect's nearest front face, with its arithmetic, minus its allocations.
+        let nearest: THREE.Triangle | null = null, distance = 1e100
+        for (let i = 0; i < this.faceCount; i++) {
+          const face = this.faces[i]
+          if (!this.groundRay.intersectTriangle(face.a, face.b, face.c, true, this.rayPoint)) continue
+          const along = this.rayPoint.sub(this.groundRay.origin).length()
+          if (distance > along) { distance = along; nearest = face; this.nearestPoint.copy(this.rayPoint).add(this.groundRay.origin) }
+        }
+        if (!nearest || distance > this.ray.far) continue
+        nearest.getNormal(this.normal).transformDirection(collider.mesh.matrixWorld)
+        if (this.normal.dot(up) > 0.55) height = Math.max(height, this.nearestPoint.applyMatrix4(collider.mesh.matrixWorld).y)
       }
     }
     return height
@@ -195,9 +269,38 @@ export class CollisionWorld {
       for (let object: THREE.Object3D | null = collider.mesh; object; object = object.parent) {
         if (object === target) { ignored = true; break }
       }
-      if (!ignored && this.ray.ray.intersectsBox(collider.bounds) && this.ray.intersectObject(collider.mesh, false).length) return false
+      if (!ignored && this.reaches(collider) && this.blocksRay(collider)) return false
     }
     return true
+  }
+
+  /** The ray is unbounded for Ray.intersectsBox; a 0.3 m muzzle probe must not visit everything along its line. */
+  private reaches(collider: Collider) {
+    return collider.bounds.distanceToPoint(this.ray.ray.origin) <= this.ray.far + 1e-4 && this.ray.ray.intersectsBox(collider.bounds)
+  }
+
+  /** Mesh.raycast visits every triangle, so large fixed meshes (ladders, vegetation, catwalks) use their triangle tree. */
+  private large(collider: Collider) {
+    const geometry = collider.mesh.geometry
+    return !collider.dynamic && (geometry.index ?? geometry.getAttribute('position')).count > 768
+  }
+
+  /** Any face between the ray's near and far, with Mesh.raycast's per-face test. */
+  private blocksRay(collider: Collider) {
+    const { mesh } = collider, material = mesh.material
+    if (Array.isArray(material) || !this.large(collider)) return this.ray.intersectObject(mesh, false).length > 0
+    this.groundRay.copy(this.ray.ray).applyMatrix4(collider.inverse)
+    this.faceCount = 0
+    this.collect(this.tree(collider), this.groundRay)
+    for (let i = 0; i < this.faceCount; i++) {
+      const face = this.faces[i]
+      const hit = material.side === THREE.BackSide ? this.groundRay.intersectTriangle(face.c, face.b, face.a, true, this.rayPoint) :
+        this.groundRay.intersectTriangle(face.a, face.b, face.c, material.side === THREE.FrontSide, this.rayPoint)
+      if (!hit) continue
+      const along = hit.applyMatrix4(mesh.matrixWorld).distanceTo(this.ray.ray.origin)
+      if (along >= this.ray.near && along <= this.ray.far) return true
+    }
+    return false
   }
 
   /** Nearest ballistic surface. Wire panels block bodies, but let shots pass. */
@@ -208,13 +311,14 @@ export class CollisionWorld {
     let distance = range
     for (const collider of this.colliders) {
       if (!collider.blocksShots) continue
-      if (!this.ray.ray.intersectsBox(collider.bounds)) continue
-      if (this.spatialRays && !Array.isArray(collider.mesh.material)) {
+      if (!this.reaches(collider)) continue
+      if ((this.spatialRays || this.large(collider)) && !Array.isArray(collider.mesh.material)) {
         this.groundRay.copy(this.ray.ray).applyMatrix4(collider.inverse)
-        this.rayCandidates.length = 0
-        this.tree(collider).getRayTriangles(this.groundRay, this.rayCandidates)
+        this.faceCount = 0
+        this.collect(this.tree(collider), this.groundRay)
         const side = collider.mesh.material.side
-        for (const face of this.rayCandidates) {
+        for (let i = 0; i < this.faceCount; i++) {
+          const face = this.faces[i]
           const hit = side === THREE.BackSide ? this.groundRay.intersectTriangle(face.c, face.b, face.a, true, this.rayPoint) :
             this.groundRay.intersectTriangle(face.a, face.b, face.c, side !== THREE.DoubleSide, this.rayPoint)
           if (!hit) continue
@@ -236,7 +340,7 @@ export class CollisionWorld {
     this.ray.far = range
     let closest: SurfaceHit | null = null
     for (const collider of this.colliders) {
-      if (!collider.blocksShots || !this.ray.ray.intersectsBox(collider.bounds)) continue
+      if (!collider.blocksShots || !this.reaches(collider)) continue
       const hit = this.ray.intersectObject(collider.mesh, false)[0]
       if (!hit?.face || hit.distance >= (closest?.distance ?? range)) continue
       const normal = hit.face.normal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(collider.mesh.matrixWorld))
@@ -280,6 +384,7 @@ export class CollisionWorld {
     const view = new CollisionWorld(new THREE.Group())
     view.spatialRays = true
     view.colliders = this.colliders.filter(collider => collider.dynamic || bounds.intersectsBox(collider.bounds))
+    view.cells = null
     return view
   }
 
@@ -289,6 +394,7 @@ export class CollisionWorld {
       ;(mesh.material as THREE.Material).dispose()
     }
     this.colliders = []
+    this.cells = null
     this.proxies = []
   }
 }

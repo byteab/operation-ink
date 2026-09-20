@@ -139,9 +139,10 @@ const roleColors: Record<PenRole, THREE.Color> = {
 /**
  * Keep depth coordinates on the source edge. The line shader applies the small
  * transverse deviations in pixels; physical geometry and occlusion stay intact.
+ * Pass `result` to append several roles into one batch.
  */
-export function sketchSegments(segments: ArrayLike<number>, seed: number, role: PenRole, spacing = 0.8, profile: SketchProfile = {}): SketchSegments {
-  const result: SketchSegments = { positions: [], colors: [], widths: [], offsets: [] }
+export function sketchSegments(segments: ArrayLike<number>, seed: number, role: PenRole, spacing = 0.8, profile: SketchProfile = {},
+  result: SketchSegments = { positions: [], colors: [], widths: [], offsets: [] }): SketchSegments {
   const random = penRandom(seed)
   const color = new THREE.Color()
   const fine = role === 'mesh'
@@ -220,37 +221,51 @@ function updatePenResolution(resolution: THREE.Vector2, renderer: THREE.WebGLRen
     renderer.xr.isPresenting && viewport ? viewport.w : penViewport.w)
 }
 
-/** Caller owns the returned geometry; all gun outlines share the material. */
-export function createPenEdges(geometry: THREE.BufferGeometry, seed: number, role: PenRole = 'detail',
-  distance: PenDistanceProfile = 'world'): LineSegments2 {
+/** Hard-edge strokes in the geometry's own space. Pass `result` to batch several parts into one stroke mesh. */
+export function penEdgeMarks(geometry: THREE.BufferGeometry, seed: number, role: PenRole = 'detail', result?: SketchSegments) {
   // Curved pieces get a separate silhouette. Keep their cap rims, not the facets
   // of low-segment cylinders or spheres, as authored hard edges.
   const curved = ['CylinderGeometry', 'SphereGeometry', 'ConeGeometry', 'TorusGeometry', 'CapsuleGeometry'].includes(geometry.type)
   const source = new THREE.EdgesGeometry(geometry, curved ? 60 : 25)
   const marks = sketchSegments(source.getAttribute('position').array, seed, role, 0.07,
-    { retraceScale: 0.18, deviationScale: 0.12, pressureScale: 0.25 })
+    { retraceScale: 0.18, deviationScale: 0.12, pressureScale: 0.25 }, result)
   source.dispose()
-  return createPenStrokeMesh(marks, 2.1, distance)
+  return marks
+}
+
+/** An authored connected path, without extracting triangle edges. */
+export function penLineMarks(points: readonly THREE.Vector3[], seed: number, role: PenRole = 'detail', result?: SketchSegments) {
+  const segments: number[] = []
+  for (let i = 1; i < points.length; i++) segments.push(...points[i - 1].toArray(), ...points[i].toArray())
+  return sketchSegments(segments, seed, role, 0.07, { retraceScale: 0, deviationScale: 0.12, pressureScale: 0.25 }, result)
+}
+
+/** Caller owns the returned geometry; all gun outlines share the material. */
+export function createPenEdges(geometry: THREE.BufferGeometry, seed: number, role: PenRole = 'detail',
+  distance: PenDistanceProfile = 'world'): LineSegments2 {
+  return createPenStrokeMesh(penStrokeGeometry(penEdgeMarks(geometry, seed, role), 2.1, distance), distance)
 }
 
 /** Draw an authored connected path directly, without extracting triangle edges. */
 export function createPenLines(points: readonly THREE.Vector3[], seed: number, role: PenRole = 'detail', width = 1.8,
   distance: PenDistanceProfile = 'world'): LineSegments2 {
-  const segments: number[] = []
-  for (let i = 1; i < points.length; i++) segments.push(...points[i - 1].toArray(), ...points[i].toArray())
-  const marks = sketchSegments(segments, seed, role, 0.07,
-    { retraceScale: 0, deviationScale: 0.12, pressureScale: 0.25 })
-  const line = createPenStrokeMesh(marks, width, distance)
+  const line = createPenStrokeMesh(penStrokeGeometry(penLineMarks(points, seed, role), width, distance), distance)
   line.name = 'Continuous black pen path'
   return line
 }
 
-function createPenStrokeMesh(marks: SketchSegments, width: number, distance: PenDistanceProfile): LineSegments2 {
-  const edgeMaterial = edgeMaterials[distance]
+/** `marks.widths` are pressures; `width` is their pen width in CSS px. */
+export function penStrokeGeometry(marks: SketchSegments, width: number, distance: PenDistanceProfile) {
   const lineGeometry = new LineSegmentsGeometry().setPositions(marks.positions).setColors(marks.colors)
-  const widths = marks.widths.map(pressure => pressure * width / edgeMaterial.linewidth)
+  const widths = marks.widths.map(pressure => pressure * width / edgeMaterials[distance].linewidth)
   lineGeometry.setAttribute('instancePenWidth', new THREE.InstancedBufferAttribute(new Float32Array(widths), 1))
   lineGeometry.setAttribute('instancePenOffset', new THREE.InstancedBufferAttribute(new Float32Array(marks.offsets), 2))
+  return lineGeometry
+}
+
+/** The geometry may be shared between meshes; the caller owns it. */
+export function createPenStrokeMesh(lineGeometry: LineSegmentsGeometry, distance: PenDistanceProfile): LineSegments2 {
+  const edgeMaterial = edgeMaterials[distance]
   const line = new LineSegments2(lineGeometry, edgeMaterial)
   line.name = 'Continuous black pen edges'
   line.userData.noCollision = true

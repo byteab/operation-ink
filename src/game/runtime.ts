@@ -132,6 +132,7 @@ export class MissionRuntime {
       await this.ai.init()
       await this.escort.init()
       if (this.disposed) return
+      this.player.world.warm()
       this.escort.sync(this.state)
       const supply = this.world.stations.find(s => s.kind === 'supply')
       if (supply) {

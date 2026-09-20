@@ -12,7 +12,9 @@ import './style.css'
 const canvas = document.querySelector<HTMLCanvasElement>('#world')!
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' })
 // A small supersampling floor keeps sub-pixel details clean on non-Retina displays.
-const pixelRatio = () => Math.min(Math.max(window.devicePixelRatio, 1.5), 2)
+// 1.25 is indistinguishable from 1.5 at 100% zoom and shades 31% fewer pixels; 1.0 visibly hardens far strokes.
+let resolutionScale = 1
+const pixelRatio = () => Math.max(1, Math.min(Math.max(window.devicePixelRatio, 1.25), 2) * resolutionScale)
 renderer.setPixelRatio(pixelRatio())
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.NoToneMapping
@@ -67,7 +69,10 @@ function render(now: number, xrFrame?: XRFrame) {
   rendering = true
   const elapsed = (now - lastTime) / 1000
   const dt = Math.min(elapsed, 0.05)
-  if (player.playing && elapsed < 1) { frameTimes.push(elapsed * 1000); if (frameTimes.length > 600) frameTimes.shift() }
+  if (player.playing && elapsed < 1) {
+    frameTimes.push(elapsed * 1000); if (frameTimes.length > 600) frameTimes.shift()
+    if (!resolutionSettled && !renderer.xr.isPresenting && ++resolutionFrames >= 90) adaptResolution()
+  }
   lastTime = now
   // Door travel uses real elapsed time even when low FPS caps the physics step.
   const doorsMoving = interactions.update(elapsed)
@@ -90,6 +95,21 @@ function render(now: number, xrFrame?: XRFrame) {
   }
   if (moving || doorsMoving || missionMoving) invalidate()
   rendering = false
+}
+
+// Slow GPUs: when play stays under ~40 fps, shade fewer pixels (never below 1×). Stroke widths are in CSS px and keep their size.
+// ponytail: one-way and frame-time based. Frame time cannot tell GPU- from CPU-bound, so a step that
+// does not help is undone and adaptation stops; a reload restores full resolution. Add step-up if players ask.
+let resolutionFrames = 0, resolutionTrial = 0, resolutionSettled = false
+function adaptResolution() {
+  const recent = frameTimes.slice(-90), average = recent.reduce((a, b) => a + b, 0) / recent.length
+  resolutionFrames = 0
+  if (resolutionTrial) {
+    if (average > resolutionTrial * 0.9) { resolutionScale /= 0.8; resolutionSettled = true }
+    resolutionTrial = 0
+  } else if (average > 25 && pixelRatio() > 1) { resolutionTrial = average; resolutionScale *= 0.8 }
+  else return
+  resize()
 }
 
 function resize() {

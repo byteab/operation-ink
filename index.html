@@ -6,12 +6,27 @@
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="data:," />
     <title>Operation Safe Return — Stickman</title>
+    <!-- Every enemy and the hostage need the model; fetch it alongside the scripts instead of after they run. -->
+    <link rel="preload" href="/models/stickman.glb" as="fetch" crossorigin />
     <style>
       html { background: #fff; }
-      html[data-loading] body { visibility: hidden; }
+      /* Until src/main.ts removes data-loading after the first ready frame, only the loading card shows. */
+      html[data-loading] body > :not(#boot) { visibility: hidden; }
+      html:not([data-loading]) #boot { display: none; }
+      #boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; color: #000; text-align: center; }
+      #boot h1 { margin: 0; font: 600 clamp(30px, 6vw, 44px)/1.08 "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; letter-spacing: -0.02em; }
+      #boot p { margin: 0; font: 13px/1.5 "Trebuchet MS", "Segoe UI", sans-serif; }
+      #boot i { display: block; width: 132px; height: 2.2px; border-radius: 2px; background: #000; transform-origin: 0 50%; animation: boot-stroke 1.4s ease-in-out infinite; }
+      @keyframes boot-stroke { 0% { transform: scaleX(0); } 60% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { #boot i { animation: none; } }
     </style>
   </head>
   <body>
+    <div id="boot" role="status">
+      <h1>Operation Safe Return</h1>
+      <i aria-hidden="true"></i>
+      <p>Loading…</p>
+    </div>
     <canvas id="world" tabindex="0" aria-label="Explore the military compound in first person. Click Start walking, mouse to look, WASD to walk, Shift to sprint, Space to jump, F to open doors or climb nearby ladders, Escape to pause, R to return to the entrance. Inspect map switches to the inspection camera."></canvas>
     <button id="walk-mode" class="mode-button" hidden>Walk the map <span>↗</span></button>
     <section id="walk-hud" hidden aria-label="First-person controls">

@@ -25,7 +25,7 @@ const mapping = {
 const vector = () => new THREE.Vector3(), quaternion = () => new THREE.Quaternion()
 const position = name => scene.getObjectByName(name).getWorldPosition(vector())
 const rotation = name => scene.getObjectByName(name).getWorldQuaternion(quaternion())
-const rounded = a => a.map(n => +n.toFixed(6))
+const rounded = a => a.map(n => +n.toFixed(4))
 mixer.clipAction(animations.find(c => c.name === 'A_TPose')).play(); mixer.update(0); scene.updateMatrixWorld(true)
 const bind = Object.fromEntries(Object.entries(mapping).map(([target, source]) => [target, {
   rotation: rotation(source), position: position(source),

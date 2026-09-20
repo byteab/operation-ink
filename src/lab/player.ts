@@ -42,6 +42,7 @@ export class Player {
   private rootTransition: RootTransition | null = null
   private boneTransition: BoneTransition | null = null
   private readonly adjustedBones = new Map<THREE.Bone, THREE.Quaternion>()
+  private readonly savedQuaternions = new Map<THREE.Bone, THREE.Quaternion>()
   private sourceClip: THREE.AnimationClip | null = null
   private actionSpeed = 1
   private lastPlaybackSpeed = 1
@@ -156,7 +157,11 @@ export class Player {
   /** Apply a temporary pose correction after animation, keeping the first unadjusted pose. */
   adjustBones(bones: readonly THREE.Bone[], adjust: () => void) {
     for (const bone of bones) {
-      if (!this.adjustedBones.has(bone)) this.adjustedBones.set(bone, bone.quaternion.clone())
+      if (this.adjustedBones.has(bone)) continue
+      // Every character adjusts ~9 bones each frame; keep one saved quaternion per bone instead of cloning.
+      let saved = this.savedQuaternions.get(bone)
+      if (!saved) this.savedQuaternions.set(bone, saved = new THREE.Quaternion())
+      this.adjustedBones.set(bone, saved.copy(bone.quaternion))
     }
     adjust()
   }

@@ -38,7 +38,7 @@ for (let seed=0;seed<128;seed++) {
   const x=-100.8,z=24.75,maxHeight=seed%2?4.5:11
   const {draft,height}=makeTree(seed,x,z,maxHeight)
   assert(height>=maxHeight*.88 && height<=maxHeight)
-  assert.equal(draft.children.length,4,'Pine surfaces and ink must stay batched')
+  assert(draft.children.length<=4,'Pine surfaces and ink must stay batched')
   signatures.add(fingerprint(draft))
   if (seed<8) {
     const repeat=makeTree(seed,x,z,maxHeight)

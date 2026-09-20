@@ -81,7 +81,8 @@
       await advance(.5)
       check(`${name}: falls, settles on its side and remains above the floor`, lowest >= .0059 && floor >= .0059 && floor < .007 && settled.position.distanceTo(world(gun).position) < 1e-8 && settled.quaternion.angleTo(world(gun).quaternion) < 1e-6, { lowest, floor })
       guns.unequip()
-      check(`${name}: holster cleans up the dropped model`, disposed && gun.parent === null)
+      // Batched gun geometry is shared by every copy of the model, so clean-up removes the gun and must not dispose it.
+      check(`${name}: holster cleans up the dropped model`, !disposed && gun.parent === null)
     }
 
     for (const clip of ['dieHead', 'dieBody', 'dieArm', 'dieLeg', 'dieBack']) {

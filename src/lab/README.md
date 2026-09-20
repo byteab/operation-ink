@@ -19,7 +19,7 @@ with a panel on the right. `window.__lab` is the `Ctx` in dev.
 | `actions/scenario.ts` | game-like combos (shot → flinch/death + blood, armed patrol, alert + burst, reset) and "Export clips JSON" |
 | `panel.tsx` | preact panel: camera presets, speed/crossfade, action buttons, bone inspector |
 | `main.ts` | renderer, scene, orbit camera, rAF loop, hotkeys |
-| `weapons/models/` | individual gun builders and shared ink primitives; grip origin and local muzzle/ejection markers |
+| `weapons/models/` | individual gun builders and shared ink primitives; grip origin and local muzzle/ejection markers. `gun()` batches every piece into one fill + one stroke mesh (+ one hull) per rigid unit and shares that geometry between all copies of a model: only groups registered in `parts` stay separately movable |
 | `weapons/guns.ts` | gun clips, firing/reload operations, moving parts, effects, interruption cleanup |
 | `weapons/poses.ts` | solves authored weapon holds into fixed-length arm animation keys |
 | `weapons/support.ts` | analytic arm positioning, wrist orientation, and elbow direction for grips and moving mechanisms |

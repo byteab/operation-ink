@@ -3,7 +3,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { penDistanceGLSL, penPalette, penRandom, penSeed, sketchSegments } from './ballpoint'
+import { penDistanceGLSL, penPalette, penRandom, penSeed, sketchSegments, type SketchSegments } from './ballpoint'
 
 export type Point = [number, number, number]
 export type Fill = 'paper' | 'roof' | 'concrete' | 'glass' | 'green' | 'rock'
@@ -26,37 +26,32 @@ const fills = Object.fromEntries(
   ]),
 ) as Record<Fill, THREE.MeshBasicMaterial>
 
-const strokes: Record<Stroke, LineMaterial> = {
-  edge: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 2.2 }),
-  detail: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 1.35 }),
-  mesh: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 0.72 }),
-  landscape: new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 1.3 }),
+// Every role shares one material; its width rides in instancePenWidth so a Draft's ink is a single draw call.
+const strokeWidths: Record<Stroke, number> = { edge: 2.2, detail: 1.35, mesh: 0.72, landscape: 1.3 }
+const strokeMaterial = new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 1 })
+strokeMaterial.depthTest = true
+strokeMaterial.depthWrite = false
+strokeMaterial.alphaToCoverage = true
+strokeMaterial.onBeforeCompile = shader => {
+  shader.vertexShader = shader.vertexShader
+    .replace('uniform float linewidth;', `uniform float linewidth;
+      ${penDistanceGLSL}
+      attribute float instancePenWidth;
+      attribute vec2 instancePenOffset;`)
+    .replace('// ndc space', `// Stable pen deviation in pixels, without shifting the line's depth.
+      // Per-endpoint depth lets long roads taper within a single batched mesh.
+      float penStartScale = penDistanceScale(-start.z);
+      float penEndScale = penDistanceScale(-end.z);
+      float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
+      vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
+      penDirection /= max(length(penDirection), 0.0001);
+      vec2 penNormal = vec2(-penDirection.y, penDirection.x);
+      clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
+      clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
+      // ndc space`)
+    .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
 }
-for (const material of Object.values(strokes)) {
-  material.depthTest = true
-  material.depthWrite = false
-  material.alphaToCoverage = true
-  material.onBeforeCompile = shader => {
-    shader.vertexShader = shader.vertexShader
-      .replace('uniform float linewidth;', `uniform float linewidth;
-        ${penDistanceGLSL}
-        attribute float instancePenWidth;
-        attribute vec2 instancePenOffset;`)
-      .replace('// ndc space', `// Stable pen deviation in pixels, without shifting the line's depth.
-        // Per-endpoint depth lets long roads taper within a single batched mesh.
-        float penStartScale = penDistanceScale(-start.z);
-        float penEndScale = penDistanceScale(-end.z);
-        float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
-        vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
-        penDirection /= max(length(penDirection), 0.0001);
-        vec2 penNormal = vec2(-penDirection.y, penDirection.x);
-        clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
-        clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
-        // ndc space`)
-      .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
-  }
-  material.customProgramCacheKey = () => 'ballpoint-world-strokes-v2'
-}
+strokeMaterial.customProgramCacheKey = () => 'ballpoint-world-strokes-v2'
 
 // Smooth objects need a moving silhouette, not a wireframe of their tessellation.
 // Expand back faces with the same distance taper as the surrounding pen strokes.
@@ -93,11 +88,26 @@ const silhouette = new THREE.ShaderMaterial({
 })
 
 export function resizeInk(width: number, height: number) {
-  for (const material of Object.values(strokes)) material.resolution.set(width, height)
+  strokeMaterial.resolution.set(width, height)
   silhouette.uniforms.resolution.value.set(width, height)
 }
 
 const up = new THREE.Vector3(0, 1, 0)
+
+// EdgesGeometry spent a third of the compound build re-deriving the same 12 edges for every box.
+// Record them once as vertex indices; any transformed box replays them in the identical order.
+const boxEdgeIndices = (() => {
+  const box = new THREE.BoxGeometry(1, 2, 3), edges = new THREE.EdgesGeometry(box, 24)
+  const corner = box.getAttribute('position'), end = edges.getAttribute('position')
+  const indices = Array.from({ length: end.count }, (_, i) => {
+    for (let j = 0; j < corner.count; j++) {
+      if (corner.getX(j) === end.getX(i) && corner.getY(j) === end.getY(i) && corner.getZ(j) === end.getZ(i)) return j
+    }
+    throw new Error('Box edge template does not match BoxGeometry')
+  })
+  box.dispose(); edges.dispose()
+  return indices
+})()
 
 /** One semantic environment object, with its static surfaces and ink batched by material. */
 export class Draft extends THREE.Group {
@@ -164,19 +174,27 @@ export class Draft extends THREE.Group {
     )
     geometry.applyMatrix4(transform)
     if (outline) {
-      const edges = new THREE.EdgesGeometry(geometry, 24)
-      const vertices = edges.getAttribute('position')
       const data = this.contours.get(outline) ?? []
       this.contours.set(outline, data)
-      for (let i = 0; i < vertices.count; i++) data.push(vertices.getX(i), vertices.getY(i), vertices.getZ(i))
-      edges.dispose()
+      const corners = geometry.getAttribute('position')
+      if (geometry.type === 'BoxGeometry' && corners.count === 24) {
+        for (const i of boxEdgeIndices) data.push(corners.getX(i), corners.getY(i), corners.getZ(i))
+      } else {
+        const edges = new THREE.EdgesGeometry(geometry, 24)
+        const vertices = edges.getAttribute('position')
+        for (let i = 0; i < vertices.count; i++) data.push(vertices.getX(i), vertices.getY(i), vertices.getZ(i))
+        edges.dispose()
+      }
     }
     const flat = geometry.index ? geometry.toNonIndexed() : geometry
     if (flat !== geometry) geometry.dispose()
     flat.deleteAttribute('uv')
     if (smooth) this.shells.push(flat.clone())
-    const group = this.surfaces.get(fill) ?? []
-    this.surfaces.set(fill, group)
+    // Every fill is the same white paper, so they batch into one mesh. Glass and
+    // concrete stay separate only because game code and checks find them by name.
+    const batch = fill === 'glass' || fill === 'concrete' ? fill : 'paper'
+    const group = this.surfaces.get(batch) ?? []
+    this.surfaces.set(batch, group)
     group.push(flat)
   }
 
@@ -235,14 +253,21 @@ export class Draft extends THREE.Group {
       this.add(mesh)
       this.shells.forEach(g => g.dispose())
     }
-    for (const [stroke, segments] of this.contours) {
-      if (!segments.length) continue
-      const marks = sketchSegments(segments, penSeed(`${this.name}:${stroke}`), stroke)
+    // Painted in the order the separate role materials used to sort: grey hatching over black edges.
+    const marks: SketchSegments = { positions: [], colors: [], widths: [], offsets: [] }
+    for (const stroke of Object.keys(strokeWidths) as Stroke[]) {
+      const segments = this.contours.get(stroke)
+      if (!segments?.length) continue
+      const first = marks.widths.length
+      sketchSegments(segments, penSeed(`${this.name}:${stroke}`), stroke, undefined, undefined, marks)
+      for (let i = first; i < marks.widths.length; i++) marks.widths[i] *= strokeWidths[stroke]
+    }
+    if (marks.widths.length) {
       const geometry = new LineSegmentsGeometry().setPositions(marks.positions).setColors(marks.colors)
       geometry.setAttribute('instancePenWidth', new THREE.InstancedBufferAttribute(new Float32Array(marks.widths), 1))
       geometry.setAttribute('instancePenOffset', new THREE.InstancedBufferAttribute(new Float32Array(marks.offsets), 2))
-      const ink = new LineSegments2(geometry, strokes[stroke])
-      ink.name = `${this.name}: ${stroke} ink`
+      const ink = new LineSegments2(geometry, strokeMaterial)
+      ink.name = `${this.name}: ink`
       ink.renderOrder = 2
       ink.userData.noCollision = true
       const updateResolution = ink.onBeforeRender

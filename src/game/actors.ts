@@ -81,6 +81,8 @@ export class EnemyActor {
   private deathTravelScale = 1
   private transientClips = new Set<THREE.AnimationClip>()
   readonly hitVolumes: AnimatedHitVolumes
+  private readonly upperBody: THREE.Bone[]
+  private readonly arms: THREE.Bone[]
   deathClip = 'dieBody'
 
   private constructor(readonly rig: Rig, private lib: Library, readonly weapon: WeaponName) {
@@ -92,6 +94,8 @@ export class EnemyActor {
     this.idlePhase = (this.root.id * 0.61803398875 % 1) * 6.4
     this.player = new Player(this.root)
     this.hitVolumes = new AnimatedHitVolumes(rig)
+    this.upperBody = [rig.bones.head, rig.bones.chest, rig.bones.spine]
+    this.arms = lib.poses.armBones.map(name => rig.bones[name])
     const original = rig.mesh.material as THREE.MeshBasicMaterial
     this.material = original.clone()
     // Material.clone does not preserve callbacks. Keep the original dual-quaternion shader setup.
@@ -185,7 +189,7 @@ export class EnemyActor {
       // Frame-local upper-body motion leaves authored feet and navigation untouched.
       // adjustBones restores the mixer pose before the next frame, preventing drift.
       const { head, chest, spine } = this.rig.bones
-      this.player.adjustBones([head, chest, spine], () => {
+      this.player.adjustBones(this.upperBody, () => {
         const t = this.player.current?.time ?? 0
         if (moving && !aimed) {
           head.rotation.y += Math.sin(t * 1.3 + this.idlePhase) * (ready ? 0.12 : 0.055)
@@ -230,7 +234,7 @@ export class EnemyActor {
       }
     }
     // A flinch owns the arms for its duration; the held-weapon solve resumes afterwards.
-    if (this.reacting <= 0 && !transitioning) this.player.adjustBones(this.lib.poses.armBones.map(name => this.rig.bones[name]), () => {
+    if (this.reacting <= 0 && !transitioning) this.player.adjustBones(this.arms, () => {
       const blend = 1 - Math.exp(-Math.max(0, dt) / 0.12)
       for (const name of this.lib.poses.armBones) {
         // A pistol occupies only the right hand. Keep the free arm's shared
@@ -253,7 +257,7 @@ export class EnemyActor {
       supportHand(this.rig, this.gun)
     })
     else {
-      if (transitioning) this.player.adjustBones(this.lib.poses.armBones.map(name => this.rig.bones[name]), () => supportHand(this.rig, this.gun))
+      if (transitioning) this.player.adjustBones(this.arms, () => supportHand(this.rig, this.gun))
       // Resume the hold from the flinch's actual arm pose instead of snapping back.
       for (const name of this.lib.poses.armBones) {
         this.displayedArmPose.set(name, this.rig.bones[name].quaternion.clone())
@@ -263,17 +267,16 @@ export class EnemyActor {
     this.flash.visible = this.kick > 0.065
     if (this.kick > 0) this.player.adjustBones([this.rig.bones.chest], () => { this.rig.bones.chest.rotation.x -= this.kick * 0.17 })
     this.player.blendPose(this.bodyPosture === 'stand')
-    this.root.updateMatrixWorld(true)
+    // No world-matrix pass here: every reader (eye, muzzle, hit volumes, blood, the renderer) refreshes what it reads.
   }
 
+  // localToWorld refreshes the ancestor chain itself; a whole-rig pass per query was 50 nodes instead of 8.
   muzzle(out = new THREE.Vector3()) {
-    this.root.updateMatrixWorld(true)
     return this.gun.localToWorld(out.copy(this.gun.userData.muzzle))
   }
 
   /** Sight and hit tests use the rendered skeleton, including the whole prone drop. */
   eye(out = new THREE.Vector3()) {
-    this.root.updateMatrixWorld(true)
     return this.rig.bones.head.localToWorld(out.set(0, 0.205, 0.10))
   }
 

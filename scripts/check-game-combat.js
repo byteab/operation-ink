@@ -100,7 +100,7 @@
     const bank = await import(resource('/src/game/igi-samples.ts'))
     const files = ['spas12_shot_1', 'spas12_pump', 'spas12_reload_1', 'spas12_reload_2', ...[1,2,3,4].map(n => `spas12_bulins_${n}`)]
     const ac = new AudioContext(), decoded = []
-    for (const name of files) { const response = await fetch(`/sounds/igi/${name}.wav`); check(response.ok, `Served IGI ${name}`); const buffer = await ac.decodeAudioData(await response.arrayBuffer()); decoded.push({ name, duration: buffer.duration, rate: buffer.sampleRate }) }
+    for (const name of files) { const response = await fetch(`/sounds/igi/${name}.m4a`); check(response.ok, `Served IGI ${name}`); const buffer = await ac.decodeAudioData(await response.arrayBuffer()); decoded.push({ name, duration: buffer.duration, rate: buffer.sampleRate }) }
     await ac.close()
     check(bank.IGI_SAMPLES['shot-shotgun'].files[0] === 'igi/spas12_shot_1.wav', 'Shotgun report uses original IGI source', decoded)
     m.restart()

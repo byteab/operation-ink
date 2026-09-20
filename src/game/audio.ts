@@ -97,18 +97,21 @@ export class MissionAudio {
     if (this.loading || !this.context || this.disposed) return
     this.loading = true
     const context = this.context
-    const names = new Set<string>()
-    for (const entry of [...Object.values(IGI_SAMPLES), ...Object.values(SAMPLES)]) entry.files.forEach(name => names.add(name))
-    for (const files of Object.values(IGI_VOICES)) files.forEach(name => names.add(name))
-    await Promise.all([...names].map(async name => {
+    // IGI ids keep their source names (igi/manifest.json) but ship as mono AAC; the looped
+    // alarm is FLAC because AAC tail padding would leave a gap at every loop (see CREDITS.md).
+    const served = (name: string) => name.endsWith('.wav') ? name.replace('.wav', name.includes('alarm_') ? '.flac' : '.m4a') : `${name}.m4a`
+    const fetchAll = (names: Iterable<string>) => Promise.all([...new Set(names)].map(async name => {
       try {
-        const file = name.endsWith('.wav') ? name : `${name}.m4a`
-        const response = await fetch(`${import.meta.env?.BASE_URL ?? '/'}sounds/${file}`, { signal: this.loadAbort.signal })
+        const response = await fetch(`${import.meta.env?.BASE_URL ?? '/'}sounds/${served(name)}`, { signal: this.loadAbort.signal })
         if (!response.ok) return
         const buffer = await context.decodeAudioData(await response.arrayBuffer())
         if (!this.disposed && context === this.context) this.buffers.set(name, buffer)
       } catch { /* missing sample: procedural fallback stays in place */ }
     }))
+    await fetchAll([...Object.values(IGI_SAMPLES).flatMap(entry => entry.files), ...Object.values(IGI_VOICES).flat()])
+    // The older recordings are only downloaded for kinds whose IGI samples all failed.
+    if (this.disposed) return
+    await fetchAll(Object.entries(SAMPLES).filter(([kind]) => !IGI_SAMPLES[kind]?.files.some(file => this.buffers.has(file))).flatMap(([, entry]) => entry.files))
   }
 
   setVolume(value: number) {

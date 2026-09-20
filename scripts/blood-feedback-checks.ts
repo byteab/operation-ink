@@ -16,6 +16,10 @@ const droplets = blood.root.getObjectByName('Impact blood droplets') as THREE.In
 const marks = blood.root.getObjectByName('Blood pigment stains') as THREE.InstancedMesh
 // Every stamp needs an unbroken filled centre; crosshatching previously left
 // transparent grid holes in both splashes and pools despite their red tint.
+// Tiles are baked in idle time after load; drawing the first stain must bake whatever is left.
+marks.count = 1
+;(marks.material as THREE.ShaderMaterial).onBeforeRender(null!, scene, null!, marks.geometry, marks, null!)
+marks.count = 0
 const atlas = (marks.material as THREE.ShaderMaterial).uniforms.atlas.value as THREE.DataTexture
 const pixels = atlas.image.data
 const tileSize = atlas.image.width / 8
