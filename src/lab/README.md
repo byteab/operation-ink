@@ -155,19 +155,26 @@ to those caps. These clips target level ground, without terrain adaptation.
 Only planted feet constrain the pelvis; airborne legs lift to accommodate their
 reach instead of pulling the body down. Walking rises over the straight support
 leg with a single smooth arc and 2.6 cm foot recovery. Running keeps each foot
-planted for 28% of the normal cycle, then folds the heel behind the body before
-driving the knee forward. Its quicker cycle and asymmetric recovery replace the
-previous floating, low swing. The pelvis absorbs weight early in support and
-rises into flight with 5.6 cm of travel. The torso pitches through each push-off;
-the head follows about 27 ms later at normal speed, with roughly 6.9 cm of travel.
+planted for 25% of the normal cycle, landing about 21 cm ahead of the hips and
+pushing off about 26 cm behind them. The swing foot follows keyed points
+(`RUN_SWING` in `gait.ts`): it trails and folds up behind the body, passes under
+the hips late beneath a rising knee (thigh peaks near 45° around the opposite
+toe-off), then reaches and pulls back into contact at ground speed. Coming forward
+early read as a prancing high-knee jog; dropping early read as a goose-step. A
+soft-knee reach limit eases in after toe-off and out before contact so the
+fixed-length leg never snaps straight. Hip height is a ballistic flight arc
+(`RUN_GRAVITY`, softened because footless legs cannot absorb a full landing)
+joined to a cubic support dip, about 5.5 cm of travel. The hips shift 1 cm over the
+planted foot, the pelvis drops 4.5° toward the swinging side and the chest
+counter-leans 2°, with the head level and centred. The torso pitches through each
+push-off and the head follows about 27 ms later at normal speed.
 Ground contact shortens as running stride grows; forward/back foot travel spans
-64–72 cm across 1×–2×. Normal walking body travel remains 3.24 cm.
+67–79 cm across 1×–2×. Normal walking body travel remains 3.24 cm.
 Pelvis/shoulder counter-rotation and opposite arm swing follow the step phase,
-with more arm travel for longer strides. Running leans the torso forward 19–25°
-and the head 12–16°, keeping the neck and torso connected through the step.
-Walking uses 121 keys; running uses 241 to preserve
-contact through the faster recovery. Both include matching loop endpoints.
-Fill and outline remain pure black.
+with more arm travel for longer strides. Running leans the chest forward 9–15°
+with a nearly level head (2–6°). Its arm swing is authored in world space on top of
+that lean: the elbow drives behind the hip, the hand rises to chest height in front
+and crosses slightly toward the sternum, with the elbows a little clear of the ribs.
 
 Run `npm run test:gait` for real-GLB checks covering knee bend, landing speed,
 support contact, step width, torso/head stability, one rise per step, bone lengths,

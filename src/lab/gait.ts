@@ -4,7 +4,7 @@ import reference from './data/locomotion-reference.json'
 
 /** In-place clip speeds; mission playback uses the same values. */
 export const GAIT_SPEED = { walk: 1.0, run: 2.8 } as const
-export const GAIT_STANCE = { walk: 0.5, run: 0.28 } as const
+export const GAIT_STANCE = { walk: 0.5, run: 0.25 } as const
 /** Longer running strides extend the flight arc, keeping planted reach bounded. */
 export function gaitStance(gait: keyof typeof GAIT_SPEED, stride = 1) {
   return GAIT_STANCE[gait] / (gait === 'run' ? stride : 1)
@@ -51,6 +51,26 @@ function boneFrame(direction: THREE.Vector3, normal: THREE.Vector3) {
   const y = direction.clone().normalize(), x = normal.clone().normalize()
   return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, x.clone().cross(y).normalize()))
 }
+/** Running swing keys: [swing time, progress from toe-off (0) to contact (1), lift in metres].
+ *  The foot trails and folds up behind the body, passes under the hips late beneath a rising
+ *  knee, then reaches and pulls back into contact. Coming forward early forces a high prancing knee. */
+const RUN_SWING = [[0, 0, 0], [0.15, -0.32, 0.14], [0.34, -0.12, 0.27], [0.5, 0.17, 0.225],
+  [0.66, 0.55, 0.16], [0.8, 0.88, 0.1], [0.9, 1.08, 0.05], [1, 1, 0]]
+/** Cubic Hermite through the swing keys; `slope` is the progress rate that matches ground speed at both ends. */
+function runSwing(u: number, slope: number, extend: number) {
+  const keys = RUN_SWING.map(([t, k, y]) => [t, k < 0 ? k * extend : k > 1 ? 1 + (k - 1) * extend : k, y])
+  const next = keys.findIndex(key => key[0] > u), i = next < 0 ? keys.length - 2 : Math.max(0, next - 1)
+  const a = keys[i], b = keys[i + 1], h = b[0] - a[0], t = (u - a[0]) / h
+  const tangent = (j: number, c: number) => j === 0 || j === keys.length - 1 ? (c === 1 ? slope : 0)
+    : (keys[j + 1][c] - keys[j - 1][c]) / (keys[j + 1][0] - keys[j - 1][0])
+  const at = (c: number) => (2 * t ** 3 - 3 * t * t + 1) * a[c] + (t ** 3 - 2 * t * t + t) * h * tangent(i, c)
+    + (3 * t * t - 2 * t ** 3) * b[c] + (t ** 3 - t * t) * h * tangent(i + 1, c)
+  return { progress: at(1), lift: at(2) }
+}
+/** Softer than real gravity: fixed-length legs cannot absorb a full-weight landing without squatting. */
+const RUN_GRAVITY = 7.5
+/** Mean running chest pitch in degrees; the arm swing is authored in world space on top of it. */
+const CHEST_LEAN = 12
 const smooth = (x: number) => { const t = THREE.MathUtils.clamp(x, 0, 1); return t * t * (3 - 2 * t) }
 
 
@@ -94,7 +114,8 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
   })
   const stance = gaitStance(gait, stride)
   const cycleTravel = GAIT_SPEED[gait] * duration * stride
-  const travel = cycleTravel * stance, front = travel * 0.5
+  // Runners land close under the body and push off well behind it.
+  const travel = cycleTravel * stance, front = travel * (gait === 'run' ? 0.45 : 0.5), back = travel - front
   const targets = frames.map((_, i) => (['L', 'R'] as const).map((side, index) => {
     const phase = (i / count + index * 0.5) % 1
     let z = front - cycleTravel * phase, lift = 0
@@ -103,13 +124,15 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
       const velocity = -cycleTravel * (1 - stance)
       // The cap travels backward at ground speed, then recovers along the route.
       // Match its horizontal velocity at lift-off and contact without overreaching.
-      z = -front + travel * smooth(u) + velocity * u * (1 - u) * (1 - 2 * u) ** (gait === 'walk' ? 9 : 3)
       if (gait === 'run') {
-        // Fold the heel behind the body first, then drive the knee through and
-        // lower the foot for contact. A symmetric, low swing reads as skating.
-        z -= (0.06 + 0.30 * (stride - 1)) * Math.sin(2 * Math.PI * u) * Math.sin(Math.PI * u) ** 2
-        lift = 0.22 * Math.sin(Math.PI * u) ** 2 * (1 + 0.8 * Math.cos(Math.PI * u))
-      } else lift = 0.026 * Math.sin(Math.PI * u) ** 2
+        // Longer strides trail further behind and reach further ahead.
+        const swing = runSwing(u, velocity / travel, 1 + 1.5 * (stride - 1))
+        z = -back + travel * swing.progress
+        lift = swing.lift
+      } else {
+        z = -back + travel * smooth(u) + velocity * u * (1 - u) * (1 - 2 * u) ** 9
+        lift = 0.026 * Math.sin(Math.PI * u) ** 2
+      }
     }
     return new THREE.Vector3((side === 'L' ? 1 : -1) * (gait === 'walk' ? 0.09 : 0.085), FOOT_CLEARANCE + lift, z)
   }))
@@ -117,19 +140,23 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
     const phase = i / count, step = Math.cos(2 * Math.PI * phase), transfer = Math.sin(2 * Math.PI * phase)
     const load = Math.cos(4 * Math.PI * (phase - stance * 0.35))
     const follow = Math.cos(4 * Math.PI * (phase - stance * 0.35 - 0.04))
-    frame.hips.x = (gait === 'walk' ? 0.004 : 0.005) * transfer
+    // Running weight shifts over the planted foot: the pelvis drops toward the
+    // swinging side while the chest leans back over the support.
+    const sway = Math.cos(2 * Math.PI * (phase - stance / 2))
+    frame.hips.x = gait === 'walk' ? 0.004 * transfer : 0.01 * sway
     // Drive the running torso into each step; the head follows a little later
     // while retaining a forward gaze. A fixed chest/head reads as jogging in place.
     const aligned = {} as Record<BoneName, THREE.Quaternion>
     for (const name of ['hips', 'spine', 'chest', 'neck', 'head'] as const) {
       const p = parent[name]
       const pitch = gait === 'run'
-        ? name === 'hips' ? 18 + 1.5 * load : name === 'spine' ? 20 + 2 * load
-          : name === 'chest' ? 22 + 3 * load : name === 'neck' ? 19 + 2 * follow : 14 + 2 * follow
+        ? name === 'hips' ? 8 + 1.5 * load : name === 'spine' ? 10 + 2 * load
+          : name === 'chest' ? CHEST_LEAN + 3 * load : name === 'neck' ? 9 + 2 * follow : 4 + 2 * follow
         : name === 'head' ? 1 : 3
-      const twist = (name === 'hips' ? -3 : name === 'spine' ? 0 : name === 'head' ? 0.5 : 3) * (gait === 'run' ? 1.5 : 1)
+      const twist = (name === 'hips' ? -3 : name === 'spine' ? 0 : name === 'head' ? 0.5 : 3) * (gait === 'run' ? 2.5 : 1)
       const acting = new THREE.Euler(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(twist * step),
-        THREE.MathUtils.degToRad((name === 'hips' ? -0.8 : -0.4) * transfer), 'YXZ')
+        THREE.MathUtils.degToRad(gait === 'run' ? (name === 'hips' ? 4.5 : name === 'spine' ? -1 : name === 'chest' ? -2 : 0) * sway
+          : (name === 'hips' ? -0.8 : -0.4) * transfer), 'YXZ')
       aligned[name] = new THREE.Quaternion().setFromEuler(acting).multiply(bindWorld[name])
       frame.local[name].copy(aligned[name]).premultiply(p ? aligned[p].clone().invert() : new THREE.Quaternion())
     }
@@ -143,16 +170,21 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
       const shoulder = frame.local[`shoulder.${side}`], upper = frame.local[`upper_arm.${side}`]
       const direction = yAxis.clone().applyQuaternion(upper).applyQuaternion(shoulder)
       const drive = Math.cos(2 * Math.PI * (phase + (side === 'R' ? 0.5 : 0)))
-      const amplitude = (gait === 'run' ? 35 : 20) * (1 + (stride - 1) * 0.35)
-      const armAngle = THREE.MathUtils.degToRad((gait === 'run' ? -10 : -2) - amplitude * drive)
-      const tucked = new THREE.Vector3(side === 'L' ? 0.12 : -0.12, -Math.cos(armAngle), Math.sin(armAngle)).normalize()
+      const amplitude = (gait === 'run' ? 37 : 20) * (1 + (stride - 1) * 0.35)
+      // The chest frame leans with the run; add it back so the elbow drives behind
+      // the hip and the hand rises in front instead of both hovering ahead of the ribs.
+      const armAngle = THREE.MathUtils.degToRad((gait === 'run' ? CHEST_LEAN + 3 * load - 18 : -2) - amplitude * drive)
+      const flare = gait === 'run' ? 0.2 : 0.12
+      const tucked = new THREE.Vector3(side === 'L' ? flare : -flare, -Math.cos(armAngle), Math.sin(armAngle)).normalize()
       const correction = new THREE.Quaternion().setFromUnitVectors(direction, tucked)
       upper.premultiply(shoulder.clone().invert().multiply(correction).multiply(shoulder))
       {
         const armFrame = shoulder.clone().multiply(upper), fore = frame.local[`forearm.${side}`]
         const foreDirection = yAxis.clone().applyQuaternion(fore).applyQuaternion(armFrame)
-        const foreAngle = armAngle + THREE.MathUtils.degToRad(gait === 'run' ? 85 - 10 * drive : 14 - 6 * drive)
-        const foreTucked = new THREE.Vector3(side === 'L' ? 0.03 : -0.03, -Math.cos(foreAngle), Math.sin(foreAngle))
+        const foreAngle = armAngle + THREE.MathUtils.degToRad(gait === 'run' ? 85 - 23 * drive : 14 - 6 * drive)
+        // A running hand swings in toward the sternum in front and back out past the hip.
+        const cross = gait === 'run' ? 0.03 - 0.12 * (1 - drive) : 0.03
+        const foreTucked = new THREE.Vector3(side === 'L' ? cross : -cross, -Math.cos(foreAngle), Math.sin(foreAngle))
         foreTucked.normalize()
         const foreCorrection = new THREE.Quaternion().setFromUnitVectors(foreDirection, foreTucked)
         fore.premultiply(armFrame.clone().invert().multiply(foreCorrection).multiply(armFrame))
@@ -164,7 +196,8 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
   const limits = frames.map((frame, i) => Math.min(...(['L', 'R'] as const).map((side, index) => {
     if ((i / count + index * 0.5) % 1 > stance) return Infinity
     const offset = bind[`thigh.${side}`].pos.clone().applyQuaternion(frame.local.hips)
-    const foot = targets[i][index], reach = bind[`shin.${side}`].pos.length() + SHIN_LENGTH - 0.001
+    // A running leg leaves the ground with a soft knee instead of snapping straight.
+    const foot = targets[i][index], reach = (bind[`shin.${side}`].pos.length() + SHIN_LENGTH - 0.001) * (gait === 'run' ? 0.996 : 1)
     const x = foot.x - frame.hips.x - offset.x, z = foot.z - offset.z
     return foot.y + Math.sqrt(Math.max(0, reach * reach - x * x - z * z)) - offset.y
   })))
@@ -177,11 +210,16 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
     cosine += limits[i] * Math.cos(angle) * 2 / count
     sine += limits[i] * Math.sin(angle) * 2 / count
   }
-  // Running visibly loads the supporting leg, then lifts the torso into flight.
-  // The upper-body pitch follows this same pulse instead of bouncing separately.
-  const pelvis = frames.map((_, i) => gait === 'run'
-    ? mean - 0.028 * Math.cos(4 * Math.PI * (i / count - stance * 0.35))
-    : mean + 1.25 * (cosine * Math.cos(4 * Math.PI * i / count) + sine * Math.sin(4 * Math.PI * i / count)))
+  // Flight is a ballistic arc; support catches that fall and returns it as the
+  // next launch. A plain sine glides.
+  const cadence = (1 + (stride - 1) / 0.4) / stride, gravity = RUN_GRAVITY / cadence ** 2
+  const air = (0.5 - stance) * duration, ground = stance * duration, launch = gravity * air / 2
+  const pelvis = frames.map((_, i) => {
+    if (gait !== 'run') return mean + 1.25 * (cosine * Math.cos(4 * Math.PI * i / count) + sine * Math.sin(4 * Math.PI * i / count))
+    const step = i / count % 0.5, t = step / stance, tau = (step - stance) * duration
+    return step > stance ? mean + launch * tau - gravity * tau * tau / 2
+      : mean + ((t ** 3 - t * t) - (t ** 3 - 2 * t * t + t)) * ground * launch
+  })
   const clearance = Math.max(0, ...pelvis.map((height, i) => height - limits[i]))
   frames.forEach((frame, i) => {
     frame.hips.y = pelvis[i] - clearance
@@ -193,7 +231,11 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
       const hip = bind[`thigh.${side}`].pos.clone().applyQuaternion(frame.local.hips).add(frame.hips)
       const target = targets[i][index]
       if ((i / count + index * 0.5) % 1 > stance) {
-        const reach = bind[`shin.${side}`].pos.length() + SHIN_LENGTH - 0.001
+        // A swinging running leg never locks: ease a soft-knee limit in after
+        // toe-off and back out before contact so neither end snaps straight.
+        const u = ((i / count + index * 0.5) % 1 - stance) / (1 - stance)
+        const soften = gait === 'run' ? 0.996 - 0.011 * smooth(Math.min(u, 1 - u) / 0.12) : 1
+        const reach = (bind[`shin.${side}`].pos.length() + SHIN_LENGTH - 0.001) * soften
         const x = target.x - hip.x, z = target.z - hip.z
         const required = hip.y - Math.sqrt(Math.max(0, reach * reach - x * x - z * z))
         // Smooth positive correction: no snap where the authored recovery arc
@@ -204,7 +246,10 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
       const delta = target.clone().sub(hip), distance = delta.length(), axis = delta.clone().normalize()
       const length = bind[`shin.${side}`].pos.length(), along = (length ** 2 - SHIN_LENGTH ** 2 + distance ** 2) / (2 * distance)
       const bend = Math.sqrt(Math.max(0, length ** 2 - along ** 2))
-      const pole = forward.clone().addScaledVector(axis, -forward.dot(axis)).normalize()
+      // A driven running knee swings slightly outward instead of pumping like a piston.
+      const swinging = gait === 'run' ? Math.max(0, ((i / count + index * 0.5) % 1 - stance) / (1 - stance)) : 0
+      const ahead = forward.clone().setX((side === 'L' ? 0.06 : -0.06) * Math.sin(Math.PI * swinging))
+      const pole = ahead.addScaledVector(axis, -ahead.dot(axis)).normalize()
       const knee = hip.clone().addScaledVector(axis, along).addScaledVector(pole, bend)
       const normal = new THREE.Vector3().crossVectors(pole, axis).normalize()
       const upper = boneFrame(knee.clone().sub(hip), normal), lower = boneFrame(target.clone().sub(knee), normal)
