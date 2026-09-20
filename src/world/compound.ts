@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Draft, palette, type Point } from '../render/ink'
 import { building, container, crates, platform, truck, workshop, type BuildingSpec } from './architecture'
 import { messHall } from './messHall'
-import { drawTree, treeRadius, type TreeSpecies } from './vegetation'
+import { drawPine, treeRadius, treeSeed } from './vegetation'
 import { fence, fuelTank, gate, lamp, railway, watchTower, waterTower, towerZipline,
   WATER_TOWER_POSITION, OBSERVATION_TOWER_POSITION, type PlanPoint } from './industrial'
 
@@ -114,7 +114,7 @@ function landscaping() {
   // Deliberate clusters from the reference: west tank belt, northern roadside,
   // southwest clearing and southeast rocks. Working yards stay unobstructed.
   const trees = [
-    [105, 209, 9], [57, 251, 7], [78, 640, 8], [155, 684, 10], [176, 730, 7],
+    [105, 209, 9], [57, 251, 7], [70, 640, 8], [155, 684, 10], [176, 730, 7],
     [304, 825, 8.5], [447, 815, 9], [503, 800, 7], [569, 843, 8.5], [583, 899, 7.5],
     [386, 580, 5], [671, 397, 6.5], [803, 612, 4.5],
     [358, 410, 5], [270, 414, 4.5], [968, 183, 7], [853, 192, 5],
@@ -124,11 +124,11 @@ function landscaping() {
     [729, 942, 7], [696, 989, 6], [537, 1080, 7], [116, 1074, 8],
     [32, 877, 9], [22, 941, 7], [57, 980, 6], [1190, 570, 4.5], [1287, 686, 6],
   ]
-  g.userData.trees = trees.map(([px, pz, h], index) => {
+  g.userData.trees = trees.map(([px, pz, h]) => {
     const [x, z] = mapPoint(px, pz)
-    const species: TreeSpecies = ['pine', 'broadleaf', 'poplar'][index % 3] as TreeSpecies
-    drawTree(g, x, z, h, species, px)
-    return { x, z, height: h, species, radius: treeRadius(h, species) }
+    const seed = treeSeed(px, pz)
+    const height = drawPine(g, x, z, h, seed)
+    return { x, z, height, species: 'pine', seed, radius: treeRadius(height) }
   })
   const rocks = [[1120, 971, 3.1], [1152, 947, 2.5], [1171, 976, 2], [1223, 86, 2.8], [1270, 79, 2],
     [55, 560, 1.6], [60, 790, 2.1], [684, 1047, 1.6], [670, 953, 2.2]]

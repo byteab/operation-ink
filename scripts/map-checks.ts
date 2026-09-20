@@ -46,10 +46,11 @@ check('office blue-screen computer uses the real nearby interaction and rejects 
   actions.activate(camera);assert(state.camerasActive)
   actions.extraTargets=()=>[]
 })
-check('tree varieties and crowns stay clear of compound and annex fences',()=>{
+check('only pines remain and their crowns clear compound and annex fences',()=>{
   const landscape=compound.getObjectByName('Perimeter trees and low vegetation')!
   const trees=landscape.userData.trees as {x:number;z:number;radius:number;species:string}[]
-  assert.equal(new Set(trees.map(tree=>tree.species)).size,3)
+  assert.equal(trees.length,40)
+  assert.deepEqual([...new Set(trees.map(tree=>tree.species))],['pine'])
   const segments:THREE.Line3[]=[]
   scene.traverse(object=>{
     for(const panel of object.userData.collisionPanels??[]){
@@ -58,11 +59,13 @@ check('tree varieties and crowns stay clear of compound and annex fences',()=>{
       segments.push(new THREE.Line3(a.setY(0),b.setY(0)))
     }
   })
+  const intersections:string[]=[]
   for(const tree of trees){
     const point=new THREE.Vector3(tree.x,0,tree.z)
     const distance=Math.min(...segments.map(line=>line.closestPointToPoint(point,true,new THREE.Vector3()).distanceTo(point)))
-    assert(distance>tree.radius+0.3,`${tree.species} at ${tree.x},${tree.z} intersects fence: clearance ${distance-tree.radius}`)
+    if(distance<=tree.radius+0.3) intersections.push(`${tree.species} at ${tree.x},${tree.z} intersects fence: clearance ${distance-tree.radius}`)
   }
+  assert.equal(intersections.length,0,intersections.join('\n'))
 })
 for(const station of mission.stations)check(`station ${station.kind} standing and visible`,()=>{
   const outward=new THREE.Vector3(0,0,1).transformDirection(station.object.matrixWorld)
