@@ -17,6 +17,7 @@ export class FirstPersonController {
   missionMode = false
   movementLocked = false
   canPlay: () => boolean = () => true
+  onPlayingChange: (playing: boolean) => void = () => {}
   lookSensitivity: () => number = () => 1
   private fallback = false
   private dragging = false
@@ -124,6 +125,7 @@ export class FirstPersonController {
     this.started = true
     this.panel.hidden = true
     this.hud.dataset.playing = 'true'
+    this.onPlayingChange(true)
     this.canvas.focus({ preventScroll: true })
     this.invalidate()
   }
@@ -140,6 +142,7 @@ export class FirstPersonController {
     this.hud.dataset.playing = 'false'
     this.panel.hidden = !this.enabled
     this.startButton.textContent = this.missionMode ? (this.started ? 'Resume mission' : 'Begin mission') : this.started ? 'Resume walk' : 'Start walking'
+    this.onPlayingChange(false)
     this.invalidate()
   }
 

@@ -75,8 +75,11 @@ export class MissionRuntime {
       dropWeapon: item => { this.weapons.addPickup(item); this.state.kills++ }, onHit: hit => {
         this.impactPoint = hit.point.clone(); this.blood.emitHit(hit); this.audio.confirmHit(hit)
       } })
-    this.hud = new MissionHUD(world, { retry: () => this.retry(), restart: () => this.restart(),
+    this.hud = new MissionHUD(world, {
+      retry: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
+      restart: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
       volume: value => this.audio.setVolume(value), mute: value => this.audio.setMuted(value) })
+    player.onPlayingChange = playing => this.hud.setPlaying(playing)
     this.escort = new HostageEscort(scene, player.world, player.actions.doors)
     this.security = new SecuritySystem(player.world, world, this.ai, event => this.emit(event, false))
     this.syncWorld()
@@ -157,7 +160,8 @@ export class MissionRuntime {
     if (event.target instanceof HTMLElement && event.target.closest('button,input,select,textarea,summary,[contenteditable="true"]')) return
     if (event.code === 'KeyM') {
       event.preventDefault()
-      if (this.player.playing) this.player.pause()
+      if (this.state.phase !== 'active') return
+      if (this.player.playing) { this.player.pause(); this.hud.showMap() }
       else this.player.requestControl()
       this.cancelInput(); this.invalidate(); return
     }
@@ -296,11 +300,11 @@ export class MissionRuntime {
     this.bulletTrails.clear(); this.impacts.clear(); this.hud.reset(); this.security.reset(); this.syncWorld(true); this.invalidate()
   }
 
-  retry() { if(this.checkpoint) { this.restore(this.checkpoint); this.hud.notify('Checkpoint restored. Resume when ready.',5) } }
+  retry() { if(this.checkpoint) { this.restore(this.checkpoint); this.hud.notify('Mission reset.',3) } }
   restart() {
     if(!this.initial) return
     this.checkpoint=structuredClone(this.initial); this.deaths=0; this.restore(this.initial)
-    this.hud.setCheckpoint('Insertion'); this.hud.notify('Fresh mission. All equipment, patrols and objectives reset.',5)
+    this.hud.notify('Mission restarted.',3)
   }
 
   private syncWorld(resetEscort = false) {
@@ -456,5 +460,5 @@ export class MissionRuntime {
   }
 
   finishFrame() { this.playerHits.removeCamera() }
-  dispose() { this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
+  dispose() { this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.onPlayingChange=()=>{};this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
 }

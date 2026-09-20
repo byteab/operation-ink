@@ -8,37 +8,53 @@ body[data-death] #walk-hud { z-index: 6; }
 body[data-death] #walk-hud > :not(#walk-pause), body[data-death] #mission-hud,
 body[data-death] .mission-scope, body[data-death] .mode-button { visibility: hidden; }
 body[data-death="falling"] #walk-pause { visibility: hidden; pointer-events: none; }
-body[data-mission="true"][data-death] #walk-pause { background: transparent; }
-body[data-death="menu"] .mission-orders { align-self: center; }
-body[data-death="menu"] .mission-orders > p, body[data-death="menu"] #mission-checklist,
-body[data-death="menu"] .mission-reference .map-note, body[data-death="menu"] .mission-keys,
-body[data-death="menu"] .mission-reference > small { display: none; }
-body[data-mission="true"] #walk-pause { padding: 74px 24px 28px; background: #ffffffc9; align-items: center; }
-body[data-mission="true"] .walk-card { width: min(1040px,100%); border-radius: 4px 7px 3px 6px; display: grid; grid-template-columns: 0.9fr 1.1fr; padding: 0; box-shadow: 3px 4px 0 #00000017; overflow: hidden; }
-.mission-orders { padding: 35px 38px; }
-.mission-reference { padding: 35px 30px; border-left: 1px dashed var(--ink-rule); background: #f5f5f5; }
-.mission-number { font: 17px var(--hand); color: var(--ink-muted); }
-body[data-mission="true"] .walk-card h1 { font: 600 38px/1.1 var(--hand); margin: 15px 0 20px; color: var(--ink-deep); letter-spacing: 0; overflow-wrap: anywhere; }
-body[data-mission="true"] .walk-card p { font-size: 12px; line-height: 1.65; color: var(--ink-muted); }
-body[data-mission="true"] .walk-card .mission-premise { font-size: 18px; color: var(--ink); line-height: 1.4; margin-bottom: 15px; }
-#mission-checklist { padding-left: 20px; margin: 23px 0; font-size: 12px; line-height: 1.6; }
-#mission-checklist li { padding-left: 5px; margin: 8px 0; }
-#mission-checklist li.complete { color: var(--ink-light); text-decoration: line-through; }
-body[data-mission="true"] .walk-card .mission-warning { border-left: 2px solid var(--ink-light); padding-left: 13px; font-size: 11px; margin-bottom: 22px; }
-.mission-recovery { display: flex; gap: 8px; margin-top: 9px; }
-.mission-recovery button { flex: 1; font-size: 11px; border: 1px solid var(--ink-rule); background: transparent; color: var(--ink); padding: 9px 4px; border-radius: 2px; }
-.mission-recovery button:hover { background: var(--paper-shade); }
+body[data-mission="true"][data-mode="walk"][data-death] #walk-pause { background: transparent; }
+/* Menus share a quiet paper sheet; only the mission map needs a wider page. */
+body[data-mission="true"][data-mode="walk"] #walk-pause { padding: 28px 20px; background: #ffffffbb; align-items: safe center; }
+body[data-mission="true"] #walk-hud:has(#walk-pause:not([hidden])) { z-index: 6; }
+body[data-mission="true"] #walk-hud[data-playing="false"] > .walk-controls,
+body[data-mission="true"] #walk-hud[data-playing="false"] > #inspect-mode { display: none; }
+body[data-mission="true"] .walk-card { width: min(440px, 100%); padding: 38px; background: var(--paper); border-radius: 4px 7px 3px 6px; box-shadow: 3px 4px 0 #00000012; }
+body[data-mission="true"] .walk-card[data-page="mission"] { width: min(760px, 100%); }
+body[data-mission="true"] .walk-card[data-page="controls"] { width: min(560px, 100%); }
+body[data-mission="true"] .walk-card h1 { font: 600 44px/1.08 var(--hand); margin: 0 0 16px; color: var(--ink); letter-spacing: -0.02em; text-wrap: balance; }
+body[data-mission="true"] .walk-card h2 { font: 600 36px/1.15 var(--hand); margin: 20px 0 24px; color: var(--ink); }
+body[data-mission="true"] .walk-card p { font: 14px/1.6 var(--notes); color: var(--ink-muted); }
+.mission-actions { display: grid; gap: 8px; margin-top: 32px; }
+.mission-start-slot:has([hidden]) { display: none; }
+body[data-mission="true"] .walk-card button { min-height: 44px; font: 14px/1.4 var(--notes); }
+body[data-mission="true"] .walk-card .menu-primary,
+body[data-mission="true"] #walk-start { display: block; width: 100%; min-height: 50px; padding: 13px 18px; text-align: left; background: var(--ink); color: var(--paper); border: 1px solid var(--ink); border-radius: 3px; }
+.menu-secondary { width: 100%; padding: 12px 18px; text-align: left; background: transparent; color: var(--ink); border: 1px solid var(--ink-rule); border-radius: 3px; }
+.menu-quiet { width: 100%; padding: 10px 18px; text-align: left; background: transparent; color: var(--ink-muted); border: 1px solid transparent; border-radius: 3px; }
+body[data-mission="true"] .walk-card .menu-primary:hover,
+body[data-mission="true"] #walk-start:hover { background: #282828; }
+.menu-secondary:hover, .menu-quiet:hover { background: var(--paper-shade); color: var(--ink); }
+body[data-mission="true"] .walk-card button:disabled { background: var(--paper-shade); color: var(--ink-muted); border-color: var(--ink-rule); cursor: wait; }
+.mission-menu-links { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; padding-top: 14px; border-top: 1px solid #e5e5e5; }
+.mission-menu-links button, .menu-back { padding: 0; border: 0; background: transparent; color: var(--ink-muted); }
+.mission-menu-links button:hover, .menu-back:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
+.menu-back { display: flex; gap: 10px; align-items: center; }
+.menu-back kbd { margin-left: 5px; color: var(--ink-muted); font-size: 11px; border: 1px solid #d5d5d5; border-radius: 3px; padding: 0 5px; }
+.walk-card :is(button, input, summary):focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.field-map { margin-top: 20px; }
 .field-map svg { width: 100%; height: auto; display: block; }
 .field-map text { font: 7px var(--notes); fill: var(--ink-deep); }
-body[data-mission="true"] .walk-card .map-legend { display: flex; gap: 14px; font-size: 9px; margin: 10px 0 13px; flex-wrap: wrap; }
-body[data-mission="true"] .walk-card .map-note { font-size: 11px; margin: 0 0 18px; }
-.mission-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10px; }
-.mission-keys span { display: flex; gap: 8px; }
-.mission-keys kbd { min-width: 60px; font-weight: 600; }
-.mission-settings { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; border-top: 1px solid var(--ink-rule); padding-top: 18px; margin-top: 20px; font-size: 10px; }
-.mission-settings label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-.mission-settings input[type="range"] { width: 78px; accent-color: var(--ink); }
-.mission-settings input[type="checkbox"] { accent-color: var(--ink); }
+body[data-mission="true"] .walk-card .map-legend { display: flex; gap: 18px; font-size: 12px; margin: 8px 0 20px; flex-wrap: wrap; }
+.mission-tips { border-top: 1px solid #e5e5e5; padding-top: 8px; font-size: 13px; color: var(--ink-muted); }
+.mission-tips summary { cursor: pointer; padding: 12px 0; color: var(--ink); }
+body[data-mission="true"] .walk-card .mission-tips p { font-size: 13px; margin: 10px 0; }
+.mission-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin: 0; }
+.mission-keys > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 45px; border-bottom: 1px solid #ededed; font-size: 13px; }
+.mission-keys dt { color: var(--ink-muted); }
+.mission-keys dd { margin: 0; text-align: right; }
+.mission-keys kbd { white-space: nowrap; font-size: 12px; color: var(--ink); }
+.mission-settings { display: grid; gap: 0; font-size: 15px; }
+.mission-settings label { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer; }
+.mission-settings output { font-size: 13px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.mission-settings input[type="range"] { width: 100%; margin: 0 0 24px; height: 24px; accent-color: var(--ink); }
+.mission-settings input[type="checkbox"] { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); }
+.mission-settings label:has([type="checkbox"]) { border-top: 1px solid #ededed; }
 body[data-mission="true"] #vr-panel { display: none; }
 body[data-mission="true"][data-mode="inspect"] #vr-panel { display: block; }
 body[data-mission="true"] .walk-heading { top: auto; bottom: 112px; left: 28px; }
@@ -70,7 +86,7 @@ body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; 
 #mission-alert { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); color: var(--ink-deep); background: #ffffffe8; padding: 5px 10px; font-size: 11px; border-bottom: 2px solid var(--ink); }
 #mission-alert::before { content: "!"; display: inline-block; margin-right: 8px; font-weight: 700; border: 1px solid currentColor; border-radius: 45% 50% 42% 48%; width: 15px; text-align: center; }
 #mission-alert:empty { display: none; }
-#mission-debrief { margin: 14px 0; border-left: 2px solid var(--ink-deep); padding: 10px; background: var(--paper-shade); font-size: 12px; line-height: 1.6; }
+#mission-debrief { margin-top: 12px; color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
 .action-icon { width: 23px; height: 25px; display: block; }
 .action-icon svg { width: 100%; height: 100%; }
 .mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000024; opacity: 0; }
@@ -86,9 +102,6 @@ body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; 
 body[data-reduced-motion="true"] #action-marker,body[data-reduced-motion="true"] #action-prompt kbd { animation: none; }
 body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; gap: 12px; bottom: 25px; }
 @media(max-width:800px) {
-  body[data-mission="true"] .walk-card { grid-template-columns: 1fr; max-width: 550px; }
-  body[data-mission="true"] #walk-pause { display: block; padding: 74px 18px 25px; }
-  .mission-orders { padding: 25px; }.mission-reference { padding: 25px; border-left: 0; border-top: 1px solid var(--ink-rule); }
   .mission-objective { left: 15px; max-width: calc(100% - 160px); padding: 8px 10px; }
   .mission-objective strong { font-size: 12px; }.mission-objective small { font-size: 9px; }
   body[data-mission="true"] .walk-controls { bottom: 10px; font-size: 8px; padding: 5px; }
@@ -96,8 +109,21 @@ body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; ga
   body[data-mission="true"] .walk-heading { bottom: 150px; left: 18px; }
   #mission-caption { max-width: calc(100% - 35px); bottom: 145px; font-size: 11px; }
 }
-@media(max-height:700px) and (min-width:801px) {
-  body[data-mission="true"] #walk-pause { align-items: start; padding-top: 65px; }
-  .mission-orders,.mission-reference { padding: 23px 27px; }
-  body[data-mission="true"] .walk-card h1 { margin: 8px 0 12px; }
+@media(max-width:540px) {
+  body[data-mission="true"][data-mode="walk"] #walk-pause { padding: 18px 14px; }
+  body[data-mission="true"] .walk-card { padding: 26px; }
+  body[data-mission="true"] .walk-card h1 { font-size: 38px; }
+  .mission-keys { grid-template-columns: 1fr; }
+}
+@media(max-height:760px) and (min-width:541px) {
+  body[data-mission="true"] .walk-card[data-page="mission"] { padding: 24px 30px; }
+  body[data-mission="true"] .walk-card[data-page="mission"] h2 { margin: 12px 0; }
+  .field-map { margin-top: 12px; }
+  .field-map svg { max-height: 38vh; }
+}
+@media(max-height:540px) {
+  body[data-mission="true"][data-mode="walk"] #walk-pause { padding: 16px; }
+  body[data-mission="true"] .walk-card { padding: 24px 30px; }
+  .mission-actions { margin-top: 20px; }
+  .mission-menu-links { margin-top: 14px; padding-top: 8px; }
 }

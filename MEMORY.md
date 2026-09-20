@@ -1,5 +1,12 @@
 # Project memory
 
+## Minimal game menus
+
+- User requested research first and substantially less menu text/clutter. Research from Game Accessibility Guidelines, NN/g progressive disclosure, and Xbox UI navigation informed compact single-purpose menus and optional Mission, Controls, and Settings pages. Sources and evidence: `docs/menu-simplification/README.md`.
+- User clarified there are no checkpoints: death shows only “No way through.” and “Try again” as its main content. Try again starts a completely fresh mission immediately. Pause has Resume and Restart mission; restart confirmation offers Cancel. Internal restore snapshots remain for runtime/tests, but no checkpoint terminology or duplicate retry action appears in menus.
+- `src/game/menu.ts` owns page navigation, focus, keyboard handling, and state-specific copy. M opens the mission map directly; Escape returns from subpages and resumes from pause. Controller `onPlayingChange` keeps transitions immediate, including map/resume/pause before a render frame. The default exploration controller callback is a no-op.
+- User explicitly authorized agent-browser. Build, player, VR, mission and death suites passed. 31 staged browser menu checks passed; native input paths and layouts at 1440×900, 1024×600, 390×844 and 320×568 were reviewed. No browser errors. Opening screen is 14 words. No full rescue playthrough was performed.
+
 ## Ink bullets and surface splashes
 
 - Player and enemy rounds now use rounded ink heads and darker tapered wakes. Actual surface contacts trigger a wet blot, outward droplets and a projected black splatter at visual arrival; damage remains immediate. Enemy misses continue to a real surface within their weapon range instead of ending two metres beyond the player.

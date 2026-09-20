@@ -3,6 +3,7 @@ import { loadedCount, releasedCount, missionObjective, type MissionState, SIGNAL
 import type { MissionWorld } from './types'
 import './game.css'
 import { IncomingFire } from './incoming-fire'
+import { MissionMenu } from './menu'
 import type { PlayerDeathSequence } from './player-death'
 
 const icons: Record<string, string> = {
@@ -25,11 +26,8 @@ export class MissionHUD {
   private weapon: HTMLElement
   private alert: HTMLElement
   private caption: HTMLElement
-  private title: HTMLElement
-  private debrief: HTMLElement
+  private menu: MissionMenu
   private mapDot: SVGElement
-  private checklist: HTMLElement
-  private checkpoint: HTMLElement
   private icon: HTMLElement
   private captionTimer = 0
   private start: HTMLButtonElement
@@ -52,11 +50,8 @@ export class MissionHUD {
     $('.walk-heading .walk-eyebrow').textContent = 'Operation Safe Return'
     $('.walk-controls').innerHTML = '<span><kbd>WASD</kbd> Move</span><span><kbd>F</kbd> Use</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Pistol / Shotgun / AK / SMG</span><span><kbd>M</kbd> Field map</span><span><kbd>Esc</kbd> Pause</span>'
     $('#world').setAttribute('aria-label', 'Operation Safe Return tactical mission. Mouse to look, WASD move, left click fire, right click aim, F interact, R reload, M field map, Escape pause.')
-    const card = $('.walk-card')
-    card.innerHTML = `<div class="mission-orders"><div class="mission-number">Field orders / 01</div><h1>Operation Safe Return</h1><p class="mission-premise">One hostage.<br>One way home.</p><p>Infiltrate the east annex, release the hostage beneath detention, and escape together in the jeep.</p><ol id="mission-checklist"><li>Find detention and reach the underground cells.</li><li>Release the prisoner in cell 01.</li><li>Lead him to the jeep beside the east gate.</li><li>Open the gate, board, and escape.</li></ol><p class="mission-warning">The blue-screen computer in the mess-hall office disables cameras for 60 seconds. Disable the network permanently in security and open the gate before the rescue. Alarms bring two soldiers immediately and two more after 14 seconds. No need to kill everyone.</p><div id="mission-debrief" role="status" hidden></div><div class="mission-start-slot"></div><div class="mission-recovery"><button id="mission-retry">Retry checkpoint</button><button id="mission-restart">Restart mission</button></div><small id="mission-checkpoint">Insertion checkpoint · saves last until this page closes.</small></div><div class="mission-reference"><div class="field-map">${this.buildMap(world)}</div><p class="map-legend"><span>— Rail approach</span><span>┄ Service approach</span><span>▲ Your position</span></p><p class="map-note">Rail route: use the mess-hall roof and northern siding to reach security. Quiet entry: open the west service gate beside the mess hall and follow the covered lanes. The jeep waits southeast of detention.</p><div class="mission-keys"><span><kbd>WASD</kbd> Move</span><span><kbd>Mouse</kbd> Look</span><span><kbd>Shift</kbd> Sprint / louder</span><span><kbd>Space</kbd> Jump</span><span><kbd>Left click</kbd> Fire</span><span><kbd>Right click</kbd> Hold aim</span><span><kbd>Q / E / Wheel</kbd> Scope zoom</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Weapon slot</span><span><kbd>F</kbd> Use / pick up</span><span><kbd>G</kbd> Drop weapon</span></div><div class="mission-settings"><label>Volume <input id="mission-volume" type="range" min="0" max="100" value="55" aria-label="Volume" /></label><label><input id="mission-mute" type="checkbox" /> Mute</label><label><input id="mission-motion" type="checkbox" ${this.reducedMotion ? 'checked' : ''} /> Reduced motion</label></div><small>Retry restores the insertion checkpoint, including the hostage and security. The unarmed prisoner waits inside cell 01. Return along the marked route or use a regroup panel if he falls behind.</small></div>`
-    $('.mission-start-slot').append(this.start)
-    this.title = $('.walk-card h1'); this.debrief = $('#mission-debrief'); this.mapDot = document.querySelector('#field-player')!
-    this.checklist = $('#mission-checklist'); this.checkpoint = $('#mission-checkpoint')
+    this.menu = new MissionMenu(this.start, this.buildMap(world), this.reducedMotion, callbacks)
+    this.mapDot = document.querySelector('#field-player')!
     this.root.id = 'mission-hud'
     this.root.innerHTML = '<div class="mission-objective"><span>Mission</span><strong id="mission-objective"></strong><small id="mission-detail"></small></div><div id="mission-alert" role="status"></div><div id="mission-caption" role="status"></div><div class="mission-vitals"><span>Condition</span><strong id="mission-health">100</strong></div><div class="mission-weapon"><span id="mission-weapon"></span><strong id="mission-ammo"></strong><small>Magazine / reserve</small></div><div class="mission-damage" aria-hidden="true"></div>'
     document.body.append(this.root)
@@ -89,8 +84,6 @@ export class MissionHUD {
     this.icon = document.createElement('span'); this.icon.className = 'action-icon'; this.icon.setAttribute('aria-hidden', 'true')
     $('#action-prompt').insertBefore(this.icon, $('#action-prompt').children[1])
     const opts = { signal: this.abort.signal }
-    $('#mission-retry').addEventListener('click', callbacks.retry, opts)
-    $('#mission-restart').addEventListener('click', callbacks.restart, opts)
     $('#mission-volume').addEventListener('input', e => callbacks.volume(Number((e.target as HTMLInputElement).value) / 100), opts)
     $('#mission-mute').addEventListener('change', e => callbacks.mute((e.target as HTMLInputElement).checked), opts)
     $('#mission-motion').addEventListener('change', e => { this.reducedMotion = (e.target as HTMLInputElement).checked; document.body.dataset.reducedMotion = String(this.reducedMotion) }, opts)
@@ -120,13 +113,15 @@ export class MissionHUD {
     </svg>`
   }
 
-  ready() { this.start.disabled = false; this.start.textContent = 'Begin mission' }
-  error(message: string) { this.start.textContent = 'Reload to retry loading'; this.debrief.hidden = false; this.debrief.textContent = message }
+  ready() { this.menu.ready() }
+  showMap() { this.menu.showMap() }
+  setPlaying(playing: boolean) { this.menu.setPlaying(playing) }
+  error(message: string) { this.menu.error(message) }
   notify(message: string, duration = 5) { this.caption.textContent = message; this.captionTimer = duration }
   hurt() { this.damageTimer = 0.32 }
   hitFrom(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
   clearThreat() { this.incoming.clear(); this.threat.hidden = true }
-  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat(); this.clearDeath() }
+  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat(); this.clearDeath(); this.menu.reset() }
   setDeath(sequence: PlayerDeathSequence) {
     document.body.dataset.death = sequence.menuVisible ? 'menu' : 'falling'
     this.death.hidden = false
@@ -140,7 +135,7 @@ export class MissionHUD {
     this.pause.style.opacity = String(sequence.menuOpacity)
     if (sequence.menuVisible && !this.deathMenuShown) {
       this.deathMenuShown = true
-      document.querySelector<HTMLButtonElement>('#mission-retry')!.focus({ preventScroll: true })
+      this.menu.focusPrimary()
     }
   }
   clearDeath() {
@@ -156,7 +151,6 @@ export class MissionHUD {
     const label = `${magnification}×`
     if (this.scopeLabel.textContent !== label) this.scopeLabel.textContent = label
   }
-  setCheckpoint(label: string) { this.checkpoint.textContent = `${label} · session checkpoint` }
 
   update(dt: number, state: MissionState, data: { playing: boolean; enabled: boolean; label: string; ammo: string; reloading: boolean; blocked: boolean; alert: string; position: THREE.Vector3; yaw: number; deaths: number; ready: boolean }) {
     this.root.hidden = !data.enabled || !data.playing
@@ -181,14 +175,8 @@ export class MissionHUD {
     if (this.icon.dataset.kind !== kind) { this.icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${icons[kind] ?? icons.mission}</svg>`; this.icon.dataset.kind = kind }
     if (!data.playing) {
       this.mapDot.setAttribute('transform', `translate(${(data.position.x+110)*1.55+12},${(data.position.z+78)*1.55+12}) rotate(${-data.yaw*180/Math.PI})`)
-      const flags = [state.cellsReached,releasedCount(state) === state.hostages.length,loadedCount(state) === state.hostages.length,state.phase==='complete']
-      Array.from(this.checklist.children).forEach((li,i)=>li.classList.toggle('complete',flags[i]))
-      this.title.textContent = state.phase === 'complete' ? 'Everyone is coming home.' : state.phase === 'dead' ? 'No way through.' : 'Operation Safe Return'
-      this.start.hidden = state.phase !== 'active'
-      if (!data.ready) this.start.disabled = true
-      this.debrief.hidden = state.phase === 'active'
-      if (!this.debrief.hidden) this.debrief.textContent = `${state.phase === 'complete' ? 'Hostage extracted. You both made it out.' : 'Retry the checkpoint, or start again with a fresh plan.'} ${Math.floor(state.elapsed/60)}:${String(Math.floor(state.elapsed%60)).padStart(2,'0')} active time · ${state.kills} enemies defeated · ${data.deaths} deaths.`
     }
+    this.menu.update(state, data)
   }
-  dispose() { this.abort.abort(); this.clearDeath(); this.death.remove(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
+  dispose() { this.menu.dispose(); this.abort.abort(); this.clearDeath(); this.death.remove(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
 }
