@@ -55,6 +55,7 @@ export class FirstPersonWeapons {
   private obstructed = false
   private disposed = false
   private scopeActive = false
+  private deathVisible = false
   private scopeZoom: number = SNIPER_ZOOM.initial
   private baseFov: number | null = null
   private feet = new THREE.Vector3()
@@ -223,6 +224,25 @@ export class FirstPersonWeapons {
     this.setScope(false)
     for (const [part, position] of this.partRest) part.position.copy(position)
     for (const [part, rotation] of this.partRotation) part.rotation.copy(rotation)
+  }
+
+  beginDeath() {
+    this.deathVisible = this.root.visible
+    this.cancel()
+    this.enabled = false
+  }
+
+  updateDeath(elapsed: number, reducedMotion: boolean) {
+    const drop = smooth(elapsed, 0, 0.62)
+    this.root.visible = this.deathVisible && elapsed < 0.62 && !reducedMotion
+    this.root.position.set(0.08 * drop, -0.85 * drop, 0.2 * drop)
+    this.root.rotation.set(-0.65 * drop, 0, 0.16 * drop)
+  }
+
+  resetDeath() {
+    this.deathVisible = false
+    this.root.position.set(0, 0, 0)
+    this.root.rotation.set(0, 0, 0)
   }
 
   private setScope(active: boolean) {

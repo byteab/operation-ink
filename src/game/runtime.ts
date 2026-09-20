@@ -11,6 +11,7 @@ import { MissionHUD } from './hud'
 import { MissionBlood, type BloodSnapshot } from './hit-reactions'
 import { MissionImpacts } from './impacts'
 import { PlayerHitReactions, type PlayerBulletHit } from './player-hit-reactions'
+import { PlayerDeathSequence } from './player-death'
 import { advanceMission, completeEscape, damageMission, initialMission, loadedCount, stationLabel, useStation, type MissionState } from './mission'
 import { HostageEscort } from './hostages'
 import { SecuritySystem } from './security'
@@ -29,6 +30,7 @@ export class MissionRuntime {
   readonly impacts: MissionImpacts
   readonly bulletTrails: BulletTrails
   readonly playerHits = new PlayerHitReactions()
+  readonly death = new PlayerDeathSequence()
   readonly hud: MissionHUD
   readonly escort: HostageEscort
   readonly security: SecuritySystem
@@ -209,6 +211,7 @@ export class MissionRuntime {
   }
 
   private emit(event: SoundEvent, audible: boolean) {
+    if (this.death.active) return
     if ((event.kind.startsWith('shot-') || event.kind.startsWith('enemy-shot')) && event.position) {
       if (this.state.hostages.some(h => h.status === 'following' && event.position!.distanceTo(new THREE.Vector3(...h.position)) < 15)) this.gunfireUntil = this.state.elapsed + 1.1
     }
@@ -216,9 +219,6 @@ export class MissionRuntime {
     const distance = event.position ? eye.distanceTo(event.position) : 0
     const inRange = !event.position || distance <= (event.radius ?? 38)
     if (inRange) this.audio.play(event)
-    if (inRange && event.kind === 'enemy-bullet-whiz' && this.isActive()) {
-      this.hud.nearMiss(event.intensity ?? 0.5, this.soundDirection(event.source ?? event.position ?? eye))
-    }
     if (audible && event.radius && event.position) this.ai.hear(event)
     if (event.text && inRange && !event.kind.startsWith('shot-') && !event.kind.startsWith('enemy-shot')) {
       const text = event.kind === 'callout' && event.position ? `${this.soundDirection(event.position)} · “${event.text}”` : event.text
@@ -259,10 +259,18 @@ export class MissionRuntime {
     this.hud.hurt(); this.audio.play({kind:'damage'})
     if (source) {
       this.audio.play({ kind: 'bullet-hit', intensity: Math.min(1, amount / 28) })
-      this.hud.nearMiss(1, this.soundDirection(source))
+      this.hud.hitFrom(1, this.soundDirection(source))
     }
     this.hud.notify(source ? `Taking fire · ${this.soundDirection(source).toLowerCase()}. Break line of sight.` : 'You fell. Find a safer route.',2.5)
-    if (this.state.phase==='dead') { this.playerHits.clear(); this.deaths++; this.player.pause(); this.cancelInput() }
+    if (this.state.phase==='dead') {
+      this.playerHits.clear(); this.deaths++
+      this.death.begin(this.camera.perspective, this.player.body.position, this.player.world, this.hud.reducedMotion)
+      this.weapons.beginDeath()
+      this.player.pause(); this.player.actions.reset(); this.cancelInput()
+      this.player.body.velocity.set(0, 0, 0)
+      this.audio.beginDeath()
+      this.hud.setScoped(false); this.hud.clearThreat(); this.hud.setDeath(this.death)
+    }
     this.invalidate()
   }
 
@@ -273,6 +281,7 @@ export class MissionRuntime {
   }
 
   private restore(saved: Checkpoint) {
+    this.death.reset(); this.weapons.resetDeath()
     this.playerHits.clear()
     this.player.pause(); this.cancelInput(); this.audio.reset(); this.player.actions.reset()
     this.state=structuredClone(saved.mission)
@@ -344,7 +353,10 @@ export class MissionRuntime {
     this.finishFrame()
     const active=this.isActive()
     if (this.player.immersive || !this.player.enabled || this.state.phase !== 'active') {
-      this.playerHits.clear(); this.bulletTrails.clear(); this.ai.bulletTrails.clear(); this.hud.clearThreat()
+      this.playerHits.clear(); this.hud.clearThreat()
+      if (this.player.immersive || !this.player.enabled || !this.death.active) {
+        this.bulletTrails.clear(); this.ai.bulletTrails.clear()
+      }
     }
     if(this.player.immersive && !this.wasVR) {
       this.cancelInput()
@@ -358,7 +370,10 @@ export class MissionRuntime {
       this.camera.perspective.quaternion.copy(this.safeQuaternion)
     }
     this.wasVR=this.player.immersive
-    if(active!==this.active) { this.cancelInput(); this.audio.setActive(active); this.active=active }
+    let deathVisible = this.death.active && this.player.enabled && !this.player.immersive
+    const deathPlaying = deathVisible && !this.death.menuVisible && !document.hidden
+    if(active!==this.active) { this.cancelInput(); this.active=active }
+    this.audio.setActive(active || deathPlaying)
     if(active) {
       advanceMission(this.state,dt)
       const body=this.player.body
@@ -390,6 +405,20 @@ export class MissionRuntime {
       } else this.stepTime=0
       this.safePosition.copy(body.position); this.safeQuaternion.copy(this.camera.perspective.quaternion)
       this.interactionTime=Math.max(0,this.interactionTime-dt)
+    } else if (deathPlaying) {
+      // Losing player control does not pause the world. Finish blood flight,
+      // corpse animations and NPC movement until the actual menu opens.
+      this.player.world.refresh()
+      this.ai.update(dt, { feet: this.player.body.position, eye: this.camera.perspective.position,
+        velocity: this.player.body.velocity, alive: false, radioEnabled: false,
+        yaw: new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion, 'YXZ').y })
+      this.escort.update(dt, this.state, this.player.body.position, true)
+      this.blood.update(dt); this.impacts.update(dt)
+      this.security.sync(this.state, this.state.elapsed + this.death.elapsed)
+      if (this.world.rescue) {
+        const hostage = this.state.hostages[0]
+        updateRescueJeepDoor(this.world.rescue.jeep, hostage.position, hostage.status === 'loaded', dt)
+      }
     }
     const reactionActive = this.isActive() && this.state.jeep !== 'escaping'
     const hitPose = this.playerHits.update(reactionActive ? dt : 0,
@@ -398,13 +427,22 @@ export class MissionRuntime {
       const zoom = this.aiming && this.weapons.current?.name === 'sniper' && !this.weapons.reloading ? this.weapons.scopeMagnification : 1
       this.playerHits.applyCamera(this.camera.perspective, this.player.world, 1 / zoom)
     }
-    this.weapons.update(dt,{active:reactionActive&&this.interactionTime===0,climbing:this.player.actions.traversing,
-      moving:this.player.body.velocity.length(),aiming:this.aiming,reducedMotion:this.hud.reducedMotion,feet:this.player.body.position,hitPose})
+    // A lethal AI hit can start the sequence inside this very update.
+    deathVisible = this.death.active && this.player.enabled && !this.player.immersive
+    if (deathVisible) {
+      if (this.death.update(document.hidden ? 0 : dt, this.camera.perspective, this.player.world)) this.audio.play({ kind: 'player-fall' })
+      this.weapons.updateDeath(this.death.elapsed, this.death.reducedMotion)
+      this.hud.setDeath(this.death)
+    } else {
+      if (this.death.active) { this.death.reset(); this.weapons.resetDeath(); this.hud.clearDeath() }
+      this.weapons.update(dt,{active:reactionActive&&this.interactionTime===0,climbing:this.player.actions.traversing,
+        moving:this.player.body.velocity.length(),aiming:this.aiming,reducedMotion:this.hud.reducedMotion,feet:this.player.body.position,hitPose})
+    }
     this.audio.update(this.camera.perspective)
-    this.audio.setAlarm(active && this.state.alarm === 'active',
+    this.audio.setAlarm(this.isActive() && this.state.alarm === 'active',
       this.state.alarmPosition ? new THREE.Vector3(...this.state.alarmPosition) : undefined)
     this.hud.setScoped(this.weapons.scoped, this.weapons.scopeMagnification)
-    if(active) {
+    if(active || deathPlaying) {
       this.bulletTrails.update(dt)
       this.hitFlash-=dt
     }
@@ -413,7 +451,7 @@ export class MissionRuntime {
     this.hud.update(dt,this.state,{playing:this.player.playing,enabled:this.player.enabled&&!this.player.immersive,
       label:this.weapons.label,ammo:this.weapons.ammo,reloading:this.weapons.reloading,blocked:this.weapons.blocked,
       alert:this.ai.alertLevel,position:this.player.body.position,yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y,deaths:this.deaths,ready:this.ready})
-    return active
+    return active || this.death.running
   }
 
   finishFrame() { this.playerHits.removeCamera() }

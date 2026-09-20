@@ -240,6 +240,7 @@ export class EnemyDirector {
   }
 
   private sees(enemy: Enemy, player: PlayerSense) {
+    if (!player.alive) return false
     const origin = this.eye(enemy)
     const sniper = enemy.spec.role === 'sniper'
     const range = enemy.contactMemory > 0 ? (sniper ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) :
@@ -335,7 +336,7 @@ export class EnemyDirector {
   }
 
   update(dt: number, player: PlayerSense) {
-    if (!this.loaded || this.disposed || !player.alive || dt <= 0) return
+    if (!this.loaded || this.disposed || dt <= 0) return
     dt = Math.min(dt, 0.05)
     this.elapsed += dt
     this.lastPlayer = player
@@ -345,6 +346,7 @@ export class EnemyDirector {
     for (const enemy of this.enemies) {
       if (enemy.state === 'reserve') continue
       if (enemy.state === 'dead') { enemy.actor.update(dt, 'dead', false); continue }
+      if (!player.alive) enemy.canSee = false
       enemy.timer += dt
       enemy.repath -= dt
       enemy.contactMemory = Math.max(0, enemy.contactMemory - dt)
@@ -849,6 +851,7 @@ export class EnemyDirector {
 
   /** One round of a burst. Blind rounds go to the last contact and cannot damage: pressure, not punishment. */
   private shoot(enemy: Enemy, player: PlayerSense, blind = false) {
+    if (!player.alive) return false
     if (enemy.moveSpeed > 0 || enemy.hitPause > 0 || enemy.actor.reactionRemaining > 0 || this.transitioning(enemy) || enemy.settledFor < COMBAT.settle || enemy.aimTime < COMBAT.aimDelay) return false
     const weapon = WEAPON[enemy.spec.weapon]
     if (enemy.reloadTimer > 0) return false

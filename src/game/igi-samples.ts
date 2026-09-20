@@ -28,6 +28,8 @@ export const IGI_SAMPLES: Record<string, { files: string[]; gain: number }> = {
   'enemy-pain': { files: series('ai_hit_', 3, 2), gain: 0.95 },
   'enemy-down': { files: series('bodyfall_', 9), gain: 0.5 },
   damage: { files: series('player_hit_', 4), gain: 0.5 },
+  'player-death': { files: series('player_hit_', 4), gain: 0.62 },
+  'player-fall': { files: series('bodyfall_', 9), gain: 0.7 },
   door: { files: files('door_open_1'), gain: 0.3 },
   pickup: { files: files('weaponpickup_1'), gain: 0.4 },
   drop: { files: series('weapondrop_', 2, 2), gain: 0.35 },

@@ -1,4 +1,18 @@
 body[data-mission="true"] { color: var(--ink-deep); font-family: var(--notes); }
+.mission-death { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+.death-blur, .death-dim { position: absolute; inset: 0; }
+.death-blur { backdrop-filter: blur(var(--death-blur, 0px)); -webkit-backdrop-filter: blur(var(--death-blur, 0px)); }
+.death-dim { background: #08090a; opacity: var(--death-loss, 0); }
+.mission-death.reduced-motion .death-blur { display: none; }
+body[data-death] #walk-hud { z-index: 6; }
+body[data-death] #walk-hud > :not(#walk-pause), body[data-death] #mission-hud,
+body[data-death] .mission-scope, body[data-death] .mode-button { visibility: hidden; }
+body[data-death="falling"] #walk-pause { visibility: hidden; pointer-events: none; }
+body[data-mission="true"][data-death] #walk-pause { background: transparent; }
+body[data-death="menu"] .mission-orders { align-self: center; }
+body[data-death="menu"] .mission-orders > p, body[data-death="menu"] #mission-checklist,
+body[data-death="menu"] .mission-reference .map-note, body[data-death="menu"] .mission-keys,
+body[data-death="menu"] .mission-reference > small { display: none; }
 body[data-mission="true"] #walk-pause { padding: 74px 24px 28px; background: #ffffffc9; align-items: center; }
 body[data-mission="true"] .walk-card { width: min(1040px,100%); border-radius: 4px 7px 3px 6px; display: grid; grid-template-columns: 0.9fr 1.1fr; padding: 0; box-shadow: 3px 4px 0 #00000017; overflow: hidden; }
 .mission-orders { padding: 35px 38px; }
@@ -59,7 +73,7 @@ body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; 
 #mission-debrief { margin: 14px 0; border-left: 2px solid var(--ink-deep); padding: 10px; background: var(--paper-shade); font-size: 12px; line-height: 1.6; }
 .action-icon { width: 23px; height: 25px; display: block; }
 .action-icon svg { width: 100%; height: 100%; }
-.mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000060; opacity: 0; }
+.mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000024; opacity: 0; }
 .hurt .mission-damage { opacity: 1; }
 .mission-threat { position: absolute; inset: 0; pointer-events: none; }
 .mission-threat[hidden] { display: none; }

@@ -3,6 +3,7 @@ import { loadedCount, releasedCount, missionObjective, type MissionState, SIGNAL
 import type { MissionWorld } from './types'
 import './game.css'
 import { IncomingFire } from './incoming-fire'
+import type { PlayerDeathSequence } from './player-death'
 
 const icons: Record<string, string> = {
   door: '<path d="M5 21V3h14v18M9 21V5l8 2v14M13 13h1"/>',
@@ -33,6 +34,9 @@ export class MissionHUD {
   private captionTimer = 0
   private start: HTMLButtonElement
   private damageTimer = 0
+  private death = document.createElement('div')
+  private pause = document.querySelector<HTMLElement>('#walk-pause')!
+  private deathMenuShown = false
   readonly incoming = new IncomingFire()
   private threat: HTMLElement
   private threatLabel: HTMLElement
@@ -56,6 +60,11 @@ export class MissionHUD {
     this.root.id = 'mission-hud'
     this.root.innerHTML = '<div class="mission-objective"><span>Mission</span><strong id="mission-objective"></strong><small id="mission-detail"></small></div><div id="mission-alert" role="status"></div><div id="mission-caption" role="status"></div><div class="mission-vitals"><span>Condition</span><strong id="mission-health">100</strong></div><div class="mission-weapon"><span id="mission-weapon"></span><strong id="mission-ammo"></strong><small>Magazine / reserve</small></div><div class="mission-damage" aria-hidden="true"></div>'
     document.body.append(this.root)
+    this.death.className = 'mission-death'
+    this.death.hidden = true
+    this.death.setAttribute('aria-hidden', 'true')
+    this.death.innerHTML = '<div class="death-blur"></div><div class="death-dim"></div>'
+    document.body.append(this.death)
     this.threat = document.createElement('div')
     this.threat.className = 'mission-threat'
     this.threat.setAttribute('aria-hidden', 'true')
@@ -115,9 +124,32 @@ export class MissionHUD {
   error(message: string) { this.start.textContent = 'Reload to retry loading'; this.debrief.hidden = false; this.debrief.textContent = message }
   notify(message: string, duration = 5) { this.caption.textContent = message; this.captionTimer = duration }
   hurt() { this.damageTimer = 0.32 }
-  nearMiss(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
+  hitFrom(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
   clearThreat() { this.incoming.clear(); this.threat.hidden = true }
-  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat() }
+  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat(); this.clearDeath() }
+  setDeath(sequence: PlayerDeathSequence) {
+    document.body.dataset.death = sequence.menuVisible ? 'menu' : 'falling'
+    this.death.hidden = false
+    this.death.classList.toggle('reduced-motion', sequence.reducedMotion)
+    const loss = sequence.visionLoss
+    // Uniform loss of focus and light, with no vignette or circular mask.
+    this.death.style.setProperty('--death-blur', `${10 * loss}px`)
+    this.death.style.setProperty('--death-loss', String(0.92 * loss))
+    this.pause.hidden = !sequence.menuVisible
+    this.pause.inert = !sequence.menuVisible
+    this.pause.style.opacity = String(sequence.menuOpacity)
+    if (sequence.menuVisible && !this.deathMenuShown) {
+      this.deathMenuShown = true
+      document.querySelector<HTMLButtonElement>('#mission-retry')!.focus({ preventScroll: true })
+    }
+  }
+  clearDeath() {
+    delete document.body.dataset.death
+    this.death.hidden = true
+    this.deathMenuShown = false
+    this.pause.inert = false
+    this.pause.style.removeProperty('opacity')
+  }
   setScoped(scoped: boolean, magnification = 4) {
     this.scope.hidden = !scoped
     document.body.classList.toggle('mission-scoped', scoped)
@@ -141,8 +173,8 @@ export class MissionHUD {
     if (data.playing) { this.captionTimer -= dt; this.damageTimer -= dt; this.incoming.update(dt) }
     this.threat.hidden = !this.incoming.visible || state.phase !== 'active'
     this.threat.dataset.direction = this.incoming.direction.toLowerCase()
-    this.threat.style.setProperty('--pressure', String(this.reducedMotion ? 0 : this.incoming.strength * 0.48))
-    this.threatLabel.textContent = `Incoming · ${this.incoming.direction.toLowerCase()}`
+    this.threat.style.setProperty('--pressure', String(this.reducedMotion ? 0 : this.incoming.strength * 0.18))
+    this.threatLabel.textContent = `Hit · ${this.incoming.direction.toLowerCase()}`
     this.caption.hidden = this.captionTimer <= 0
     this.root.classList.toggle('hurt', this.damageTimer > 0 && !this.reducedMotion)
     const kind = document.querySelector<HTMLElement>('#action-prompt')!.dataset.kind ?? 'mission'
@@ -158,5 +190,5 @@ export class MissionHUD {
       if (!this.debrief.hidden) this.debrief.textContent = `${state.phase === 'complete' ? 'Hostage extracted. You both made it out.' : 'Retry the checkpoint, or start again with a fresh plan.'} ${Math.floor(state.elapsed/60)}:${String(Math.floor(state.elapsed%60)).padStart(2,'0')} active time · ${state.kills} enemies defeated · ${data.deaths} deaths.`
     }
   }
-  dispose() { this.abort.abort(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
+  dispose() { this.abort.abort(); this.clearDeath(); this.death.remove(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
 }

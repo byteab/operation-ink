@@ -11,6 +11,10 @@ try {
     input: process.argv[2] ?? 'scripts/player-checks.ts', platform: 'node',
     plugins: [{ name: 'shared-three', resolveId(id) {
       if (id === 'three' || id.startsWith('three/')) return { id: import.meta.resolve(id), external: true }
+      if (id.endsWith('.css')) return '\0test-style:' + id + '.js'
+    }, load(id) {
+      // Node lifecycle checks exercise runtime logic; browser checks own CSS.
+      if (id.startsWith('\0test-style:')) return 'export {}'
     } }],
     output: { dir: temporary, entryFileNames: 'checks.mjs', format: 'esm' },
   })

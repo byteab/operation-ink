@@ -1,5 +1,12 @@
 # Project memory
 
+## First-person death sequence
+
+- Fatal player damage now runs `PlayerDeathSequence` before the menu: backward eye-height collapse, delayed skyward tilt, soft ground rebound, then menu fade. Latest user instruction removes the death circle entirely: no vignette, only uniform background blur to 10 px and dimming to 92%. Ground contact is 1.06 s, head settles by 1.44 s, dimming finishes at 3.35 s, menu fades from 3.7–4.25 s. Swept head collision and floor checks protect walls, wire panels and platform edges.
+- The world must keep moving while the player falls. Death now advances blood, corpses, NPC movement, escort, projectiles/impacts and security-camera visuals until the menu opens. Dead players cannot be detected or shot. Hidden tabs and the menu still pause the world; mission active time stops at death. Combat shading now triggers only on actual damage, never on near misses; pressure cap is 0.18 instead of 0.48, with a similarly reduced damage shadow. Passing-bullet audio remains.
+- Weapon/arms lower together and cannot fire or reload. Audio clears combat, plays a local player-hit recording plus descending pulse/breath, then a body-fall recording and low impact. It stays active through player pause; menu, hidden tabs, retry, inspection and disposal clean it up. Reduced Motion uses a still camera and plain fade. Retry restores all camera/weapon/UI state. Death menu hides briefing copy to keep retry visible on short windows.
+- User authorized agent-browser fallback. Build, new `test:player-death` (including runtime lifecycle), audio, player-hit, weapon, player and VR checks passed. Latest follow-up passed full AI/bullet suites and security checks; browser verified actual misses cause no shading, hits trigger the weaker effect, blood settles/expires and corpse animation advances during the fall, with no death vignette or browser errors. Earlier checks covered native audio, a staged actual AK guard kill and real Retry/Resume controls. Revised screenshots: `docs/player-death/README.md`.
+
 ## Soldier running motion
 
 - Follow-up: user selected the lab's 1.2× speed for enemy running in the actual game. `ENEMY_RUN_SPEED` is 3.36 m/s for combat/repositioning and urgent investigation, so actual travel and the existing speed-adapted clip stay synchronized. Lab default, patrol walking and hostage escort remain unchanged.

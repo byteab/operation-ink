@@ -24,6 +24,7 @@
     "test:combat-animations": "node scripts/check-player.mjs scripts/actor-combat-checks.ts && node scripts/check-player.mjs scripts/ai-combat-posture-checks.ts && node scripts/check-player.mjs scripts/shotgun-feedback-checks.ts && npm run test:deaths",
     "test:deaths": "node scripts/check-player.mjs scripts/death-settle-checks.ts",
     "test:player-hits": "node scripts/check-player.mjs scripts/player-hit-checks.ts",
+    "test:player-death": "node scripts/check-player.mjs scripts/player-death-checks.ts && node scripts/check-player.mjs scripts/player-death-runtime-checks.ts",
     "test:bullets": "node scripts/check-player.mjs scripts/bullet-feedback-checks.ts && node scripts/check-player.mjs scripts/gun-distance-checks.ts && node scripts/check-player.mjs scripts/hit-audio-checks.ts"
   },
   "dependencies": {

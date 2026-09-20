@@ -1,4 +1,4 @@
-/** Fast onset, finite recovery; repeated automatic fire never obscures the centre. */
+/** Confirmed-hit feedback with finite recovery; repeated hits stay bounded. */
 export class IncomingFire {
   strength = 0
   direction = 'Ahead'

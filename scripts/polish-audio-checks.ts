@@ -197,6 +197,29 @@ assert.equal(incomingContext.nodes.length, disposedIncomingNodes)
 assert(incomingContext.nodes.every(node => node.disconnected))
 console.log('PASS Incoming cues obey pause/mute/volume, atomically cap all layers at 80 sources, preserve reports, reclaim old incidental effects and release all nodes')
 
+const dying = new MissionAudio()
+dying.setActive(true); await dying.unlock()
+const deathContext = FakeAudioContext.latest
+for (let i = 0; i < 90; i++) dying.play({ kind: 'shot-ak' })
+assert.equal(dying.diagnostics.sources, 80)
+dying.beginDeath()
+assert.equal(dying.diagnostics.sources, 2, 'Death clears saturated combat and always plays its two fallback layers')
+assert(!dying.diagnostics.music && !dying.diagnostics.ambience)
+const deathSources = deathContext.nodes.filter(node => node instanceof Source).slice(-2) as Source[]
+assert.equal(deathSources[0].stopTime, 2.25); assert.equal(deathSources[1].stopTime, 1.15)
+dying.update(camera); dying.setActive(true)
+dying.play({ kind: 'enemy-shot-ak' }); dying.play({ kind: 'horn' })
+assert.equal(dying.diagnostics.sources, 2, 'Death does not restart ambience or accept late combat sounds')
+dying.play({ kind: 'player-fall' }); assert.equal(dying.diagnostics.sources, 3, 'Contact gets a separate local impact')
+dying.setMuted(true); dying.play({ kind: 'player-fall' }); assert.equal(dying.diagnostics.sources, 3)
+dying.setMuted(false); dying.setVolume(0); dying.play({ kind: 'player-fall' }); assert.equal(dying.diagnostics.sources, 3)
+dying.setActive(false); assert.equal(dying.diagnostics.sources, 0)
+assert(deathSources.every(source => source.disconnected))
+dying.reset(); dying.setVolume(0.55); dying.setActive(true)
+assert(dying.diagnostics.music && dying.diagnostics.ambience, 'Retry restores the ordinary soundscape')
+dying.dispose()
+console.log('PASS Death sound survives source saturation, has a distinct ground impact, obeys mute/volume and clears on pause/reset/disposal')
+
 let releaseFetch!: () => void
 const pending = new Promise<void>(resolve => { releaseFetch = resolve })
 Object.assign(globalThis, { fetch: async () => { await pending; return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) } } })
@@ -263,8 +286,11 @@ await new Promise(resolve => setTimeout(resolve, 0))
 assert(requested.every(url => !/\/(voice_|guard_hey|pain_)/.test(url)), 'Legacy character assets are never requested')
 const igiContext = FakeAudioContext.latest
 for (const [kind, entry] of Object.entries(IGI_SAMPLES)) {
-  igi.reset(); igi.play({ kind })
-  const source = igiContext.nodes.filter(node => node instanceof Source).at(-1) as Source
+  igi.reset()
+  const before = igiContext.nodes.length
+  igi.play({ kind })
+  const source = igiContext.nodes.slice(before).find(node => node instanceof Source && (node.buffer as { url?: string })?.url) as Source
+  assert(source, `${kind} must include a decoded recording, including layered cues`)
   const url = (source.buffer as { url: string }).url
   assert(entry.files.some(file => url.endsWith(`/sounds/${file}`)), `${kind} must select its IGI sample`)
 }

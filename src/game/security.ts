@@ -36,7 +36,7 @@ export class SecuritySystem {
     this.hornElapsed = 0
   }
 
-  sync(state: MissionState) {
+  sync(state: MissionState, visualElapsed = state.elapsed) {
     if (state.alarm === 'silenced' && this.lastAlarm === 'active') {
       this.ai.silenceAlarm()
       this.dwell.clear()
@@ -48,7 +48,7 @@ export class SecuritySystem {
     for (const camera of this.missionWorld.rescue?.cameras ?? []) {
       const spec = RESCUE_LAYOUT.cameras.find(candidate => candidate.id === camera.id)
       if (!spec) continue
-      if (state.camerasActive) camera.pivot.rotation.y = cameraPatrolYaw(state.elapsed, RESCUE_LAYOUT.cameras.indexOf(spec), spec.yaw, spec.arc)
+      if (state.camerasActive) camera.pivot.rotation.y = cameraPatrolYaw(visualElapsed, RESCUE_LAYOUT.cameras.indexOf(spec), spec.yaw, spec.arc)
       if (changed) {
         for (const material of Array.isArray(camera.lamp.material) ? camera.lamp.material : [camera.lamp.material]) {
           if ('color' in material) (material as THREE.MeshBasicMaterial).color.setHex(color)

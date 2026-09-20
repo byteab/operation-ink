@@ -27,6 +27,7 @@ const SAMPLES: Record<string, { files: string[]; gain: number; pitch?: number }>
   'hit-confirm': { files: series('hit_flesh', 5), gain: 0.34 },
   'enemy-down': { files: series('body_fall', 5), gain: 0.5 },
   damage: { files: series('hit_flesh', 5), gain: 0.5 },
+  'player-fall': { files: series('body_fall', 5), gain: 0.7 },
 }
 const URGENT = new Set(['contact', 'hurt', 'down', 'retreat'])
 const SOURCE_LIMIT = 80
@@ -64,6 +65,7 @@ export class MissionAudio {
   private acceptedVoices = 0
   private suppressedVoices = 0
   private active = false
+  private dying = false
   private listenerPosition = new THREE.Vector3()
   volume = 0.55
   muted = false
@@ -139,7 +141,7 @@ export class MissionAudio {
   }
 
   private startAmbience() {
-    if (!this.active || this.disposed || !this.context || !this.noise || !this.master || this.ambience) return
+    if (!this.active || this.dying || this.disposed || !this.context || !this.noise || !this.master || this.ambience) return
     const source = this.context.createBufferSource(), filter = this.context.createBiquadFilter(), gain = this.context.createGain()
     source.buffer = this.noise; source.loop = true; filter.type = 'lowpass'; filter.frequency.value = 320
     gain.gain.value = 0.035
@@ -370,6 +372,41 @@ export class MissionAudio {
     this.track(source, [filter, gain]); source.start(t); source.stop(t + duration)
   }
 
+  /** Local and independent of guard distance. Clear combat first so the last
+   * breath and ground contact survive both source saturation and player pause. */
+  beginDeath() {
+    this.clear()
+    this.dying = true
+    this.play({ kind: 'player-death' })
+  }
+
+  private deathSound() {
+    const context = this.context!, t = context.currentTime
+    this.sample({ kind: 'player-death' })
+    // A soft breath loses its high frequencies over a low descending pulse.
+    // Both are also the fallback if the voice recording is not yet decoded.
+    for (const breath of [false, true]) {
+      const duration = breath ? 1.15 : 2.25
+      const { gain } = this.output({ kind: 'player-death' })
+      gain.gain.setValueAtTime(0.001, t)
+      gain.gain.exponentialRampToValueAtTime(breath ? 0.19 : 0.16, t + (breath ? 0.065 : 0.018))
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duration)
+      const filter = context.createBiquadFilter()
+      filter.type = 'lowpass'; filter.Q.value = 0.5
+      filter.frequency.setValueAtTime(breath ? 950 : 240, t)
+      filter.frequency.exponentialRampToValueAtTime(breath ? 180 : 70, t + duration)
+      const source = breath ? context.createBufferSource() : context.createOscillator()
+      if (breath) (source as AudioBufferSourceNode).buffer = this.noise
+      else {
+        const tone = source as OscillatorNode
+        tone.type = 'sine'; tone.frequency.setValueAtTime(95, t)
+        tone.frequency.exponentialRampToValueAtTime(38, t + duration)
+      }
+      source.connect(filter).connect(gain)
+      this.track(source, [filter, gain]); source.start(t); source.stop(t + duration)
+    }
+  }
+
   /** Runtime owns the siren lifetime, including silence, pause and checkpoint restore. */
   setAlarm(enabled: boolean, position?: THREE.Vector3) {
     const audible = enabled && this.active && !this.muted && this.volume > 0 &&
@@ -384,6 +421,15 @@ export class MissionAudio {
   play(event: SoundEvent) {
     const context = this.context
     if (!context || !this.master || !this.active || this.muted || this.volume <= 0 || this.disposed) return
+    if (this.dying && !['player-death', 'player-fall'].includes(event.kind)) return
+    if (event.kind === 'player-death') {
+      if (this.reserveSources(3, true)) this.deathSound()
+      return
+    }
+    if (event.kind === 'player-fall') {
+      if (this.reserveSources(2, true)) { this.sample(event); this.incomingHit(1) }
+      return
+    }
     if (event.kind === 'horn' && this.alarmSource) return
     const distance = event.kind === 'bullet-hit' ? 0 : event.position?.distanceTo(this.listenerPosition) ?? 0
     if (distance > (event.radius ?? 60)) return
@@ -472,7 +518,7 @@ export class MissionAudio {
     this.incidentalSources.clear(); this.whizSources.clear()
     this.speakerUntil.clear(); this.phraseUntil.clear(); this.painUntil.clear(); this.painSources.clear(); this.spoken = null
   }
-  reset() { this.clear() }
+  reset() { this.clear(); this.dying = false }
   get status() { return this.context?.state ?? 'locked' }
   get diagnostics() { return { active: this.active, sources: this.sources.size, music: !!this.music, ambience: !!this.ambience, alarm: !!this.alarmSource,
     decodedSamples: this.buffers.size, acceptedVoices: this.acceptedVoices, suppressedVoices: this.suppressedVoices, muted: this.muted, volume: this.volume, disposed: this.disposed } }
