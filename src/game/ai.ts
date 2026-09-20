@@ -4,7 +4,7 @@ import { Capsule } from 'three/addons/math/Capsule.js'
 import { EnemyActor, type ActorPostureSnapshot } from './actors'
 import type { Posture } from '../lab/postures'
 import { EnemyNavigation } from './navigation'
-import { ENEMY_HEALTH, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage, shotgunDamageMultiplier } from './balance'
+import { ENEMY_HEALTH, ENEMY_RUN_SPEED, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage, shotgunDamageMultiplier } from './balance'
 import { rayCapsuleDistance, reactionClipName, type HitReaction, type HitZone } from './hit-reactions'
 import { playerHitTarget, type PlayerBulletHit } from './player-hit-reactions'
 import type { AIContext, EnemySnapshot, EnemySpec, EnemyState, PlayerSense, Shot, SoundEvent, Vec3, WeaponName } from './types'
@@ -408,7 +408,7 @@ export class EnemyDirector {
           if (enemy.timer > 3) this.enter(enemy, 'search')
         } else if (enemy.lastKnown) {
           const target = enemy.alarmExit ?? enemy.lastKnown
-          moving = this.move(enemy, target, this.speed(enemy, enemy.suspicion >= 0.5 ? 2.8 : 1.4), dt)
+          moving = this.move(enemy, target, this.speed(enemy, enemy.suspicion >= 0.5 ? ENEMY_RUN_SPEED : 1.4), dt)
           if (!moving && !enemy.path.length) this.face(enemy, enemy.lastKnown, dt)
           if (enemy.alarmExit && enemy.position.distanceTo(enemy.alarmExit) < 1) { enemy.alarmExit = null; enemy.timer = 0 }
           else if (enemy.position.distanceTo(target) < 1 || enemy.timer > (enemy.alarmResponse ? 20 : 11)) this.enter(enemy, 'search')
@@ -620,7 +620,7 @@ export class EnemyDirector {
     // Finish a live burst before moving; a reload can request shelter immediately.
     if (enemy.tacticTimer <= 0 && (enemy.burst <= 0 || !enemy.canSee || enemy.reloadTimer > 0)) this.chooseTactic(enemy)
     let moving = false
-    const combatSpeed = this.speed(enemy, 2.8)
+    const combatSpeed = this.speed(enemy, ENEMY_RUN_SPEED)
     switch (enemy.tactic) {
       case 'cover': case 'retreat': case 'flank': {
         const point = enemy.tacticPoint

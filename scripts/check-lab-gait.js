@@ -52,12 +52,15 @@
       const directions = hipHeights.map((y, i) => Math.sign(hipHeights[(i + 1) % hipHeights.length] - y)).filter(Boolean)
       const turns = directions.filter((sign, i) => sign !== directions[(i + 1) % directions.length]).length
       assert(turns === 4, `${label}: extra body pulse between footfalls`)
-      assert(bodyTravel < (gait === 'run' ? .014 : .08) && headTravel < (gait === 'run' ? .015 : .081), `${label}: excessive chest/head bounce`)
-      assert(maxSupportKnee < (gait === 'walk' ? 30 : 31) && extension < 15, `${label}: legs stay crouched through support`)
+      assert(bodyTravel < (gait === 'run' ? .07 : .08) && headTravel < (gait === 'run' ? .10 : .081), `${label}: excessive chest/head bounce`)
+      assert(maxSupportKnee < (gait === 'walk' ? 30 : 65) && extension < 15, `${label}: legs stay crouched through support`)
       if (gait === 'walk') assert(passingKnee < 15, `${label}: supporting leg does not straighten beneath the body`)
       if (rate === 1) baseSpan = span
-      else assert(span > baseSpan * (1 + (gait === 'walk' ? .45 : .28) * (rate - 1)) && cadence < rate, `${label}: faster movement only increased cadence`)
-      if (gait === 'run') assert(span > .68 && cadence / clip.duration < 1.8, 'Running steps are short and hurried')
+      else assert(span > baseSpan * (1 + (gait === 'walk' ? .45 : .10) * (rate - 1)) && cadence < rate, `${label}: faster movement only increased cadence`)
+      if (gait === 'run') {
+        assert(span > .60 && cadence / clip.duration < 2.2, 'Running steps are short and hurried')
+        assert(bodyTravel > .045 && headTravel > .05 && stance >= .20, 'Running floats without weight transfer or enough ground contact')
+      }
       speed(rate)
       const start = performance.now()
       let elapsed = 0, last = player.current.time

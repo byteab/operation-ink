@@ -4,7 +4,7 @@ import reference from './data/locomotion-reference.json'
 
 /** In-place clip speeds; mission playback uses the same values. */
 export const GAIT_SPEED = { walk: 1.0, run: 2.8 } as const
-export const GAIT_STANCE = { walk: 0.5, run: 0.14 } as const
+export const GAIT_STANCE = { walk: 0.5, run: 0.28 } as const
 /** Longer running strides extend the flight arc, keeping planted reach bounded. */
 export function gaitStance(gait: keyof typeof GAIT_SPEED, stride = 1) {
   return GAIT_STANCE[gait] / (gait === 'run' ? stride : 1)
@@ -57,7 +57,7 @@ const smooth = (x: number) => { const t = THREE.MathUtils.clamp(x, 0, 1); return
 /** Coordinate authored upper-body motion with grounded, extending support legs. */
 export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
   if (!rest) throw new Error('Load the stickman before baking locomotion')
-  const bind = rest, source = reference.clips[gait], duration = gait === 'walk' ? 0.86 : 0.82
+  const bind = rest, source = reference.clips[gait], duration = gait === 'walk' ? 0.86 : 0.68
   const bindWorld = {} as Record<BoneName, THREE.Quaternion>
   for (const name of order) {
     const p = parent[name]
@@ -68,7 +68,8 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
     if (!tracks.has(name)) tracks.set(name, [])
     tracks.get(name)!.push(...value.toArray())
   }
-  const count = 120
+  // Faster knee recovery needs finer samples to keep interpolated contacts fixed.
+  const count = gait === 'run' ? 240 : 120
   const times = Array.from({ length: count + 1 }, (_, i) => i / count * duration)
   const frames = times.map((_, i) => {
     const sample = i / count * (source.frames.length - 1), index = Math.min(Math.floor(sample), source.frames.length - 2)
@@ -102,27 +103,31 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
       const velocity = -cycleTravel * (1 - stance)
       // The cap travels backward at ground speed, then recovers along the route.
       // Match its horizontal velocity at lift-off and contact without overreaching.
-      z = -front + travel * smooth(u) + velocity * u * (1 - u) * (1 - 2 * u) ** (gait === 'walk' ? 9 : 1)
+      z = -front + travel * smooth(u) + velocity * u * (1 - u) * (1 - 2 * u) ** (gait === 'walk' ? 9 : 3)
       if (gait === 'run') {
-        // Reach forward and push backward during the airborne part of the stride.
-        // Shorter ground contact at higher speed keeps that reach out of the torso.
-        z -= 0.10 * stride * Math.sin(2 * Math.PI * u) * Math.sin(Math.PI * u) ** 2
-        lift = 0.14 * Math.sin(Math.PI * u) ** 2
-          + (0.045 + 0.12 * (stride - 1)) * Math.sin(2 * Math.PI * u) ** 2
+        // Fold the heel behind the body first, then drive the knee through and
+        // lower the foot for contact. A symmetric, low swing reads as skating.
+        z -= (0.06 + 0.30 * (stride - 1)) * Math.sin(2 * Math.PI * u) * Math.sin(Math.PI * u) ** 2
+        lift = 0.22 * Math.sin(Math.PI * u) ** 2 * (1 + 0.8 * Math.cos(Math.PI * u))
       } else lift = 0.026 * Math.sin(Math.PI * u) ** 2
     }
     return new THREE.Vector3((side === 'L' ? 1 : -1) * (gait === 'walk' ? 0.09 : 0.085), FOOT_CLEARANCE + lift, z)
   }))
   for (const [i, frame] of frames.entries()) {
     const phase = i / count, step = Math.cos(2 * Math.PI * phase), transfer = Math.sin(2 * Math.PI * phase)
-    frame.hips.x = (gait === 'walk' ? 0.004 : 0.003) * transfer
-    // A tall, connected body line. Pelvis and shoulders counter-rotate once
-    // per stride without reference-key chatter in the chest or head.
+    const load = Math.cos(4 * Math.PI * (phase - stance * 0.35))
+    const follow = Math.cos(4 * Math.PI * (phase - stance * 0.35 - 0.04))
+    frame.hips.x = (gait === 'walk' ? 0.004 : 0.005) * transfer
+    // Drive the running torso into each step; the head follows a little later
+    // while retaining a forward gaze. A fixed chest/head reads as jogging in place.
     const aligned = {} as Record<BoneName, THREE.Quaternion>
     for (const name of ['hips', 'spine', 'chest', 'neck', 'head'] as const) {
       const p = parent[name]
-      const pitch = gait === 'run' ? name === 'head' ? 8 : name === 'neck' ? 11 : 14 : name === 'head' ? 1 : 3
-      const twist = name === 'hips' ? -3 : name === 'spine' ? 0 : name === 'head' ? 0.5 : 3
+      const pitch = gait === 'run'
+        ? name === 'hips' ? 18 + 1.5 * load : name === 'spine' ? 20 + 2 * load
+          : name === 'chest' ? 22 + 3 * load : name === 'neck' ? 19 + 2 * follow : 14 + 2 * follow
+        : name === 'head' ? 1 : 3
+      const twist = (name === 'hips' ? -3 : name === 'spine' ? 0 : name === 'head' ? 0.5 : 3) * (gait === 'run' ? 1.5 : 1)
       const acting = new THREE.Euler(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(twist * step),
         THREE.MathUtils.degToRad((name === 'hips' ? -0.8 : -0.4) * transfer), 'YXZ')
       aligned[name] = new THREE.Quaternion().setFromEuler(acting).multiply(bindWorld[name])
@@ -172,10 +177,10 @@ export function bakeGait(gait: Gait, stride = 1): THREE.AnimationClip {
     cosine += limits[i] * Math.cos(angle) * 2 / count
     sine += limits[i] * Math.sin(angle) * 2 / count
   }
-  // Walking rises over a straight support leg; running keeps a much smaller
-  // body arc and puts the added stride into the recovering legs instead.
+  // Running visibly loads the supporting leg, then lifts the torso into flight.
+  // The upper-body pitch follows this same pulse instead of bouncing separately.
   const pelvis = frames.map((_, i) => gait === 'run'
-    ? mean + 0.006 * Math.cos(4 * Math.PI * (i / count - 0.33))
+    ? mean - 0.028 * Math.cos(4 * Math.PI * (i / count - stance * 0.35))
     : mean + 1.25 * (cosine * Math.cos(4 * Math.PI * i / count) + sine * Math.sin(4 * Math.PI * i / count)))
   const clearance = Math.max(0, ...pelvis.map((height, i) => height - limits[i]))
   frames.forEach((frame, i) => {

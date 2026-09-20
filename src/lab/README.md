@@ -139,8 +139,10 @@ parallel lanes (18/17 cm apart), with fixed-length legs and forward knee poles.
 The baked ordinary quaternion and hips-position tracks are shared by the lab,
 game and JSON export, without runtime IK or a modified GLB.
 
-Walking lasts 0.86 s at 1.0 m/s; running lasts 0.82 s at 2.8 m/s. `GAIT_SPEED` is
+Walking lasts 0.86 s at 1.0 m/s; running lasts 0.68 s at 2.8 m/s. `GAIT_SPEED` is
 shared with enemies and the hostage so stance-foot speed matches root travel.
+Enemy running in the game uses the lab's 1.2× setting: 3.36 m/s with the same
+adapted stride and cadence. Patrol walking and hostage escort keep their existing speeds.
 Above normal speed, the playback control increases horizontal stride length as
 well as cadence. At 2×, walking takes 50% longer steps at 1.33× cadence; running
 takes 40% longer steps at 1.43× cadence. Cached variants retain fixed leg lengths
@@ -150,24 +152,28 @@ armed-patrol scenarios use the same stride adaptation.
 The model has rounded leg ends and no foot bones: ground clearance is calibrated
 to those caps. These clips target level ground, without terrain adaptation.
 
-The [longer-stride revision](../../docs/character-long-stride/README.md) removes
-the extra vertical pulse between footfalls. Only planted feet constrain the
-pelvis; airborne legs lift to accommodate their reach instead of pulling the
-body down. Walking rises over the straight support leg with a single smooth
-arc and 2.6 cm foot recovery. Running uses a longer flight arc and slower cycle,
-with 70–91 cm forward/back foot travel across 1×–2×. Ground contact shortens as
-running stride grows, keeping body travel at 1.2 cm at every speed. Normal
-walking body travel is 3.24 cm. Pelvis/shoulder counter-rotation and opposite arm
-swing follow the step phase, with more arm travel for longer strides. Running
-retains a straight 14° forward body line and 8° head tilt. Both loops use 121
-keys, including their matching endpoints. Fill and outline remain pure black.
+Only planted feet constrain the pelvis; airborne legs lift to accommodate their
+reach instead of pulling the body down. Walking rises over the straight support
+leg with a single smooth arc and 2.6 cm foot recovery. Running keeps each foot
+planted for 28% of the normal cycle, then folds the heel behind the body before
+driving the knee forward. Its quicker cycle and asymmetric recovery replace the
+previous floating, low swing. The pelvis absorbs weight early in support and
+rises into flight with 5.6 cm of travel. The torso pitches through each push-off;
+the head follows about 27 ms later at normal speed, with roughly 6.9 cm of travel.
+Ground contact shortens as running stride grows; forward/back foot travel spans
+64–72 cm across 1×–2×. Normal walking body travel remains 3.24 cm.
+Pelvis/shoulder counter-rotation and opposite arm swing follow the step phase,
+with more arm travel for longer strides. Running leans the torso forward 19–25°
+and the head 12–16°, keeping the neck and torso connected through the step.
+Walking uses 121 keys; running uses 241 to preserve
+contact through the faster recovery. Both include matching loop endpoints.
+Fill and outline remain pure black.
 
 Run `npm run test:gait` for real-GLB checks covering knee bend, landing speed,
 support contact, step width, torso/head stability, one rise per step, bone lengths,
 foot sliding, loop closure, export and game consumers.
 `scripts/check-lab-gait.js` exercises the real lab controls and playback at 1×,
-1.5× and 2× through agent-browser. Current evidence is in
-`docs/character-long-stride/`.
+1.5× and 2× through agent-browser.
 For front/side contact sheets, reload `/lab.html` and evaluate
 `scripts/capture-lab-gait.js` through agent-browser. Review full-speed playback as
 well as contact sheets; the technical checks cannot establish animation quality.

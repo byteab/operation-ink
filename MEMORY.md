@@ -1,5 +1,12 @@
 # Project memory
 
+## Soldier running motion
+
+- Follow-up: user selected the lab's 1.2× speed for enemy running in the actual game. `ENEMY_RUN_SPEED` is 3.36 m/s for combat/repositioning and urgent investigation, so actual travel and the existing speed-adapted clip stay synchronized. Lab default, patrol walking and hostage escort remain unchanged.
+- User rejected the moonwalking run and then a restrained revision as jogging; wants visible head/body movement and a soldier's forward drive. Shared run now lasts 0.68 s at the same 2.8 m/s, with 28% contact per foot at normal speed, earlier heel recovery and fixed-length grounded legs. Walking is unchanged.
+- Torso leans 19–25° through each push-off, pelvis travels 5.6 cm, shoulders counter-rotate more, and the head follows about 27 ms later at 1× with 6.9 cm of vertical travel. Run uses 241 keys to retain foot contact between samples. Faster stride variants, pause, export, enemies and hostage still share the clip.
+- User authorized agent-browser fallback. Build, gait (including between-key samples, foot drift, dynamic torso/head and follow delay), combat animation/death and enemy-motion checks passed. Real Character Lab controls passed at 1×/1.5×/2×, including pause and speed continuity; final side poses inspected. The follow-up 1.2× game-speed change passed build, gait and AI checks.
+
 ## Bullet feedback and gun distance
 
 - Follow-up enemy gunshot fix: the user reported inaudible firing. Native browser tracing found ordinary muzzle reports hard-culled beyond36m although guards engage to60m; local flybys still played. Enemy report radius now engagement range+20m (80/130m), with refDistance10m (sniper16m) and rolloff.85. Shots reserve capacity by reclaiming incidental effects then whiz layers, protecting other reports/voices/loops/hit thumps under80 sources. All5 maximum-range AI/native-route tests and real browser AK20/40/59m +sniper70/109m checks passed, including saturation/mute/pause. Helper: `scripts/check-enemy-audio.js`.

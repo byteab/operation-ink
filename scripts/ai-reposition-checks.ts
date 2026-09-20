@@ -79,7 +79,7 @@ async function check(name: string, run: () => Promise<void>) {
 }
 
 function assertRun(enemy: Enemy) {
-  assert(Math.abs(enemy.moveSpeed - 2.8) < 0.01, `offensive run speed was ${enemy.moveSpeed}`)
+  assert(Math.abs(enemy.moveSpeed - 3.36) < 0.01, `offensive run speed was ${enemy.moveSpeed}`)
   assert.equal(enemy.actor.player.current?.getClip().name, 'run', 'navigation must visibly play the loaded running animation')
 }
 
