@@ -144,8 +144,8 @@ export class FirstPersonWeapons {
   }
 
   /** A two-bone solve keeps upper arms/forearms exactly 34/36 cm long throughout all poses. */
-  private placeArm(arm: Arm, wrist: THREE.Vector3) {
-    const direction = wrist.clone().sub(arm.shoulder)
+  private placeArm(arm: Arm, wrist: THREE.Vector3, shoulder = arm.shoulder) {
+    const direction = wrist.clone().sub(shoulder)
     const distance = direction.length()
     direction.normalize()
     const upperLength = 0.34, foreLength = 0.36
@@ -153,8 +153,8 @@ export class FirstPersonWeapons {
     const along = (upperLength ** 2 - foreLength ** 2 + d ** 2) / (2 * d)
     const height = Math.sqrt(Math.max(0, upperLength ** 2 - along ** 2))
     const bend = arm.pole.clone().addScaledVector(direction, -arm.pole.dot(direction)).normalize()
-    const elbow = arm.shoulder.clone().addScaledVector(direction, along).addScaledVector(bend, height)
-    this.segment(arm.upper, arm.shoulder, elbow)
+    const elbow = shoulder.clone().addScaledVector(direction, along).addScaledVector(bend, height)
+    this.segment(arm.upper, shoulder, elbow)
     this.segment(arm.fore, elbow, wrist)
     arm.elbow.position.copy(elbow)
   }
@@ -339,6 +339,13 @@ export class FirstPersonWeapons {
     this.mount.position.copy(position)
     this.mount.rotation.set((motion ? this.recoil * 0.035 : 0) + this.lower * 0.5,
       Math.PI + working * 0.18, -working * 0.23, 'YXZ')
+    const hit = motion ? this.frame.hitPose : undefined
+    if (hit) {
+      this.mount.position.add(hit.weaponPosition)
+      this.mount.rotation.x += hit.weaponRotation.x
+      this.mount.rotation.y += hit.weaponRotation.y
+      this.mount.rotation.z += hit.weaponRotation.z
+    }
     for (const [part, rest] of this.partRest) part.position.copy(rest)
     for (const [part, rotation] of this.partRotation) part.rotation.copy(rotation)
     const magazine = this.model.userData.parts.magazine
@@ -359,6 +366,13 @@ export class FirstPersonWeapons {
       const cycle = WEAPON_RULES.shotgun.interval - this.cooldown
       pump.position.z -= 0.07 * smooth(cycle, 0.12, 0.3) * (1 - smooth(cycle, 0.35, 0.55))
     }
+    this.root.updateWorldMatrix(true, true)
+    const shoulders = this.arms.map((arm, index) => arm.shoulder.clone().add(hit?.shoulders[index] ?? new THREE.Vector3()))
+    const wrist = this.root.worldToLocal(this.mount.localToWorld(new THREE.Vector3(-0.029, -0.02, -0.033)))
+    const reachableWrist = wrist.clone().sub(shoulders[0]).clampLength(0.021, 0.699).add(shoulders[0])
+    // Move the whole grip if a combined reload/recoil/hit reaches the IK limit.
+    // The firing hand stays attached and neither arm is stretched to fake impact.
+    this.mount.position.add(reachableWrist.clone().sub(wrist))
     this.root.updateWorldMatrix(true, true)
     const pistol = this.current.name === 'pistol'
     this.leftHand.visible = !pistol || this.reloading
@@ -387,15 +401,16 @@ export class FirstPersonWeapons {
       const contact = this.root.worldToLocal(loadingPort.getWorldPosition(new THREE.Vector3()))
       left.lerp(contact, Math.sin(Math.PI * progress))
     }
+    if (hit) left.add(hit.leftHand)
+    left.sub(shoulders[1]).clampLength(0.021, 0.699).add(shoulders[1])
     this.leftHand.position.copy(left)
     this.leftHand.quaternion.copy(this.mount.quaternion)
     const reachTurn = smooth(progress, 0.03, 0.20) * (1 - smooth(progress, 0.66, 0.77))
     const boltTurn = smooth(progress, 0.70, 0.79) * (1 - smooth(progress, 0.91, 0.99))
     this.leftHand.rotateX(reachTurn * 0.42 - boltTurn * 0.2)
     this.leftHand.rotateZ(reachTurn * 0.38 + boltTurn * 0.35)
-    const wrist = this.root.worldToLocal(this.mount.localToWorld(new THREE.Vector3(-0.029, -0.02, -0.033)))
-    this.placeArm(this.arms[0], wrist)
-    this.placeArm(this.arms[1], left)
+    this.placeArm(this.arms[0], reachableWrist, shoulders[0])
+    this.placeArm(this.arms[1], left, shoulders[1])
   }
 
   private shoot(item: WeaponItem) {

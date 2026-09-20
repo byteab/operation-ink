@@ -6,6 +6,7 @@ import type { Posture } from '../lab/postures'
 import { EnemyNavigation } from './navigation'
 import { ENEMY_HEALTH, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage, shotgunDamageMultiplier } from './balance'
 import { rayCapsuleDistance, reactionClipName, type HitReaction, type HitZone } from './hit-reactions'
+import { playerHitTarget, type PlayerBulletHit } from './player-hit-reactions'
 import type { AIContext, EnemySnapshot, EnemySpec, EnemyState, PlayerSense, Shot, SoundEvent, Vec3, WeaponName } from './types'
 
 const ignore = new THREE.Object3D()
@@ -872,7 +873,7 @@ export class EnemyDirector {
       if (blind || !this.context.world.visible(muzzle, player.eye, ignore)) return false
       target.copy(player.eye)
     }
-    const distance = muzzle.distanceTo(target)
+    let distance = muzzle.distanceTo(target)
     direction.copy(target).sub(muzzle).normalize()
     if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && this.bodyHit(other, muzzle, direction, distance))) return false
     const round = enemy.burst > 0 ? weapon.burst - enemy.burst : 0
@@ -880,7 +881,20 @@ export class EnemyDirector {
     const rangePenalty = enemy.spec.weapon === 'sniper' ? 0.004 : enemy.spec.weapon === 'smg' ? 0.017 : enemy.spec.weapon === 'pistol' ? 0.016 : 0.012
     const hitChance = blind ? 0 : clamp(0.72 - distance * rangePenalty - Math.min(0.18, player.velocity.length() * 0.025) - recoil - (enemy.woundArm ? 0.16 : 0) + Math.min(enemy.aimTime, 1.5) * 0.06, 0.08, 0.8)
     const hit = this.random(enemy) < hitChance
+    let bodyHit: Pick<PlayerBulletHit, 'region' | 'side' | 'point'> = {
+      region: target.y - player.feet.y > 1.5 ? 'head' : 'torso', side: 0, point: target.clone(),
+    }
+    if (hit && bodyHit.region !== 'head') {
+      const candidate = playerHitTarget(player, this.random(enemy))
+      // Never label an occluded limb as struck. Retain the exposed centre/head aim
+      // if cover hides the sampled limb, then test the actual segment below.
+      if (this.context.world.visible(muzzle, candidate.point, ignore)) {
+        target.copy(candidate.point)
+        bodyHit = candidate
+      }
+    }
     if (!hit) target.add(new THREE.Vector3((this.random(enemy) > 0.5 ? 1 : -1) * (0.7 + this.random(enemy) * (blind ? 2 : 1)), 0.2 + this.random(enemy) * (blind ? 1 : 0.6), 0))
+    distance = muzzle.distanceTo(target)
     direction.copy(target).sub(muzzle).normalize()
     const obstruction = this.context.world.rayDistance(muzzle, direction, distance + 2)
     const hitPlayer = hit && obstruction >= muzzle.distanceTo(target) - 0.05
@@ -904,7 +918,9 @@ export class EnemyDirector {
         this.context.emit({ kind: 'enemy-bullet-whiz', position: closest, radius: 5 })
       }
     }
-    if (hitPlayer) this.context.damagePlayer(weapon.damage, enemy.position.clone())
+    if (hitPlayer) this.context.damagePlayer(weapon.damage, enemy.position.clone(), {
+      ...bodyHit, point: end.clone(), direction: direction.clone(), weapon: enemy.spec.weapon,
+    })
     else if (obstruction < distance + 2) {
       this.context.emit({ kind: 'impact', position: end.clone(), radius: 18 })
       this.context.onSurfaceHit?.(end, direction.clone())

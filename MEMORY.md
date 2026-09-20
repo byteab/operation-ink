@@ -1,5 +1,13 @@
 # Project memory
 
+## Directional player bullet reactions
+
+- Incoming enemy rounds carry anatomical region/side, exact aimed point, travel direction and weapon into `MissionRuntime.damage`. The existing seeded hit-chance model remains; successful rounds sample torso, shoulder, arm, hand, leg or head and check cover/friendlies against that segment.
+- `src/game/player-hit-reactions.ts` adds bounded deterministic finite flinch envelopes: arm/weapon response peaks first, camera follows, leg hits lower world-space eye height and lean toward the struck side. The current first-person model has arms but no visible legs. No permanent injury or movement knockback was added.
+- The camera overlay is applied before weapon update and removed by `MissionRuntime.finishFrame()` immediately after rendering in `main.ts`; keep that cleanup so input, movement, traversal and checkpoints do not inherit the temporary pose. Camera cleanup retains weapon recoil. Arm IK retains fixed lengths and firing-hand connection during layered hits/reloads.
+- Scope scales camera motion, Reduced Motion clears it, pause freezes it, and restore/restart/death/inspection/VR clear it. Damage values and reload/ammo behavior are unchanged.
+- The user explicitly authorized agent-browser fallback without Argent for this task. Build, new `test:player-hits`, existing weapons/AI/player/traversal-audio/VR and polish weapon checks passed. Staged real-guard browser integration and visual comparison passed with no browser errors. Plan and evidence: `docs/player-hit-reactions/`.
+
 ## Project environment
 
 Inspected read-only on 2026-09-19 by the environment-inspector subagent. No application or browser was launched.

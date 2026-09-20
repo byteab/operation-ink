@@ -27,6 +27,8 @@ The compound now has 37 active guards and four inspection reserves, including 17
 
 Confirmed hits produce dense red blood sprays and immediate solid red splashes with irregular edges; lethal hits leave a spreading solid red pool. Faster, larger droplets stretch along their motion, and shotgun hits produce stronger bursts. Effects are bounded and restore with checkpoints. Local body/head impact cues and a distinct kill confirmation remain audible at long range and obey the volume, mute and pause controls. Guards vary their idle looks, keep weapons ready while searching, and visibly scan after a near miss.
 
+Incoming bullets also produce directional first-person reactions: the struck hand, arm or shoulder recoils with the weapon, torso hits brace the arms, and leg hits dip the stance and tilt the view toward the injured side. A small delayed camera response follows the body and smoothly recovers without losing mouse aim. Repeated hits stay bounded; scope zoom scales the motion and Reduced Motion suppresses it. See [player hit reactions and verification](docs/player-hit-reactions/README.md); run `npm run test:player-hits` for the focused checks.
+
 - [Gameplay polish implementation and balance](docs/gameplay-polish/IMPLEMENTATION.md)
 - [Gameplay polish verification and evidence](docs/gameplay-polish/VERIFICATION.md)
 

@@ -69,8 +69,12 @@ function render(now: number, xrFrame?: XRFrame) {
   let moving = false
   if (vr.active && xrFrame) vr.update(dt, xrFrame)
   else moving = player.update(dt) || camera.update(dt)
-  const missionMoving = mission?.update(dt) ?? false
-  renderer.render(scene, vr.active ? vr.rig.camera : camera.active)
+  let missionMoving = false
+  try {
+    missionMoving = mission?.update(dt) ?? false
+    renderer.render(scene, vr.active ? vr.rig.camera : camera.active)
+  }
+  finally { mission?.finishFrame() }
   canvas.dataset.ready = 'true'
   if (moving || doorsMoving || missionMoving) invalidate()
   rendering = false
