@@ -45,6 +45,10 @@ const player = new FirstPersonController(canvas, scene, camera, interactions, in
 const vr = new VRWalkthrough(renderer, scene, camera, player, invalidate)
 const mission = missionWorld ? new MissionRuntime(scene, camera, player, missionWorld, invalidate) : null
 const frameTimes: number[] = []
+let startupReady = !mission
+// Initialization positions the mission camera and settles the menu (including
+// load errors). Reveal only after that state has actually been rendered.
+void mission?.initialized.then(() => { startupReady = true; invalidate() })
 
 renderer.xr.addEventListener('sessionstart', () => {
   cancelAnimationFrame(frame)
@@ -77,7 +81,13 @@ function render(now: number, xrFrame?: XRFrame) {
     renderer.render(scene, vr.active ? vr.rig.camera : camera.active)
   }
   finally { mission?.finishFrame() }
-  canvas.dataset.ready = 'true'
+  if (startupReady) {
+    canvas.dataset.ready = 'true'
+    if (document.documentElement.hasAttribute('data-loading')) {
+      document.documentElement.removeAttribute('data-loading')
+      document.querySelector<HTMLButtonElement>('#walk-start:not(:disabled)')?.focus({ preventScroll: true })
+    }
+  }
   if (moving || doorsMoving || missionMoving) invalidate()
   rendering = false
 }

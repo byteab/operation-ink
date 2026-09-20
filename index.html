@@ -1,11 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-loading>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="data:," />
-    <title>Compound — Explore on foot</title>
+    <title>Operation Safe Return — Stickman</title>
+    <style>
+      html { background: #fff; }
+      html[data-loading] body { visibility: hidden; }
+    </style>
   </head>
   <body>
     <canvas id="world" tabindex="0" aria-label="Explore the military compound in first person. Click Start walking, mouse to look, WASD to walk, Shift to sprint, Space to jump, F to open doors or climb nearby ladders, Escape to pause, R to return to the entrance. Inspect map switches to the inspection camera."></canvas>
@@ -42,6 +46,6 @@
       <p><kbd>6</kbd> roof · <kbd>7</kbd> mess hall · <kbd>8</kbd> office<br><kbd>9</kbd> water tower · <kbd>0</kbd> watchtower</p>
       <p><kbd>I</kbd> interior cutaway · <kbd>1</kbd> overview<br><kbd>2–5</kbd> other views · <kbd>R</kbd> reset</p>
     </details>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/startup.ts"></script>
   </body>
 </html>

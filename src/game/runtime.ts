@@ -39,6 +39,7 @@ export class MissionRuntime {
   readonly escort: HostageEscort
   readonly security: SecuritySystem
   ready = false
+  readonly initialized: Promise<void>
   deaths = 0
   // Opt-in protection for staged checks; normal play always starts vulnerable.
   invincible = false
@@ -122,7 +123,7 @@ export class MissionRuntime {
     window.addEventListener('blur', () => this.cancelInput(), options)
     document.addEventListener('pointerlockchange', () => { if (!player.playing) this.cancelInput() }, options)
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.cancelInput() }, options)
-    void this.initialize()
+    this.initialized = this.initialize()
   }
 
   private async initialize() {

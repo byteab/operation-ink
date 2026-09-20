@@ -1,0 +1,17 @@
+{
+  "error": "Could not start VR: Test permission denied. Check site permissions and your Quest floor boundary, then retry.",
+  "page": "vr",
+  "passed": true,
+  "paused": true,
+  "request": {
+    "mode": "immersive-vr",
+    "options": {
+      "requiredFeatures": [
+        "local-floor"
+      ]
+    },
+    "userActivation": true
+  },
+  "retryEnabled": true,
+  "retryLabel": "Try entering VR again"
+}

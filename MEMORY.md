@@ -1,5 +1,11 @@
 # Project memory
 
+## Stable startup and integrated VR menu
+
+- Initial HTML stays hidden until mission initialization settles and the final camera view has rendered. This removes the unstyled VR flash and temporary ladder view; no timed splash/loading page was added. `src/startup.ts` also handles module/renderer failures with a reload action, while mission asset errors reveal the existing error menu.
+- Home menu now has a VR page with the original headset support/Enter VR controls and controller instructions. Moving the existing panel preserves its listeners and browser user activation. VR remains exploration with the mission paused; `/?explore=1` retains its standalone controls.
+- Build, VR locomotion and player checks passed. User-authorized agent-browser verified startup frames in development/production, all 37 menu checks, desktop/narrow layouts, simulated headset availability/permission rejection with real click activation, and renderer/model failure recovery. No actual headset session was tested. Evidence: `docs/startup-menu/README.md`.
+
 ## Solid transport and three-second exit gate
 
 - Removed the rescue jeep's collision exclusion; added closed body volumes and dynamic collider refresh for the moving car and its passenger door. Visible geometry now supplies physical cover too. The hostage approach clears the side step/wheels and outward door swing; boarding and the driver F target remain reachable.

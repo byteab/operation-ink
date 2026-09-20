@@ -68,9 +68,9 @@ The scene uses geometry, opaque paper surfaces and ink outlines without lights, 
 
 ## First-person exploration
 
-**Quest VR experiment:** the `experiment/quest-webxr` branch adds immersive headset exploration with Touch controller movement and interactions. See [the Quest testing guide](docs/quest-vr.md) for USB setup, the HTTPS alternative, controls, and limitations. Start the fixed-port test server with `npm run dev:vr`, forward port 5173 with ADB, then open `http://localhost:5173/` in Meta Quest Browser and choose **Enter VR**.
+**VR exploration:** choose **VR** in the mission menu, then **Enter VR** on a supported headset/browser. Controller instructions and availability messages stay on that menu page; the mission stays paused during the walkthrough. Use HTTPS, or start `npm run dev:vr`, forward port 5173 with ADB, and open `http://localhost:5173/` in Meta Quest Browser.
 
-The default view starts beside the mess hall's west ladder. Click **Start walking** to capture the mouse. Walk toward the ladder, look for the blinking symbol, and press **F** to climb onto the roof. The rooftop door leads to the stairs and furnished interior. Follow the central dining aisle to the **EXIT** sign on the south wall, then press **F** to open the ground-level door into the compound yard.
+The exploration page (`/?explore=1`) starts beside the mess hall's west ladder. Click **Start walking** to capture the mouse. Walk toward the ladder, look for the blinking symbol, and press **F** to climb onto the roof. The rooftop door leads to the stairs and furnished interior. Follow the central dining aisle to the **EXIT** sign on the south wall, then press **F** to open the ground-level door into the compound yard.
 
 | Input | Action |
 | --- | --- |

@@ -1,6 +1,6 @@
 import { missionObjective, type MissionState } from './mission'
 
-type MenuPage = 'home' | 'mission' | 'controls' | 'settings' | 'restart'
+type MenuPage = 'home' | 'mission' | 'controls' | 'settings' | 'vr' | 'restart'
 type MenuCallbacks = { retry: () => void; restart: () => void }
 
 /** One decision at a time; reference material never blocks entering the game. */
@@ -39,6 +39,7 @@ export class MissionMenu {
           <button data-menu-open="mission">Mission</button>
           <button data-menu-open="controls">Controls</button>
           <button data-menu-open="settings">Settings</button>
+          <button data-menu-open="vr">VR</button>
         </nav>
       </section>
       <section data-menu-page="mission" hidden>
@@ -82,6 +83,12 @@ export class MissionMenu {
           <label for="mission-motion">Reduced motion <input id="mission-motion" type="checkbox" ${reducedMotion ? 'checked' : ''} /></label>
         </div>
       </section>
+      <section data-menu-page="vr" hidden>
+        <button class="menu-back" data-menu-back><span aria-hidden="true">←</span> Back <kbd>Esc</kbd></button>
+        <h2 id="vr-page-title">Explore in VR</h2>
+        <p>Walk through the compound with your headset. Your mission stays paused.</p>
+        <div class="mission-vr-slot"></div>
+      </section>
       <section data-menu-page="restart" hidden>
         <button class="menu-back" data-menu-back><span aria-hidden="true">←</span> Back <kbd>Esc</kbd></button>
         <h2 id="restart-page-title">Start over?</h2>
@@ -92,6 +99,9 @@ export class MissionMenu {
         </div>
       </section>`
     this.card.querySelector('.mission-start-slot')!.append(start)
+    // Move the existing controls so the WebXR click handler keeps the browser's
+    // user activation and session lifecycle, inside the same menu.
+    this.card.querySelector('.mission-vr-slot')!.append(document.querySelector('#vr-panel')!)
     this.title = this.element('#mission-menu-title')
     this.premise = this.element('#mission-premise')
     this.retry = this.element('#mission-retry')
