@@ -111,6 +111,7 @@ export function fuelTank(index: number, x: number, z: number) {
 const WATER_DECK = 12.5
 const WATER_RADIUS = 4.7
 const WATER_TANK_RADIUS = 2.75
+const WATER_RAIL_HEIGHT = 0.8
 const WATCH_DECK = 6.6
 const WATCH_HALF_WIDTH = 2.8
 const ZIP_PAD_HALF_WIDTH = 1.0
@@ -122,14 +123,14 @@ function directionBetween(from: PlanPoint, to: PlanPoint): PlanPoint {
   return [(to[0] - from[0]) / length, (to[1] - from[1]) / length]
 }
 
-function guardrail(g: Draft, a: PlanPoint, b: PlanPoint, floor: number) {
-  for (const y of [floor + 0.12, floor + 0.6, floor + 1.1]) {
+function guardrail(g: Draft, a: PlanPoint, b: PlanPoint, floor: number, height = 1.1) {
+  for (const y of [floor + 0.12, floor + (height + 0.1) / 2, floor + height]) {
     g.beam([a[0], y, a[1]], [b[0], y, b[1]], y < floor + 0.2 ? 0.1 : 0.065, 'paper', 'detail')
   }
   const sections = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.2)
   for (let i = 0; i <= sections; i++) {
     const t = i / sections, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t
-    g.beam([x, floor, z], [x, floor + 1.13, z], 0.075, 'paper', 'detail')
+    g.beam([x, floor, z], [x, floor + height + 0.03, z], 0.075, 'paper', 'detail')
   }
 }
 
@@ -186,18 +187,18 @@ export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = OBSE
     if (inOpening((a + b) / 2)) continue
     const start: PlanPoint = [Math.cos(a) * railRadius, Math.sin(a) * railRadius]
     const end: PlanPoint = [Math.cos(b) * railRadius, Math.sin(b) * railRadius]
-    for (const y of [floor + 0.12, floor + 0.6, floor + 1.1]) {
+    for (const y of [floor + 0.12, floor + (WATER_RAIL_HEIGHT + 0.1) / 2, floor + WATER_RAIL_HEIGHT]) {
       walkway.beam([start[0], y, start[1]], [end[0], y, end[1]], y < floor + 0.2 ? 0.1 : 0.065, 'paper', 'detail')
     }
     // One post per two arc segments keeps the widened ring visually quiet.
     if (i % 2 === 0 || openings.some(opening => Math.abs(normalize(opening.angle + opening.half) - a) < 0.001)) {
-      walkway.beam([start[0], floor, start[1]], [start[0], floor + 1.13, start[1]], 0.075, 'paper', 'detail')
+      walkway.beam([start[0], floor, start[1]], [start[0], floor + WATER_RAIL_HEIGHT + 0.03, start[1]], 0.075, 'paper', 'detail')
     }
   }
   for (const opening of openings) for (const side of [-1, 1]) {
     const a = opening.angle + side * opening.half
     walkway.beam([Math.cos(a) * railRadius, floor, Math.sin(a) * railRadius],
-      [Math.cos(a) * railRadius, floor + 1.13, Math.sin(a) * railRadius], 0.09, 'paper', 'detail')
+      [Math.cos(a) * railRadius, floor + WATER_RAIL_HEIGHT + 0.03, Math.sin(a) * railRadius], 0.09, 'paper', 'detail')
   }
   g.add(walkway.finish())
   g.cylinder(WATER_TANK_RADIUS, 4.3, 0, deck + 2.26, 0, 'paper')
@@ -322,7 +323,7 @@ export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
         const candidates = [0, 1].map(axis => ((WATCH_HALF_WIDTH - 0.1) * Math.sign(direction[axis]) - perpendicular[axis] * v) / direction[axis])
         railStart = Math.min(...candidates)
       }
-      guardrail(landing, [v, railStart], [v, outer], floor)
+      guardrail(landing, [v, railStart], [v, outer], floor, waterSide ? WATER_RAIL_HEIGHT : 1.1)
       landing.beam([v, floor - 1.15, inner], [v, floor - 0.12, outer], 0.15, 'paper', 'detail')
       landing.beam([v, floor - 1.15, inner], [v, floor - 0.12, inner], 0.15, 'paper', 'detail')
       landing.box(0.32, 0.1, 0.32, v, floor + 0.05, anchor, 'concrete', 'detail')

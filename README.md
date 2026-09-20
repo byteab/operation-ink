@@ -1,6 +1,6 @@
 # Operation Safe Return
 
-A playable first-person hostage rescue in the paper-and-ink military compound. Reach the underground detention cells, release the unarmed prisoner seated in cell 01, escort him to the jeep, open the east gate, and escape together. Prepare the route by disabling surveillance in the security cabin or opening the gate early. Alarms activate a finite four-soldier barracks response.
+A playable first-person hostage rescue in the paper-and-ink military compound. Reach the underground detention cells, release the unarmed prisoner seated in cell 01, escort him to the jeep, open the east gate, and escape together. Prepare the route by disabling surveillance in the security cabin or opening the gate early. Alarms activate a finite four-soldier barracks response. Cameras show a green status light while watching and red during an alarm, turning between lookout directions with 3.5-second pauses. A fourth camera watches the mess-hall yard exit. In the first building’s signals office, approach the blue-screen computer and press **F** to disable every camera for **60 seconds**; the HUD shows the countdown, and pausing freezes it. The security cabin still offers a permanent shutdown. The alarm uses the original IGI siren and stops when silenced.
 
 ```sh
 npm install

@@ -1,10 +1,13 @@
 import type { StationKind, Vec3 } from './types'
 import { RESCUE_LAYOUT } from './rescue-layout'
 
+export const CAMERA_SHUTDOWN_SECONDS = 60
+export const SIGNALS_COMPUTER_ID = 'signals-office-computer'
+
 export type HostageState = { id: string; status: 'captive' | 'following' | 'loaded'; position: Vec3; routeIndex: number }
 export type MissionState = {
   phase: 'active' | 'dead' | 'complete'
-  camerasActive: boolean; alarm: 'inactive' | 'active' | 'silenced'; alarmElapsed: number
+  camerasActive: boolean; camerasDisabledUntil: number | null; alarm: 'inactive' | 'active' | 'silenced'; alarmElapsed: number
   silencedElapsed: number; alarmPosition: Vec3 | null; reservesDispatched: number
   gateOpen: boolean; hostages: HostageState[]; jeep: 'waiting' | 'boarding' | 'escaping' | 'escaped'; escapeProgress: number
   detentionFound: boolean; cellsReached: boolean
@@ -12,7 +15,7 @@ export type MissionState = {
   shots: number; kills: number; detections: number
 }
 export const initialMission = (): MissionState => ({
-  phase: 'active', camerasActive: true, alarm: 'inactive', alarmElapsed: 0, silencedElapsed: 0,
+  phase: 'active', camerasActive: true, camerasDisabledUntil: null, alarm: 'inactive', alarmElapsed: 0, silencedElapsed: 0,
   alarmPosition: null, reservesDispatched: 0, gateOpen: false,
   hostages: RESCUE_LAYOUT.hostageSpawns.map((position, index) => ({ id: `hostage-${index + 1}`, status: 'captive', position: [...position], routeIndex: index < 2 ? 1 : 0 })),
   jeep: 'waiting', escapeProgress: 0, detentionFound: false, cellsReached: false,
@@ -25,7 +28,8 @@ export function stationLabel(state: MissionState, kind: StationKind, id: string)
   if (state.phase !== 'active' || state.jeep === 'escaping') return null
   switch (kind) {
     case 'hostage': return state.hostages.find(h => h.id === id)?.status === 'captive' ? 'Release hostage' : null
-    case 'cameras': return state.camerasActive ? 'Disable cameras' : null
+    case 'cameras': return state.camerasActive || (id !== SIGNALS_COMPUTER_ID && state.camerasDisabledUntil !== null)
+      ? id === SIGNALS_COMPUTER_ID ? 'Disable cameras for 60 seconds' : 'Disable cameras' : null
     case 'alarm': return state.alarm === 'active' ? 'Turn off alarm' : null
     case 'gate': return state.gateOpen ? null : 'Open exit gate'
     case 'jeep': return loadedCount(state) < state.hostages.length ? 'Bring the hostage to the jeep' : !state.gateOpen ? 'Open the exit gate first' : 'Board jeep'
@@ -45,7 +49,11 @@ export function useStation(state: MissionState, kind: StationKind, id: string): 
       hostage.status = 'following'; state.detentionFound = state.cellsReached = true
       return { changed: true, message: 'Cell unlocked. Wait for him to stand, then lead him upstairs to the jeep.' }
     }
-    case 'cameras': state.camerasActive = false; return { changed: true, message: 'Camera network disabled. An active alarm must be silenced at a wall panel.' }
+    case 'cameras': {
+      state.camerasActive = false
+      state.camerasDisabledUntil = id === SIGNALS_COMPUTER_ID ? state.elapsed + CAMERA_SHUTDOWN_SECONDS : null
+      return { changed: true, message: `${state.camerasDisabledUntil === null ? 'Camera network disabled.' : 'Camera network offline for 60 seconds.'} An active alarm must be silenced at a wall panel.` }
+    }
     case 'alarm': state.alarm = 'silenced'; state.silencedElapsed = 0; return { changed: true, message: 'Alarm silenced. Guards will search their last known contact, then return to duty.' }
     case 'gate': state.gateOpen = true; return { changed: true, message: 'Exit gate opening. Bring the hostage to the jeep.' }
     case 'jeep':
@@ -79,6 +87,10 @@ export function missionObjective(state: MissionState) {
 export function advanceMission(state: MissionState, dt: number) {
   if (state.phase !== 'active') return false
   state.elapsed += Math.max(0, dt)
+  if (state.camerasDisabledUntil !== null && state.elapsed >= state.camerasDisabledUntil) {
+    state.camerasActive = true
+    state.camerasDisabledUntil = null
+  }
   return true
 }
 

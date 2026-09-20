@@ -23,7 +23,7 @@ const scene = new THREE.Scene()
 scene.name = 'Black ballpoint compound'
 scene.background = new THREE.Color(palette.paper)
 const compound = createCompound()
-const missionWorld = new URLSearchParams(location.search).get('explore') === '1' ? null : createMissionWorld()
+const missionWorld = new URLSearchParams(location.search).get('explore') === '1' ? null : createMissionWorld(compound)
 if (missionWorld) prepareCompound(compound)
 scene.add(compound)
 if (missionWorld) scene.add(missionWorld.root)

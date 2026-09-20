@@ -40,6 +40,7 @@ export class MissionAudio {
   private noise: AudioBuffer | null = null
   private ambience: AudioBufferSourceNode | null = null
   private music: AudioBufferSourceNode | null = null
+  private alarmSource: AudioScheduledSourceNode | null = null
   private musicBuffer: AudioBuffer | null = null
   private musicGain: GainNode | null = null
   private buffers = new Map<string, AudioBuffer>()
@@ -162,6 +163,7 @@ export class MissionAudio {
       this.sources.delete(source); this.cleanup.delete(source)
       this.painSources.delete(source)
       if (this.spoken?.source === source) this.spoken = null
+      if (this.alarmSource === source) this.alarmSource = null
     }
     this.cleanup.set(source, release); source.onended = release
   }
@@ -179,8 +181,8 @@ export class MissionAudio {
     const panner = event.position ? context.createPanner() : null
     if (panner) {
       const vocal = event.kind === 'callout' || event.kind === 'enemy-pain'
-      panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse'; panner.refDistance = vocal ? 10 : 4
-      panner.maxDistance = event.radius ?? 60; panner.rolloffFactor = vocal ? 0.85 : 1.35
+      panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse'; panner.refDistance = event.kind === 'horn' ? 24 : vocal ? 10 : 4
+      panner.maxDistance = event.radius ?? 60; panner.rolloffFactor = event.kind === 'horn' ? 0.65 : vocal ? 0.85 : 1.35
       panner.positionX.value = event.position!.x; panner.positionY.value = event.position!.y; panner.positionZ.value = event.position!.z
       gain.connect(panner).connect(this.master!)
     } else gain.connect(this.master!)
@@ -229,7 +231,8 @@ export class MissionAudio {
     gain.gain.value = gainValue
     const source = context.createBufferSource()
     source.buffer = buffer
-    source.playbackRate.value = pitch
+    source.playbackRate.value = event.kind === 'horn' ? 1 : pitch
+    if (event.kind === 'horn') { source.loop = true; this.alarmSource = source }
     source.connect(gain)
     this.track(source, panner ? [gain, panner] : [gain]); source.start()
     if (event.kind === 'callout') this.spoken = { source, speaker: event.speaker ?? 0 }
@@ -279,9 +282,21 @@ export class MissionAudio {
     return true
   }
 
+  /** Runtime owns the siren lifetime, including silence, pause and checkpoint restore. */
+  setAlarm(enabled: boolean, position?: THREE.Vector3) {
+    const audible = enabled && this.active && !this.muted && this.volume > 0 &&
+      (!position || position.distanceTo(this.listenerPosition) <= 100)
+    if (!audible && this.alarmSource) {
+      const source = this.alarmSource
+      try { source.stop() } catch { /* already ended */ }
+      this.cleanup.get(source)?.()
+    } else if (audible && !this.alarmSource) this.play({ kind: 'horn', position, radius: 100 })
+  }
+
   play(event: SoundEvent) {
     const context = this.context
     if (!context || !this.master || !this.active || this.muted || this.volume <= 0 || this.disposed) return
+    if (event.kind === 'horn' && this.alarmSource) return
     const distance = event.position?.distanceTo(this.listenerPosition) ?? 0
     if (distance > (event.radius ?? 60)) return
     if (this.sources.size >= 80) return
@@ -354,17 +369,18 @@ export class MissionAudio {
       filter.type = 'lowpass'; filter.frequency.value = horn ? 620 : 1800
     }
     source.connect(filter).connect(gain)
+    if (horn) this.alarmSource = source
     this.track(source, panner ? [filter, gain, panner] : [filter, gain]); source.start(t); source.stop(t + duration)
   }
 
   clear() {
     for (const source of [...this.sources]) { try { source.stop() } catch { /* already ended */ }; this.cleanup.get(source)?.() }
-    this.ambience = null; this.music = null; this.musicGain = null; this.voiceUntil = 0; this.whizUntil = 0
+    this.ambience = null; this.music = null; this.musicGain = null; this.alarmSource = null; this.voiceUntil = 0; this.whizUntil = 0
     this.speakerUntil.clear(); this.phraseUntil.clear(); this.painUntil.clear(); this.painSources.clear(); this.spoken = null
   }
   reset() { this.clear() }
   get status() { return this.context?.state ?? 'locked' }
-  get diagnostics() { return { active: this.active, sources: this.sources.size, music: !!this.music, ambience: !!this.ambience,
+  get diagnostics() { return { active: this.active, sources: this.sources.size, music: !!this.music, ambience: !!this.ambience, alarm: !!this.alarmSource,
     decodedSamples: this.buffers.size, acceptedVoices: this.acceptedVoices, suppressedVoices: this.suppressedVoices, muted: this.muted, volume: this.volume, disposed: this.disposed } }
   dispose() {
     this.disposed = true; this.active = false; this.loadAbort.abort(); this.reset()

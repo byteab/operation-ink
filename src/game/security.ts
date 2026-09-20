@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { penPalette } from '../render/ballpoint'
 import type { CollisionWorld } from '../player/collision'
 import type { EnemyDirector } from './ai'
 import type { MissionState } from './mission'
@@ -7,11 +6,25 @@ import { RESCUE_LAYOUT } from './rescue-layout'
 import type { EmitSound, MissionWorld } from './types'
 
 export const SECURITY_RULES = { detectionDwell: 0.75, secondWaveDelay: 14, searchCooldown: 12, reserveLimit: 4, hornInterval: 7 } as const
+export const CAMERA_LIGHTS = { watching: 0x21db66, alarm: 0xff2929, offline: 0x40464a } as const
+export const CAMERA_PATROL = { holdSeconds: 3.5, turnSeconds: 1.8 } as const
+
+/** Three lookout directions, with a full stop before each smooth motor turn. */
+export function cameraPatrolYaw(elapsed: number, index: number, yaw: number, arc: number) {
+  const stops = [0, 1, 0, -1]
+  const segment = CAMERA_PATROL.holdSeconds + CAMERA_PATROL.turnSeconds
+  const time = Math.max(0, elapsed) + index * 0.8
+  const cycleStep = Math.floor((time + 1e-9) / segment)
+  const step = cycleStep % stops.length
+  const progress = THREE.MathUtils.clamp((time - cycleStep * segment - CAMERA_PATROL.holdSeconds) / CAMERA_PATROL.turnSeconds, 0, 1)
+  const smooth = progress * progress * (3 - 2 * progress)
+  return yaw + THREE.MathUtils.lerp(stops[step], stops[(step + 1) % stops.length], smooth) * arc
+}
 /** Security keeps only a confirmed sighting; guard perception remains authoritative afterward. */
 export class SecuritySystem {
   private dwell = new Map<string, number>()
   private lastAlarm: MissionState['alarm'] = 'inactive'
-  private lastCameraState: boolean | null = null
+  private lastLampColor: number | null = null
   private hornElapsed = 0
 
   constructor(private world: CollisionWorld, private missionWorld: MissionWorld, private ai: EnemyDirector, private emit: EmitSound) {}
@@ -19,7 +32,7 @@ export class SecuritySystem {
   reset() {
     this.dwell.clear()
     this.lastAlarm = 'inactive'
-    this.lastCameraState = null
+    this.lastLampColor = null
     this.hornElapsed = 0
   }
 
@@ -30,20 +43,21 @@ export class SecuritySystem {
       this.hornElapsed = 0
     }
     this.lastAlarm = state.alarm
-    const changed = this.lastCameraState !== state.camerasActive
+    const color = !state.camerasActive ? CAMERA_LIGHTS.offline : state.alarm === 'active' ? CAMERA_LIGHTS.alarm : CAMERA_LIGHTS.watching
+    const changed = this.lastLampColor !== color
     for (const camera of this.missionWorld.rescue?.cameras ?? []) {
       const spec = RESCUE_LAYOUT.cameras.find(candidate => candidate.id === camera.id)
       if (!spec) continue
-      if (state.camerasActive) camera.pivot.rotation.y = spec.yaw + Math.sin(state.elapsed * 0.35 + RESCUE_LAYOUT.cameras.indexOf(spec) * 1.7) * spec.arc
+      if (state.camerasActive) camera.pivot.rotation.y = cameraPatrolYaw(state.elapsed, RESCUE_LAYOUT.cameras.indexOf(spec), spec.yaw, spec.arc)
       if (changed) {
         for (const material of Array.isArray(camera.lamp.material) ? camera.lamp.material : [camera.lamp.material]) {
-          if ('color' in material) (material as THREE.MeshBasicMaterial).color.setHex(state.camerasActive ? penPalette.ink : penPalette.paper)
+          if ('color' in material) (material as THREE.MeshBasicMaterial).color.setHex(color)
           if ('emissive' in material) (material as THREE.MeshStandardMaterial).emissiveIntensity = 0
         }
       }
     }
     if (!state.camerasActive) this.dwell.clear()
-    this.lastCameraState = state.camerasActive
+    this.lastLampColor = color
   }
 
   trigger(state: MissionState, position: THREE.Vector3) {

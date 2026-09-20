@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { penPalette } from '../src/render/ballpoint'
 import { EnemyDirector } from '../src/game/ai'
 import type { EnemyActor } from '../src/game/actors'
-import { initialMission } from '../src/game/mission'
+import { advanceMission, initialMission, useStation, SIGNALS_COMPUTER_ID } from '../src/game/mission'
 import { RESCUE_LAYOUT } from '../src/game/rescue-layout'
-import { SecuritySystem, SECURITY_RULES } from '../src/game/security'
+import { SecuritySystem, SECURITY_RULES, CAMERA_LIGHTS, CAMERA_PATROL, cameraPatrolYaw } from '../src/game/security'
 import { CollisionWorld } from '../src/player/collision'
 import { createCompound } from '../src/world/compound'
 import { createMissionWorld, prepareCompound } from '../src/game/world'
@@ -43,7 +42,7 @@ async function fixture() {
   const hidden: PlayerSense = { eye: new THREE.Vector3(-100, 1.65, -100), feet: new THREE.Vector3(-100, 0, -100), velocity: new THREE.Vector3(), alive: true, radioEnabled: true }
   const step = (seconds: number, updateAI = false) => {
     for (let i = 0; i < Math.ceil(seconds / 0.05); i++) {
-      state.elapsed += 0.05
+      advanceMission(state, 0.05)
       security.update(0.05, state, eye)
       if (updateAI) ai.update(0.05, hidden)
     }
@@ -65,6 +64,7 @@ async function fixture() {
   assert.equal(f.state.alarm, 'inactive', 'reacquisition needs a fresh dwell')
   f.step(0.5)
   assert.equal(f.state.alarm, 'active')
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.alarm)
   assert.equal(f.state.detections, 1)
   assert.equal(f.state.reservesDispatched, 2, 'only the first reserve pair responds initially')
   assert.equal(f.ai.enemies.filter(enemy => enemy.state === 'reserve').length, 2)
@@ -85,13 +85,13 @@ console.log('PASS Camera dwell, wall occlusion, reacquisition, frozen last-known
 {
   const f = await fixture()
   f.security.sync(f.state)
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.ink)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.watching)
   f.state.camerasActive = false
   const yaw = f.pivot.rotation.y
   f.step(3)
   assert.equal(f.state.alarm, 'inactive')
   assert.equal(f.pivot.rotation.y, yaw, 'disabled cameras stop sweeping')
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.paper)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.offline)
   f.security.trigger(f.state, f.eye.clone().setY(0))
   f.state.alarm = 'silenced'; f.state.silencedElapsed = 0; f.security.sync(f.state)
   assert(f.ai.enemies.filter(enemy => enemy.state !== 'reserve').every(enemy => enemy.state === 'search'))
@@ -109,7 +109,7 @@ console.log('PASS Camera dwell, wall occlusion, reacquisition, frozen last-known
   assert.deepEqual(f.ai.snapshot(), snapshot, 'alarm response ownership survives checkpoint snapshots')
   f.security.reset()
   const initial = initialMission(); f.security.sync(initial)
-  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), penPalette.ink)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.watching)
   assert.equal(initial.alarm, 'inactive')
   assert.equal(initial.reservesDispatched, 0)
   f.dispose()
@@ -126,6 +126,33 @@ console.log('PASS Disabled lights and detection, cancelled wave, finite silence 
   f.dispose()
 }
 console.log('PASS Alarm panels preserve legitimate combat contact')
+
+{
+  const hold = CAMERA_PATROL.holdSeconds, turn = CAMERA_PATROL.turnSeconds, segment = hold + turn
+  const spec = RESCUE_LAYOUT.cameras[0]
+  const yaw = (t: number) => cameraPatrolYaw(t, 0, spec.yaw, spec.arc)
+  assert.equal(yaw(0), yaw(hold - 0.01), 'Camera holds its first heading for several seconds')
+  assert(yaw(hold + turn / 2) > yaw(hold), 'Camera rotates between lookout positions')
+  assert.equal(yaw(segment), yaw(segment + hold - 0.01), 'Camera holds the next heading')
+  assert(Math.abs(yaw(segment) - (spec.yaw + spec.arc)) < 1e-9)
+  assert(Math.abs(yaw(segment * 3) - (spec.yaw - spec.arc)) < 1e-9)
+  assert.equal(yaw(segment * 4), yaw(0), 'The full patrol repeats without a jump')
+  const f = await fixture()
+  f.step(0.4)
+  useStation(f.state, 'cameras', SIGNALS_COMPUTER_ID)
+  f.security.sync(f.state)
+  f.step(59.5)
+  assert.equal(f.state.alarm, 'inactive', 'Disabled cameras cannot detect')
+  f.step(0.55)
+  assert(f.state.camerasActive)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.watching)
+  assert.equal(f.state.alarm, 'inactive', 'Reactivation clears the old partial detection')
+  f.security.trigger(f.state, f.eye)
+  f.state.alarm = 'silenced'; f.security.sync(f.state)
+  assert.equal((f.lamp.material as THREE.MeshBasicMaterial).color.getHex(), CAMERA_LIGHTS.watching)
+  f.dispose()
+}
+console.log('PASS Camera holds/turns, bounded patrol, timed recovery, fresh detection dwell and green light after silencing')
 
 {
   const scene = new THREE.Scene(), compound = createCompound(), mission = createMissionWorld()

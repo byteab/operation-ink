@@ -242,6 +242,29 @@ shotgunAudio.dispose(); assert.equal(shotgunAudio.diagnostics.sources, 0)
 assert(sc.nodes.every(node => node.disconnected), 'Shotgun reset/disposal disconnects every node')
 console.log('PASS Original shotgun report/pump/shell routing, native report pitch, shell variation, mute/pause/volume, source budget and disposal')
 
+const siren = new MissionAudio(); siren.setActive(true); await siren.unlock()
+await new Promise(resolve => setTimeout(resolve, 0))
+const ac = FakeAudioContext.latest
+siren.setAlarm(true, new THREE.Vector3(4, 2, 0))
+const alarm = ac.nodes.filter(node => node instanceof Source).at(-1) as Source
+assert((alarm.buffer as { url: string }).url.endsWith('/igi/alarm_1.wav'))
+assert(alarm.loop); assert.equal(alarm.playbackRate.value, 1)
+const count = siren.diagnostics.sources
+for (let i = 0; i < 100; i++) { siren.setAlarm(true); siren.play({kind:'horn'}) }
+assert.equal(siren.diagnostics.sources, count, 'Repeating alarm events never stack sirens')
+siren.setAlarm(false); assert(alarm.stopped); assert(!siren.diagnostics.alarm)
+for (const mode of ['mute', 'zero-volume', 'pause', 'range'] as const) {
+  siren.setActive(true); siren.setMuted(false); siren.setVolume(0.55); siren.setAlarm(true)
+  if (mode === 'mute') siren.setMuted(true)
+  if (mode === 'zero-volume') siren.setVolume(0)
+  if (mode === 'pause') siren.setActive(false)
+  siren.setAlarm(true, new THREE.Vector3(mode === 'range' ? 150 : 0, 0, 0))
+  assert(!siren.diagnostics.alarm, `${mode} stops the siren`)
+}
+siren.setAlarm(false); siren.reset(); siren.dispose()
+assert(ac.nodes.every(node => node.disconnected))
+console.log('PASS Original IGI siren loops at native pitch, does not stack, and stops on silence/mute/pause/range/reset')
+
 for (const failure of ['missing', 'decode'] as const) {
   let release!: () => void
   const ready = new Promise<void>(resolve => { release = resolve })

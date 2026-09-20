@@ -611,6 +611,16 @@
       "duration": 0.498141,
       "edit": "Complete SPAS-12 reload_1 then reload_2 mechanism strokes; 20ms silent gap; original PCM and sample rate",
       "sha256": "24d9513e33f28f5134a5a05ec139991e9c7bab8e5c1932dcfec31fef0d0d7575"
+    },
+    {
+      "file": "alarm_1.wav",
+      "source": "LOCAL:common/sounds/alarm_1.wav",
+      "sampleRate": 22050,
+      "channels": 2,
+      "frames": 19584,
+      "duration": 0.888163,
+      "edit": "Lossless PCM rewrap; original sample rate",
+      "sha256": "75c86d2050b4d5fa9913b659831aaaad98f08a9de9c6e4e30e520cc0653e75d2"
     }
   ]
 }

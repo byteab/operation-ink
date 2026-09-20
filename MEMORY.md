@@ -107,3 +107,18 @@ Inspected read-only on 2026-09-19 by the environment-inspector subagent. No appl
 - Shared building walls are 0.14m thick; door frames have 0.05m jambs and 0.14m depth. Added interior wall/ceiling corners, both-face opening contours, gable/roof underside contours, and detention's missing above-ground footprint line.
 - The small annex buildings are Security cabin (camera controls), Maintenance shelter (field supplies and roof ladder), and Crew house (guard quarters/reserves).
 - Build and player, map, rescue-route, mission, hostage, security, indoor-enemy, door-navigation, wire-fence, tower-patrol and zipline checks passed. Zipline obstruction fixtures now follow the landing's orientation.
+
+### Follow-up annotation cleanup
+
+- Removed the seven floating outdoor direction boards, the fence return around the west end of the administration wing, and the concrete baffle east of detention at `[132, -18]`. Fence and baffle collision disappear with their geometry.
+- Gabled buildings no longer draw a horizontal seam across either face of their end walls. Sloping roof contours, interior corners and flat-ceiling outlines remain.
+- Water-tower catwalk and launch-landing top rails are now 0.8m above the deck (previously 1.1m), with matching shorter posts and middle rails.
+- Build, player, map, rescue-route, tower-patrol and zipline checks passed. Map checks cover walking through the removed fence and baffle locations. No browser verification was performed for this follow-up; confirmation to use agent-browser without Argent is pending.
+
+## Surveillance and tree update
+
+- Removed the small signboards above all mission interaction controls. Added batched broadleaf and poplar trees among the pines; moved the annex-corner pine to [102.9, 24.75], outside both fence runs. Real-map checks verify all tree crown envelopes clear every fence panel.
+- Added `mess-hall-exit-camera` on the first building's southeast corner at [-20.16, 3.45, -35.66], with a wall bracket. All four cameras have green watching/red alarm/dark offline indicators and 3.5-second holds separated by smooth 1.8-second turns. Detection uses actual pivot heading.
+- The first signals-office monitor is blue and registered as `signals-office-computer`; F disables all cameras for 60 active seconds with a HUD countdown. The chair is pulled aside. Pause freezes the timer; checkpoints preserve it; restart resets it. The security-cabin terminal remains permanent and can override the temporary shutdown. Existing alarms require separate silencing.
+- Added the cached original IGI `alarm_1.wav` and its manifest entry/import selection. Browser audio loops it at native pitch without stacking; silence, pause, mute, range, reset and disposal stop it. The installed WAV exactly matches the existing extracted cache; the source archive is absent.
+- User explicitly authorized agent-browser verification for this task. Build, mission, security, audio, player, map and rescue-route checks passed. Agent-browser visually verified the scene and used the real F handler for computer shutdown and alarm silencing, including HUD, pause, recovery, checkpoints, restart and native audio decoding/looping. Browser errors were empty. Evidence and staged-check scope: `docs/security-upgrade/README.md`; helper: `scripts/check-security-upgrade.js`.

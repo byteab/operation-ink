@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Draft, palette, type Point } from '../render/ink'
 import { building, container, crates, platform, truck, workshop, type BuildingSpec } from './architecture'
 import { messHall } from './messHall'
+import { drawTree, treeRadius, type TreeSpecies } from './vegetation'
 import { fence, fuelTank, gate, lamp, railway, watchTower, waterTower, towerZipline,
   WATER_TOWER_POSITION, OBSERVATION_TOWER_POSITION, type PlanPoint } from './industrial'
 
@@ -109,7 +110,7 @@ function accessRoad() {
 }
 
 function landscaping() {
-  const g = new Draft('Perimeter pines and low vegetation')
+  const g = new Draft('Perimeter trees and low vegetation')
   // Deliberate clusters from the reference: west tank belt, northern roadside,
   // southwest clearing and southeast rocks. Working yards stay unobstructed.
   const trees = [
@@ -118,44 +119,17 @@ function landscaping() {
     [386, 580, 5], [671, 397, 6.5], [803, 612, 4.5],
     [358, 410, 5], [270, 414, 4.5], [968, 183, 7], [853, 192, 5],
     [276, 27, 8.5], [653, 34, 9], [931, 73, 8], [990, 55, 6], [1210, 103, 8], [1390, 22, 11],
-    [1445, 403, 9], [1436, 661, 7.5], [1409, 914, 8.5], [1346, 934, 7],
+    [1445, 403, 9], [1436, 705, 7.5], [1409, 914, 8.5], [1346, 934, 7],
     [1304, 962, 8], [1067, 902, 7.5], [1001, 960, 8], [946, 927, 6.5],
     [729, 942, 7], [696, 989, 6], [537, 1080, 7], [116, 1074, 8],
     [32, 877, 9], [22, 941, 7], [57, 980, 6], [1190, 570, 4.5], [1287, 686, 6],
   ]
-  for (const [px, pz, h] of trees) {
+  g.userData.trees = trees.map(([px, pz, h], index) => {
     const [x, z] = mapPoint(px, pz)
-    g.cylinder(0.13, h * 0.43, x, h * 0.215, z, 'paper', 0.09)
-    for (let i = 0; i < 3; i++) {
-      const radius = h * (0.255 - i * 0.052), height = h * (0.51 - i * 0.045)
-      const y = h * (0.38 + i * 0.20)
-      const cone = new THREE.ConeGeometry(radius, height, 40)
-      g.solid(cone, [x, y, z], 'green', false, [0, 0, 0], true)
-      // Loose downward branch marks sit on the original cone: tree collision stays exact.
-      // Each short trail resembles a student drawing a pine one branch at a time.
-      const bottom = y - height / 2
-      for (let branch = 0; branch < 8; branch++) {
-        const angle = branch / 8 * Math.PI * 2 + i * 0.39 + px * 0.013
-        const trail: Point[] = []
-        for (let step = 0; step < 5; step++) {
-          const t = 0.14 + step * 0.205
-          const turn = angle + (step % 2 ? 0.075 : -0.055)
-          const r = radius * t + 0.028
-          trail.push([x + Math.cos(turn) * r, bottom + height * (1 - t), z + Math.sin(turn) * r])
-        }
-        g.line(trail, 'landscape')
-        const tip = trail[trail.length - 1]
-        g.line([tip, [tip[0] + Math.cos(angle) * h * 0.035, tip[1] - h * 0.055,
-          tip[2] + Math.sin(angle) * h * 0.035]], 'landscape')
-      }
-      const rim: Point[] = Array.from({ length: 24 }, (_, branch) => {
-        const a = branch / 24 * Math.PI * 2
-        const r = radius * (branch % 2 ? 1.04 : 0.97)
-        return [x + Math.cos(a) * r, bottom + (branch % 2 ? -0.025 : 0.085), z + Math.sin(a) * r]
-      })
-      g.line(rim, 'landscape', true)
-    }
-  }
+    const species: TreeSpecies = ['pine', 'broadleaf', 'poplar'][index % 3] as TreeSpecies
+    drawTree(g, x, z, h, species, px)
+    return { x, z, height: h, species, radius: treeRadius(h, species) }
+  })
   const rocks = [[1120, 971, 3.1], [1152, 947, 2.5], [1171, 976, 2], [1223, 86, 2.8], [1270, 79, 2],
     [55, 560, 1.6], [60, 790, 2.1], [684, 1047, 1.6], [670, 953, 2.2]]
   for (const [px, pz, size] of rocks) {
@@ -222,7 +196,7 @@ export function createCompound() {
   root.add(fence('Rail yard · water tower return', plan([[915, 290], [915, 415]])))
   root.add(fence('Inner yard · railway separation and west return', plan([[1410, 415], [730, 415], [730, 460], [667, 460], [667, 529]])))
   // Entry now faces the open yard instead of the narrow gatehouse passage.
-  root.add(fence('Inner yard · south gate return', plan([[667, 581], [667, 700], [447, 700], [447, 779], [456.5, 779], [456.5, 763.5]])))
+  root.add(fence('Inner yard · south gate return', plan([[667, 581], [667, 700], [447, 700]])))
   // The tower sits forward of one continuous cross fence; the open gate is the
   // only break. The return meets the existing inner-yard fence at (447, 700).
   root.add(fence('Observation tower · yard closure', plan([[383, 681], [447, 681], [447, 700]])))

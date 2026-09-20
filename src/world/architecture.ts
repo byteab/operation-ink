@@ -19,13 +19,17 @@ const WALL_INK_OFFSET = 0.006
 
 /** Trace inside corners on the room-facing surfaces, clear of adjoining walls. */
 export function interiorRoomOutline(g: Draft, clearWidth: number, clearDepth: number,
-  floor: number, ceiling: number, x = 0, z = 0) {
+  floor: number, ceiling: number, x = 0, z = 0, ceilingShape: 'flat' | 'gable' = 'flat') {
   const halfW = clearWidth / 2 - WALL_INK_OFFSET
   const halfD = clearDepth / 2 - WALL_INK_OFFSET
   const top = ceiling - WALL_INK_OFFSET
   const corners: Point[] = [[x - halfW, top, z - halfD], [x + halfW, top, z - halfD],
     [x + halfW, top, z + halfD], [x - halfW, top, z + halfD]]
-  g.line(corners, 'edge', true)
+  if (ceilingShape === 'gable') {
+    // The end walls continue up to the roof slopes, without a horizontal seam.
+    g.line([corners[0], corners[1]], 'edge')
+    g.line([corners[2], corners[3]], 'edge')
+  } else g.line(corners, 'edge', true)
   for (const [cx, , cz] of corners) g.line([[cx, floor + WALL_INK_OFFSET, cz], [cx, top, cz]], 'edge')
 }
 
@@ -50,15 +54,17 @@ export type WallOpening = { centre: number; width: number; bottom: number; heigh
 
 /** Both wall faces and the short reveal edges stay readable from either side. */
 export function wallOutline(g: Draft, length: number, h: number, floor: number, offset: number,
-  openings: WallOpening[], side = false, thickness = WALL_THICKNESS) {
+  openings: WallOpening[], side = false, thickness = WALL_THICKNESS, topEdge = true) {
   const point = (x: number, y: number, depth: number): Point => side
     ? [offset + depth, floor + y, x] : [x, floor + y, offset + depth]
   const halfDepth = thickness / 2 + WALL_INK_OFFSET
   const floorCuts = openings.filter(o => o.bottom === 0).sort((a, b) => a.centre - b.centre)
   for (const depth of [-halfDepth, halfDepth]) {
     // Only architectural boundaries are drawn, never the panels' construction grid.
-    g.line([point(-length / 2, 0, depth), point(-length / 2, h, depth),
-      point(length / 2, h, depth), point(length / 2, 0, depth)], 'edge')
+    for (const x of [-length / 2, length / 2]) {
+      g.line([point(x, 0, depth), point(x, h, depth)], 'edge')
+    }
+    if (topEdge) g.line([point(-length / 2, h, depth), point(length / 2, h, depth)], 'edge')
     let start = -length / 2
     for (const o of floorCuts) {
       g.line([point(start, 0, depth), point(o.centre - o.width / 2, 0, depth)], 'edge')
@@ -82,7 +88,7 @@ export function wallOutline(g: Draft, length: number, h: number, floor: number, 
 
 /** Wall panels are omitted at openings, so entryways have real traversable space. */
 export function piercedWall(g: Draft, length: number, h: number, floor: number, offset: number,
-  openings: WallOpening[], side = false) {
+  openings: WallOpening[], side = false, topEdge = true) {
   const thickness = WALL_THICKNESS
   const xs = [...new Set([-length / 2, length / 2, ...openings.flatMap(o => [o.centre - o.width / 2, o.centre + o.width / 2])])].sort((a, b) => a - b)
   const ys = [...new Set([0, h, ...openings.flatMap(o => [o.bottom, o.bottom + o.height])])].sort((a, b) => a - b)
@@ -94,7 +100,7 @@ export function piercedWall(g: Draft, length: number, h: number, floor: number, 
     if (side) g.box(thickness, height, width, offset, floor + y, x, 'paper', false)
     else g.box(width, height, thickness, x, floor + y, offset, 'paper', false)
   }
-  wallOutline(g, length, h, floor, offset, openings, side, thickness)
+  wallOutline(g, length, h, floor, offset, openings, side, thickness, topEdge)
 }
 
 /** Solid gable ends, two roof planes with real thickness, overhangs and a ridge cap. */
@@ -102,8 +108,12 @@ export function roof(g: Draft, w: number, d: number, eave: number, rise: number,
   for (const end of [-1, 1]) {
     const outside = x + end * w / 2
     const inside = outside - end * WALL_THICKNESS
-    for (const faceX of [outside, inside]) g.face([[faceX, eave, z - d / 2], [faceX, eave + rise, z],
-      [faceX, eave, z + d / 2]], 'paper')
+    for (const faceX of [outside, inside]) {
+      const gable: Point[] = [[faceX, eave, z - d / 2], [faceX, eave + rise, z],
+        [faceX, eave, z + d / 2]]
+      g.face(gable, 'paper', false)
+      g.line(gable, 'edge')
+    }
     // Give the gable a room-facing contour instead of hiding all ink on its outer face.
     const inkX = inside - end * WALL_INK_OFFSET
     const innerEave = eave + rise * WALL_THICKNESS / (d / 2) - WALL_INK_OFFSET
@@ -221,11 +231,11 @@ export function building(spec: BuildingSpec) {
       height: type === 'warehouse' ? 0.75 : 1.15 })
   }
   for (const side of [-1, 1]) {
-    piercedWall(walls, d - 2 * WALL_THICKNESS, h, floor, side * (w / 2 - WALL_THICKNESS / 2), sideOpenings, true)
+    piercedWall(walls, d - 2 * WALL_THICKNESS, h, floor, side * (w / 2 - WALL_THICKNESS / 2), sideOpenings, true, false)
     for (const o of sideOpenings) windowFrame(walls, side * (w / 2 + 0.025), floor + o.bottom, o.centre, o.width, o.height, true)
     windows[side > 0 ? 'right' : 'left'] = sideCount
   }
-  interiorRoomOutline(walls, w - 2 * WALL_THICKNESS, d - 2 * WALL_THICKNESS, floor, floor + h)
+  interiorRoomOutline(walls, w - 2 * WALL_THICKNESS, d - 2 * WALL_THICKNESS, floor, floor + h, 0, 0, 'gable')
   if (type !== 'warehouse') {
     const x = w * 0.29, z = -d * 0.19, y = floor + h + Math.min(2.15, d * 0.17) * 0.62
     covering.box(0.55, 1.25, 0.65, x, y + 0.5, z, 'paper', 'detail')

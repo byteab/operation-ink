@@ -6,7 +6,7 @@ export interface RescueLayout {
   jeepSeats: [Vec3]
   jeepBoardPoint: Vec3
   escapeRoute: Vec3[]
-  cameras: { id: string; position: Vec3; yaw: number; arc: number; range: number }[]
+  cameras: { id: string; position: Vec3; yaw: number; arc: number; range: number; wallMount?: Vec3 }[]
 }
 
 /** Shared authored route; feet positions follow the physical detention staircase. */
@@ -23,6 +23,8 @@ export const RESCUE_LAYOUT: RescueLayout = {
     { id: 'detention-camera', position: [124.9, 3.15, -4.65], yaw: -0.65, arc: 0.65, range: 19 },
     { id: 'jeep-camera', position: [160.6, 3.1, 4.5], yaw: -0.7, arc: 0.75, range: 20 },
     { id: 'security-camera', position: [150.7, 3.15, -40.2], yaw: -0.2, arc: 0.65, range: 18 },
+    { id: 'mess-hall-exit-camera', position: [-20.16, 3.45, -35.66], yaw: -1.05, arc: 0.65, range: 23,
+      wallMount: [-20.325, 3.45, -36] },
   ],
 }
 

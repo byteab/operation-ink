@@ -90,7 +90,7 @@ def single_shot(attack, tail, seconds):
 def selected_names():
     names = ['glock_shot_1', 'glock_shot_2', 'svddrag_shot_1', 'spas12_shot_1',
              'spas12_reload_1', 'spas12_reload_2', 'door_open_1',
-             'weaponpickup_1', 'new_gun', 'guns_dry_1', 'ak47_reload_1', 'ak47_reload_3']
+             'weaponpickup_1', 'new_gun', 'guns_dry_1', 'ak47_reload_1', 'ak47_reload_3', 'alarm_1']
     for prefix, count, padding in [('walk_gravel_', 6, 1), ('walk_ladder_', 4, 1),
                                     ('spas12_bulins_', 4, 1),
                                     ('detected_', 6, 2), ('bul_concrete_', 2, 1),

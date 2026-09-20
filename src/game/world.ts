@@ -9,6 +9,8 @@ import { pipeLadder } from '../world/ladders'
 import type { EnemySpec, MissionWorld, Station, StationKind, Vec3 } from './types'
 import { DETENTION_STAIR_HOLE, RESCUE_LAYOUT } from './rescue-layout'
 import { createRescueJeep } from './rescue-jeep'
+import { SIGNALS_COMPUTER_ID } from './mission'
+import { CAMERA_LIGHTS } from './security'
 
 const FLOOR = 0.12
 const DOOR_WIDTH = 2.1
@@ -243,11 +245,6 @@ function control(kind: StationKind, id: string, label: string, position: Point, 
     for (const x of [-0.14, 0.14]) object.box(0.07, 0.07, 0.04, x, 0.94, 0.15, 'paper', 'detail')
   }
   object.finish()
-  const text = { radio: 'RADIO LINK', release: 'ISOLATE RELEASE', brake: 'LOCK BRAKE', signal: 'STOP DISPATCH',
-    extract: 'EXTRACT', supply: 'FIELD SUPPLIES', distraction: 'SERVICE BELL',
-    hostage: 'CELL RELEASE', cameras: 'SURVEILLANCE', alarm: 'ALARM SHUTOFF', gate: 'EXIT GATE',
-    jeep: 'RESCUE TRANSPORT', rally: 'ESCORT RALLY' }[kind]
-  object.add(sign(text, [0, 1.93, 0.08], 2.2, 0, kind === 'signal' ? 'HORN CALLS INSPECTION' : ''))
   const point = new THREE.Vector3(0, isSupply ? 0.8 : 1.3, 0.24)
     .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(new THREE.Vector3(...position))
   return { id, kind, object, point, label }
@@ -358,22 +355,28 @@ function securityCameras() {
     root.position.set(...spec.position)
     root.userData.noCollision = true
     const mount = new Draft(`${spec.id} mount`)
-    mount.box(0.12, spec.position[1], 0.12, 0, -spec.position[1] / 2, 0, 'roof', 'detail')
+    if (spec.wallMount) {
+      const anchor = new THREE.Vector3(...spec.wallMount).sub(root.position)
+      mount.box(0.15, 0.4, 0.24, anchor.x, anchor.y, anchor.z, 'roof', 'detail')
+      mount.beam(anchor.toArray(), [0, -0.24, 0], 0.09, 'paper', 'detail')
+      mount.box(0.09, 0.24, 0.09, 0, -0.12, 0, 'paper', 'detail')
+    } else mount.box(0.12, spec.position[1], 0.12, 0, -spec.position[1] / 2, 0, 'roof', 'detail')
     const pivot = new THREE.Group()
     pivot.rotation.y = spec.yaw
     const casing = new Draft(`${spec.id} housing`)
     casing.box(0.4, 0.3, 0.7, 0, 0, 0.25, 'roof', 'detail')
     casing.box(0.24, 0.2, 0.04, 0, 0, 0.62, 'concrete', 'detail')
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6),
-      new THREE.MeshBasicMaterial({ color: penPalette.ink, toneMapped: false }))
-    lamp.position.set(0.15, -0.08, 0.63)
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8),
+      new THREE.MeshBasicMaterial({ color: CAMERA_LIGHTS.watching, toneMapped: false }))
+    lamp.name = `${spec.id} status light`
+    lamp.position.set(0.15, -0.065, 0.65)
     pivot.add(casing.finish(), lamp)
     root.add(mount.finish(), pivot)
     return { id: spec.id, root, pivot, lamp }
   })
 }
 
-export function createMissionWorld(): MissionWorld {
+export function createMissionWorld(compound?: THREE.Group): MissionWorld {
   const root = new THREE.Group()
   root.name = 'Hostage rescue · detention annex'
   root.userData.kind = 'mission-world'
@@ -428,19 +431,11 @@ export function createMissionWorld(): MissionWorld {
   const cover = new Draft('Annex cover · freight and service baffles')
   crates(cover, 123, -38.3, 2)
   crates(cover, 129, 6, 3)
-  cover.box(5, 1.45, 0.55, 132, 0.725, -18, 'concrete', 'detail')
   cover.box(4, 1.4, 0.6, 158, 0.7, -12, 'concrete', 'detail')
   // New gate connects to the original raised loading platform through real steps.
   steps(cover, 57, -23.99, 2.4, 1.05, 5)
   crates(cover, 52, -15, 3)
   root.add(cover.finish())
-
-  root.add(sign('SECURITY →', [94, 2.5, -35.5], 4.5, -Math.PI / 2, 'CAMERA CONTROL'))
-  root.add(sign('DETENTION →', [96, 2.6, 7], 4.2, -Math.PI / 2, 'CELLS / RESCUE JEEP'))
-  root.add(sign('↑ RAIL STAIRS', [54, 2.35, -17.8], 3.4))
-  root.add(sign('← NORTH INSERTION', [-43, 2.3, -30.5], 4.4, 0, 'MESS HALL ROOF'))
-  root.add(sign('← DETENTION     EXIT →', [134, 2.4, -6], 6.5))
-  root.add(sign('EXIT / RESCUE JEEP', [158, 3.5, 16.5], 6.4, Math.PI))
 
   const stations = [
     ...RESCUE_LAYOUT.hostageSpawns.map((position, index) => control('hostage', `hostage-${index + 1}`,
@@ -457,7 +452,13 @@ export function createMissionWorld(): MissionWorld {
     control('distraction', 'service-bell', 'Ring service bell', [-39, 0, 3]),
   ]
   stations.forEach(station => root.add(station.object))
-  root.add(sign('NORTH INSERTION', [-55.4, 2.8, -53.4], 5.4, Math.PI / 2, 'DETENTION IN EAST ANNEX'))
+  // Register the existing office monitor without moving it out of its workstation.
+  compound?.updateMatrixWorld(true)
+  compound?.traverse(object => {
+    if (!object.userData.cameraTerminal) return
+    const point = object.localToWorld(new THREE.Vector3(...object.userData.interactionPoint as Vec3))
+    stations.push({ id: SIGNALS_COMPUTER_ID, kind: 'cameras', object, point, label: 'Disable cameras for 60 seconds' })
+  })
 
   // The mess hall is west of the tank, so this post must use the west catwalk
   // to watch the dining building without the tank blocking its own sightline.

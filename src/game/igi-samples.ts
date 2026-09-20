@@ -3,6 +3,7 @@ const files = (...names: string[]) => names.map(name => `igi/${name}.wav`)
 const series = (prefix: string, count: number, padding = 1) =>
   files(...Array.from({ length: count }, (_, i) => `${prefix}${String(i + 1).padStart(padding, '0')}`))
 export const IGI_SAMPLES: Record<string, { files: string[]; gain: number }> = {
+  horn: { files: files('alarm_1'), gain: 0.48 },
   footstep: { files: series('walk_gravel_', 6), gain: 0.42 },
   'enemy-footstep': { files: series('walk_gravel_', 6), gain: 0.34 },
   ladder: { files: series('walk_ladder_', 4), gain: 0.3 },

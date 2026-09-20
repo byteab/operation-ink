@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
-import { advanceMission, completeEscape, damageMission, initialMission, missionObjective, stationLabel, useStation } from '../src/game/mission'
+import { advanceMission, completeEscape, damageMission, initialMission, missionObjective, stationLabel, useStation, SIGNALS_COMPUTER_ID } from '../src/game/mission'
 import { CollisionWorld } from '../src/player/collision'
 import { PlayerBody } from '../src/player/body'
 import { PlayerActions } from '../src/player/actions'
@@ -53,6 +53,31 @@ test('cameras and gate are idempotent; camera shutdown does not silently cancel 
   assert.equal(state.alarm, 'silenced'); assert(!useStation(state, 'alarm', 'panel').changed)
   assert(useStation(state, 'gate', 'gate').changed); assert(!useStation(state, 'gate', 'gate').changed)
   assert(!useStation(state, 'hostage', 'unknown').changed)
+})
+
+test('office computer disables for exactly one active minute; checkpoints and permanent shutdown preserve their semantics', () => {
+  const state = initialMission()
+  advanceMission(state, 17)
+  assert(useStation(state, 'cameras', SIGNALS_COMPUTER_ID).changed)
+  assert.equal(state.camerasDisabledUntil, 77)
+  assert(!useStation(state, 'cameras', SIGNALS_COMPUTER_ID).changed, 'Repeated use cannot extend the timer')
+  advanceMission(state, 30)
+  const restored = structuredClone(state)
+  advanceMission(restored, 29.99)
+  assert(!restored.camerasActive)
+  advanceMission(restored, 0.02)
+  assert(restored.camerasActive)
+  assert.equal(restored.camerasDisabledUntil, null)
+  assert(useStation(restored, 'cameras', SIGNALS_COMPUTER_ID).changed, 'Computer is reusable after recovery')
+  assert(useStation(restored, 'cameras', 'security-computer').changed, 'Security cabin can permanently override a timed shutdown')
+  advanceMission(restored, 120)
+  assert(!restored.camerasActive)
+  assert.equal(restored.camerasDisabledUntil, null)
+  assert(!useStation(restored, 'cameras', SIGNALS_COMPUTER_ID).changed, 'Office cannot re-enable permanently disabled cameras')
+  state.phase = 'dead'
+  advanceMission(state, 120)
+  assert.equal(state.elapsed, 47)
+  assert(!state.camerasActive)
 })
 
 test('objectives follow actual hostage progress despite optional work performed first', () => {

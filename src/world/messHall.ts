@@ -103,13 +103,25 @@ function workstation(index: number, x: number, z: number, floor: number) {
   monitor.box(0.055, 0.2, 0.06, 0, floor + 1, -0.22, 'paper', 'detail')
   monitor.box(0.94, 0.57, 0.075, 0, floor + 1.33, -0.25, 'paper', 'detail')
   monitor.box(0.84, 0.46, 0.008, 0, floor + 1.33, -0.207, 'glass', 'detail')
-  monitor.line([[-0.34, floor + 1.44, -0.2], [-0.18, floor + 1.44, -0.2], [-0.18, floor + 1.25, -0.2], [0.3, floor + 1.25, -0.2]], 'landscape')
+  if (index === 1) {
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.44),
+      new THREE.MeshBasicMaterial({ color: 0x146bff, toneMapped: false }))
+    screen.name = 'Signals office · powered surveillance screen'
+    screen.position.set(0, floor + 1.33, -0.201)
+    screen.userData.noCollision = true
+    monitor.add(screen)
+    monitor.userData.cameraTerminal = true
+    monitor.userData.interactionPoint = [0, floor + 1.33, -0.18]
+  } else {
+    monitor.line([[-0.34, floor + 1.44, -0.2], [-0.18, floor + 1.44, -0.2], [-0.18, floor + 1.25, -0.2], [0.3, floor + 1.25, -0.2]], 'landscape')
+  }
   const desktop = new Draft(`Signals office · desktop computer ${index}`)
   desktop.userData.kind = 'desktop-computer'
   desktop.box(0.27, 0.53, 0.5, 0.63, floor + 0.29, -0.02, 'concrete', 'detail')
   desktop.box(0.18, 0.045, 0.018, 0.63, floor + 0.44, 0.242, 'paper', 'detail')
   for (const y of [0.12, 0.17, 0.22]) desktop.line([[0.54, floor + y, 0.245], [0.72, floor + y, 0.245]], 'mesh')
-  station.add(desk.finish(), monitor.finish(), desktop.finish(), chair(`Signals office · chair ${index}`, 0, 1.05, floor, Math.PI))
+  station.add(desk.finish(), monitor.finish(), desktop.finish(),
+    chair(`Signals office · chair ${index}`, index === 1 ? 1.1 : 0, index === 1 ? 1.35 : 1.05, floor, Math.PI))
   return station
 }
 

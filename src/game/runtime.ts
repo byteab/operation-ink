@@ -296,6 +296,7 @@ export class MissionRuntime {
     }
     if (resetEscort) this.escort.sync(this.state)
     this.security.sync(this.state)
+    if (this.state.alarm !== 'active') this.audio.setAlarm(false)
   }
 
   private updateEscape(dt: number) {
@@ -373,6 +374,8 @@ export class MissionRuntime {
     this.weapons.update(dt,{active:this.isActive()&&this.interactionTime===0&&this.state.jeep!=='escaping',climbing:this.player.actions.traversing,
       moving:this.player.body.velocity.length(),aiming:this.aiming,reducedMotion:this.hud.reducedMotion,feet:this.player.body.position})
     this.audio.update(this.camera.perspective)
+    this.audio.setAlarm(active && this.state.alarm === 'active',
+      this.state.alarmPosition ? new THREE.Vector3(...this.state.alarmPosition) : undefined)
     this.hud.setScoped(this.weapons.scoped, this.weapons.scopeMagnification)
     if(active) {
       for(const trace of this.traces) trace.time-=dt
