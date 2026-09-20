@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { Draft, type Point } from '../render/ink'
-import type { BuildingSpec } from './architecture'
+import { interiorRoomOutline, WALL_THICKNESS, wallOutline, type BuildingSpec } from './architecture'
 import { createDoor } from './doors'
 import { pipe, pipeLadder } from './ladders'
 
@@ -13,40 +13,25 @@ function wall(name: string, length: number, height: number, x: number, z: number
   g.userData.cutaway = cutaway
   g.userData.kind = 'wall'
   g.userData.openings = openings
+  g.userData.wallThickness = WALL_THICKNESS
   const stops = [...new Set([-length / 2, length / 2,
     ...openings.flatMap(o => [o.center - o.width / 2, o.center + o.width / 2])])].sort((a, b) => a - b)
   for (let i = 1; i < stops.length; i++) {
     const a = stops[i - 1], b = stops[i], center = (a + b) / 2
     const opening = openings.find(o => center > o.center - o.width / 2 && center < o.center + o.width / 2)
-    if (!opening) g.box(b - a, height, 0.24, center, floor + height / 2, 0, 'paper', false)
+    if (!opening) g.box(b - a, height, WALL_THICKNESS, center, floor + height / 2, 0, 'paper', false)
     else {
-      if (opening.bottom > 0) g.box(b - a, opening.bottom, 0.24, center, floor + opening.bottom / 2, 0, 'paper', false)
+      if (opening.bottom > 0) g.box(b - a, opening.bottom, WALL_THICKNESS, center, floor + opening.bottom / 2, 0, 'paper', false)
       const upper = height - opening.bottom - opening.height
-      if (upper > 0) g.box(b - a, upper, 0.24, center, floor + height - upper / 2, 0, 'paper', false)
-    }
-    if (!opening || opening.bottom > 0) {
-      for (const depth of [-0.12, 0.12]) g.line([[a, floor, depth], [b, floor, depth]])
+      if (upper > 0) g.box(b - a, upper, WALL_THICKNESS, center, floor + height - upper / 2, 0, 'paper', false)
     }
   }
   // Outline the wall's boundary and real opening reveals, not the construction
   // boxes: their coplanar joints would create unwanted full-height facade stripes.
-  for (const depth of [-0.12, 0.12]) {
-    g.line([[-length / 2, floor, depth], [-length / 2, floor + height, depth],
-      [length / 2, floor + height, depth], [length / 2, floor, depth]])
+  wallOutline(g, length, height, floor, 0, openings.map(o => ({ ...o, centre: o.center })))
+  for (const depth of [-WALL_THICKNESS / 2, WALL_THICKNESS / 2]) {
     if (cutaway) g.hatch([-length / 2 + 0.15, floor + height - 0.34, depth + Math.sign(depth) * 0.015],
       [Math.min(length * 0.25, 2.8), 0, 0], [0, 0.24, 0], { spacing: 0.19, inset: 0.025 })
-    for (const o of openings) {
-      const left = o.center - o.width / 2, right = o.center + o.width / 2
-      const bottom = floor + o.bottom, top = bottom + o.height
-      g.line([[left, bottom, depth], [left, top, depth], [right, top, depth], [right, bottom, depth]], 'detail')
-      if (o.bottom > 0) g.line([[left, bottom, depth], [right, bottom, depth]], 'detail')
-    }
-  }
-  for (const x of [-length / 2, length / 2]) for (const y of [floor, floor + height]) {
-    g.line([[x, y, -0.12], [x, y, 0.12]], 'detail')
-  }
-  for (const o of openings) for (const x of [o.center - o.width / 2, o.center + o.width / 2]) {
-    for (const y of [floor + o.bottom, floor + o.bottom + o.height]) g.line([[x, y, -0.12], [x, y, 0.12]], 'detail')
   }
   for (const o of openings.filter(o => o.window)) {
     const glass = new Draft(`${name} · window ${o.center}`)
@@ -173,6 +158,10 @@ export function messHall(spec: BuildingSpec): THREE.Group {
   foundation.box(w + 0.3, floor, d + 0.3, 0, floor / 2, 0, 'concrete', 'detail')
   g.add(foundation.finish())
   const windowOpening = (center: number): Opening => ({ center, width: 1.7, bottom: 1.4, height: 1.45, window: true })
+  const roomCorners = new Draft('Mess hall · interior wall and ceiling corners')
+  roomCorners.userData.cutaway = true
+  interiorRoomOutline(roomCorners, w - WALL_THICKNESS, d - WALL_THICKNESS, floor, eave)
+  g.add(roomCorners.finish())
   g.add(
     wall('Mess hall · south exterior wall', w, h, 0, halfD, floor, 0,
       [...[-10.2, -5.2, 4.8, 10.2].map(windowOpening),

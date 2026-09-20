@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { Draft, type Point } from '../render/ink'
 import { penPalette } from '../render/ballpoint'
-import { crates, steps } from '../world/architecture'
+import { crates, steps, WALL_THICKNESS, interiorRoomOutline, piercedWall } from '../world/architecture'
 import { createDoor } from '../world/doors'
-import { fence, gate, type PlanPoint } from '../world/industrial'
+import { createFenceGate } from '../world/fenceGate'
+import { fence, gate, OBSERVATION_TOWER_POSITION, type PlanPoint } from '../world/industrial'
 import { pipeLadder } from '../world/ladders'
 import type { EnemySpec, MissionWorld, Station, StationKind, Vec3 } from './types'
 import { DETENTION_STAIR_HOLE, RESCUE_LAYOUT } from './rescue-layout'
@@ -92,15 +93,11 @@ function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
   root.add(floor.finish())
   const walls = new Draft(`${name} · walls`)
   walls.userData.cutaway = true
-  const height = ROOF - FLOOR - 0.16
-  const sideWidth = (w - DOOR_WIDTH) / 2
+  const height = ROOF - FLOOR - 0.2
+  const wallFace = WALL_THICKNESS / 2
   for (const side of [-1, 1]) {
-    for (const direction of [-1, 1]) walls.box(sideWidth, height, 0.22,
-      direction * (DOOR_WIDTH / 2 + sideWidth / 2), FLOOR + height / 2, side * d / 2, 'paper', false)
-    walls.box(DOOR_WIDTH, height - DOOR_HEIGHT, 0.22, 0,
-      FLOOR + DOOR_HEIGHT + (height - DOOR_HEIGHT) / 2, side * d / 2, 'paper', false)
-    walls.line([[-w / 2, FLOOR, side * (d / 2 + 0.115)], [-w / 2, ROOF - 0.16, side * (d / 2 + 0.115)],
-      [w / 2, ROOF - 0.16, side * (d / 2 + 0.115)], [w / 2, FLOOR, side * (d / 2 + 0.115)]])
+    piercedWall(walls, w, height, FLOOR, side * d / 2,
+      [{ centre: 0, width: DOOR_WIDTH, bottom: 0, height: DOOR_HEIGHT }])
     const door = createDoor({ name: `${name} · ${side > 0 ? 'south' : 'north'} door`,
       x: 0, z: side * (d / 2 + 0.035), floor: FLOOR, width: DOOR_WIDTH,
       height: DOOR_HEIGHT, angle: side > 0 ? 0 : Math.PI, open: false })
@@ -109,19 +106,18 @@ function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
     // and bullets follow the same solid wall geometry they visibly belong to.
     for (const direction of [-1, 1]) {
       const wx = direction * (w / 2 - 1.65)
-      walls.box(1.6, 1.0, 0.035, wx, 2.1, side * (d / 2 + 0.13), 'glass', 'detail')
-      walls.line([[wx, 1.6, side * (d / 2 + 0.153)], [wx, 2.6, side * (d / 2 + 0.153)]], 'mesh')
-      walls.hatch([wx - 0.67, 1.7, side * (d / 2 + 0.16)], [0.48, 0, 0], [0, 0.6, 0],
+      walls.box(1.6, 1.0, 0.035, wx, 2.1, side * (d / 2 + wallFace + 0.02), 'glass', 'detail')
+      walls.line([[wx, 1.6, side * (d / 2 + wallFace + 0.043)], [wx, 2.6, side * (d / 2 + wallFace + 0.043)]], 'mesh')
+      walls.hatch([wx - 0.67, 1.7, side * (d / 2 + wallFace + 0.05)], [0.48, 0, 0], [0, 0.6, 0],
         { spacing: 0.12, inset: 0.03 })
     }
-    walls.hatch([-w / 2 + 0.2, ROOF - 0.48, side * (d / 2 + 0.132)], [Math.min(w * 0.32, 3.2), 0, 0],
+    walls.hatch([-w / 2 + 0.2, ROOF - 0.48, side * (d / 2 + wallFace + 0.022)], [Math.min(w * 0.32, 3.2), 0, 0],
       [0, 0.23, 0], { spacing: 0.2, inset: 0.025 })
   }
   for (const side of [-1, 1]) {
-    walls.box(0.22, height, d, side * w / 2, FLOOR + height / 2, 0, 'paper', false)
-    walls.line([[side * (w / 2 + 0.115), FLOOR, -d / 2], [side * (w / 2 + 0.115), ROOF - 0.16, -d / 2],
-      [side * (w / 2 + 0.115), ROOF - 0.16, d / 2], [side * (w / 2 + 0.115), FLOOR, d / 2]])
+    piercedWall(walls, d, height, FLOOR, side * w / 2, [], true)
   }
+  interiorRoomOutline(walls, w - WALL_THICKNESS, d - WALL_THICKNESS, FLOOR, ROOF - 0.2)
   root.add(walls.finish())
   const roof = new Draft(`${name} · flat roof`)
   roof.userData.cutaway = true
@@ -204,16 +200,6 @@ function fenceOpening(compound: THREE.Group, name: string, axis: 0 | 1, fixed: n
 
 /** Call after createCompound(), before constructing CollisionWorld/interactions. */
 export function prepareCompound(compound: THREE.Group) {
-  const serviceGate = compound.getObjectByName('North service yard gate · closed')
-  if (serviceGate) {
-    const entry = createDoor({ name: 'West service entrance', x: serviceGate.position.x,
-      z: serviceGate.position.z, floor: 0, width: 7.5, height: 2.65,
-      angle: serviceGate.rotation.y, industrial: true })
-    entry.add(sign('SERVICE ENTRY', [0, 3.15, -0.12], 5, Math.PI, 'WEST PERIMETER ROUTE'))
-    serviceGate.parent?.add(entry)
-    serviceGate.removeFromParent()
-    serviceGate.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose() })
-  }
   const ground = compound.getObjectByName('Unlit paper ground')
   if (ground instanceof THREE.Mesh && !ground.userData.detentionOpening) {
     const shape = new THREE.Shape()
@@ -283,12 +269,25 @@ function detentionBlock() {
     shell.box(x1 - x0, FLOOR, z1 - z0, (x0 + x1) / 2, FLOOR / 2, (z0 + z1) / 2, 'concrete', 'detail')
   }
   shell.box(18.3, 0.2, 24.3, 117, -4.3, -17, 'concrete', 'detail')
-  for (const x of [108, 126]) shell.box(0.25, 8.2, 24, x, -0.1, -17, 'paper', 'detail')
-  shell.box(18, 8.2, 0.25, 117, -0.1, -29, 'paper', 'detail')
-  shell.box(18, 4.2, 0.25, 117, -2.1, -5, 'paper', 'detail')
-  for (const x of [111.625, 122.375]) shell.box(7.25, 3.88, 0.25, x, 2.06, -5, 'paper', 'detail')
-  shell.box(3.5, 1.05, 0.25, 117, 3.475, -5, 'paper', 'detail')
+  for (const x of [108, 126]) shell.box(WALL_THICKNESS, 8.2, 24, x, -0.1, -17, 'paper', 'detail')
+  shell.box(18, 8.2, WALL_THICKNESS, 117, -0.1, -29, 'paper', 'detail')
+  shell.box(18, 4.2, WALL_THICKNESS, 117, -2.1, -5, 'paper', 'detail')
+  for (const x of [111.625, 122.375]) shell.box(7.25, 3.88, WALL_THICKNESS, x, 2.06, -5, 'paper', 'detail')
+  shell.box(3.5, 1.05, WALL_THICKNESS, 117, 3.475, -5, 'paper', 'detail')
   shell.box(18.4, 0.2, 24.4, 117, 4.1, -17, 'roof', 'detail')
+  // These walls continue below grade, so their geometric bottom edges are buried.
+  // Draw the above-ground footprint on the visible wall faces as well.
+  const outside = WALL_THICKNESS / 2 + 0.004
+  for (const side of [-1, 1]) {
+    const x = 117 + side * (9 + outside)
+    shell.line([[x, FLOOR + 0.004, -29 - outside], [x, FLOOR + 0.004, -5 + outside]])
+  }
+  shell.line([[108 - outside, FLOOR + 0.004, -29 - outside], [126 + outside, FLOOR + 0.004, -29 - outside]])
+  for (const [left, right] of [[108 - outside, 115.25], [118.75, 126 + outside]]) {
+    shell.line([[left, FLOOR + 0.004, -5 + outside], [right, FLOOR + 0.004, -5 + outside]])
+  }
+  interiorRoomOutline(shell, 18 - WALL_THICKNESS, 24 - WALL_THICKNESS, FLOOR, 4, 117, -17)
+  interiorRoomOutline(shell, 18 - WALL_THICKNESS, 24 - WALL_THICKNESS, -4.2, 0, 117, -17)
   // Side walls keep the upper guardroom separate from the stair opening.
   for (const x of [115.3, 118.7]) shell.box(0.14, 1.05, 11.1, x, 0.645, -14.55, 'roof', 'detail')
   for (let i = 0; i < 18; i++) {
@@ -382,8 +381,8 @@ export function createMissionWorld(): MissionWorld {
   // The landscape stays open; runtime bounds still recover a player who leaves the map.
   root.add(fence('East annex north perimeter', [[99, -37.5], [99, -57], [164, -57], [164, 7]], 3.1))
   root.add(fence('East annex south perimeter', [[164, 15], [164, 18], [99, 18]], 3.1))
-  const exitGate = createDoor({ name: 'Secure compound exit gate', x: 164, z: 11,
-    floor: 0, width: 8, height: 3.1, angle: Math.PI / 2, industrial: true })
+  const exitGate = createFenceGate({ name: 'Secure compound exit gate', x: 164, z: 11,
+    width: 8, height: 3.1, angle: Math.PI / 2 })
   exitGate.userData.missionLocked = true
   root.add(exitGate)
 
@@ -431,7 +430,6 @@ export function createMissionWorld(): MissionWorld {
   crates(cover, 129, 6, 3)
   cover.box(5, 1.45, 0.55, 132, 0.725, -18, 'concrete', 'detail')
   cover.box(4, 1.4, 0.6, 158, 0.7, -12, 'concrete', 'detail')
-  cover.box(5, 1.45, 0.55, 103, 0.725, -6, 'concrete', 'detail')
   // New gate connects to the original raised loading platform through real steps.
   steps(cover, 57, -23.99, 2.4, 1.05, 5)
   crates(cover, 52, -15, 3)
@@ -516,7 +514,8 @@ export function createMissionWorld(): MissionWorld {
     // existing supported decks; marksmen never navigate to ground targets.
     { ...enemy('water-sniper', 'Water-tower marksman', waterSniperPatrol, 'sniper'), role: 'sniper' as const, patrolMode: 'perimeter' as const,
       facing: Math.atan2(messHallCenter[0] - waterSniperPost[0], messHallCenter[1] - waterSniperPost[2]) },
-    { ...enemy('watch-sniper', 'Observation-tower marksman', [[-48.2, 6.735, 16.9]], 'sniper'), role: 'sniper' as const, facing: Math.PI * 0.75 },
+    { ...enemy('watch-sniper', 'Observation-tower marksman', [[OBSERVATION_TOWER_POSITION[0] + 2.2, 6.735,
+      OBSERVATION_TOWER_POSITION[1] - 1.25]], 'sniper'), role: 'sniper' as const, facing: Math.PI * 0.75 },
     ...([[140, FLOOR, 1.3], [146, FLOOR, 1.3], [140, FLOOR, 5], [146, FLOOR, 5]] as Vec3[]).map((position, index) =>
       ({ ...enemy(`reserve-${index + 1}`, `Barracks response ${index + 1}`, [position, [143, FLOOR, 3],
         [143, FLOOR, -1.5], [143, 0, -5], [151, 0, -8], [151, 0, -22],

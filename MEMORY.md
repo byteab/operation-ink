@@ -96,3 +96,14 @@ Inspected read-only on 2026-09-19 by the environment-inspector subagent. No appl
 
 - Shotgun camera kick is now 0.11 radians (twice the previous amount; five times an AK shot at the same random sample), with a 0.16 s recovery time constant and 84% pitch recovery. The gun kick amplitude is 1.7; sideways kick is scaled by 0.55 to stay controlled. Ballistics and firing rate are unchanged; reduced motion suppresses the stronger camera and gun movement.
 - Build, weapon/loadout/ballistics and polish weapon checks passed. Agent-browser verified the peak/recovery comparison and normal firing input; evidence and scope are in `docs/shotgun-recoil/README.md`.
+
+## Annotated compound corrections
+
+- The user subsequently authorized agent-browser verification. Captured and inspected forecourt, observation tower, railway, detention exterior, warehouse interior and closed/open exit views; the real F handler opens the rescue wire gate. Browser errors were empty. Evidence and staged-check scope: `docs/compound-corrections/README.md`.
+- Removed the outer roadside fences around the mess-hall forecourt. The north service-yard wire gate remains permanently closed and is not registered as an interactive door. Spawn-to-annex traversal now explicitly verifies the exterior roof ladder, mess-hall stairs and yard exit.
+- The tower indicated by the annotation is the observation tower near the fuel area. Moved it 3m north to `[-50.4, 15.15]`, synchronized its sniper and zipline, and connected the cross fence behind it while keeping the west service gate open.
+- The rescue exit uses a hinged wire gate. Its moving collision barrier blocks bodies while passing sight and gunfire; mission control still opens it for the vehicle.
+- Shortened the loading platform to X=98.4 and canopy to X=97.4, inside the annex fence at X=99; kept the full railway. Removed the separate rail entrance shelter and the low baffle beside detention at `[103, -6]`.
+- Shared building walls are 0.14m thick; door frames have 0.05m jambs and 0.14m depth. Added interior wall/ceiling corners, both-face opening contours, gable/roof underside contours, and detention's missing above-ground footprint line.
+- The small annex buildings are Security cabin (camera controls), Maintenance shelter (field supplies and roof ladder), and Crew house (guard quarters/reserves).
+- Build and player, map, rescue-route, mission, hostage, security, indoor-enemy, door-navigation, wire-fence, tower-patrol and zipline checks passed. Zipline obstruction fixtures now follow the landing's orientation.

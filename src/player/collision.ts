@@ -68,7 +68,7 @@ export class CollisionWorld {
         for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) {
           if (parent.userData.doorHinge) dynamic = true
         }
-        this.add(object, dynamic)
+        this.add(object, dynamic, object.userData.blocksSight !== false, object.userData.blocksShots !== false)
       }
       for (const panel of object.userData.collisionPanels ?? []) {
         const [ax, az] = panel.a, [bx, bz] = panel.b

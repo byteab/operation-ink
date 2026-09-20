@@ -84,9 +84,11 @@ assert.notEqual(actions.findTarget(camera)?.kind, 'zipline', 'Cannot board the c
 console.log('PASS cable cannot be activated from below its landing')
 
 // Eye-level lines clear these rails, but a standing capsule cannot cross them.
-for (const point of [[6.208478136630216, 12.634999656677246, -32.73667577395432],
-  [6.458478136630216, 12.634999656677246, -31.986675773954314]]) {
-  actions.reset(); body.teleport(new THREE.Vector3(...point)); actions.syncCamera(camera)
+// Fixtures follow the landing orientation when the destination tower moves.
+const launch = scene.getObjectByName('Water tower launch landing')!
+for (const [across, along] of [[-2.072381986878163, 4.462295710057219], [-1.3391621042891835, 4.757911345259764]]) {
+  const point = launch.localToWorld(new THREE.Vector3(across, launch.userData.floorHeight + 0.019, along))
+  actions.reset(); body.teleport(point); actions.syncCamera(camera)
   camera.lookAt(actions.ziplinePoint(zipline, false).add(new THREE.Vector3(0, 1.3, 0))); camera.updateMatrixWorld(true)
   assert(world.fits(new Capsule(body.position.clone().add(new THREE.Vector3(0, 0.28, 0)),
     body.position.clone().add(new THREE.Vector3(0, 1.52, 0)), 0.28)), 'Regression fixture starts in clear space')

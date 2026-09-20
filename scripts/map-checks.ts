@@ -90,8 +90,17 @@ check('water tower shortcut fenced',()=>{
 })
 check('old inner gate and tower-side fence gaps closed',()=>{
   assert(!fits(stand(-12.45,20.1)))
-  assert(!fits(new THREE.Vector3(-46.4,.005,23.9)))
+  assert(!fits(new THREE.Vector3(-46.4,.005,21.05)))
   assert(!fits(new THREE.Vector3(-44.8,.005,35.7)))
+  for(const side of [-1,1]){
+    body.teleport(stand(-46.4,21.15+side))
+    for(let i=0;i<120;i++)body.update(1/60,new THREE.Vector3(0,0,-side),false)
+    assert((body.position.z-21.15)*side>.2,`crossed tower-side fence from side ${side}`)
+  }
+})
+check('removed detention-side baffle leaves a clear walking lane',()=>{
+  for(const x of [101,103,105])assert(fits(stand(x,-6)),`former baffle still blocks ${x},-6`)
+  walk([[103,-8],[103,-4]])
 })
 check('utility building has clearance from the cross fence',()=>{
   const utility=compound.getObjectByName('West utility building')!

@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { Draft, palette, type Point } from '../render/ink'
 import { building, container, crates, platform, truck, workshop, type BuildingSpec } from './architecture'
 import { messHall } from './messHall'
-import { fence, fuelTank, gate, lamp, railway, railShelter, watchTower, waterTower, towerZipline, type PlanPoint } from './industrial'
+import { fence, fuelTank, gate, lamp, railway, watchTower, waterTower, towerZipline,
+  WATER_TOWER_POSITION, OBSERVATION_TOWER_POSITION, type PlanPoint } from './industrial'
 
 // Coordinates are traced from the supplied 1448 × 1086 plan, not randomly placed.
 // North is -Z, east is +X. One world unit is approximately one metre.
@@ -90,8 +91,7 @@ function accessRoad() {
   g.line(left, 'edge'); g.line(right, 'edge')
   g.line(shoulderA, 'landscape'); g.line(shoulderB, 'landscape')
 
-  // The entrance drive reaches the ladder forecourt through the open outer gate;
-  // the inner service-yard gate is closed across the drive farther south.
+  // The roadside forecourt is open; the inner service-yard gate stays closed.
   const drive = new THREE.CatmullRomCurve3([[370, 87], [370, 114], [350, 175], [338, 220], [342, 278]].map(([x, z]) => {
     const [wx, wz] = mapPoint(x, z)
     return new THREE.Vector3(wx, 0.04, wz)
@@ -199,33 +199,33 @@ export function createCompound() {
   root.add(platform('Northwest building apron', ...mapPoint(522, 237), 36, 27, 0.12))
   root.add(workshop(...mapPoint(1302, 481)), truck(...mapPoint(1305, 504)))
   for (const [i, y] of [319, 432, 548].entries()) root.add(fuelTank(i + 1, ...mapPoint(147, y)))
-  root.add(waterTower(...mapPoint(823, 313)), watchTower(...mapPoint(414, 661)))
-  root.add(towerZipline(mapPoint(823, 313), mapPoint(414, 661)))
-  root.add(railway(mapPoint(927, 0)[0], mapPoint(1530, 0)[0], mapPoint(0, 324)[1]))
-  root.add(railShelter(...mapPoint(1408, 324)))
+  root.add(waterTower(...WATER_TOWER_POSITION), watchTower(...OBSERVATION_TOWER_POSITION))
+  root.add(towerZipline(WATER_TOWER_POSITION, OBSERVATION_TOWER_POSITION))
+  root.add(railway(mapPoint(927, 0)[0], mapPoint(1530, 0)[0], mapPoint(0, 324)[1], 98.4))
 
   // The rail spur passes through a deliberate opening in the eastern fence.
-  const northFenceY = (x: number) => 110 + (x - 280) * 18 / 452
-  root.add(fence('Perimeter · northwest entrance return', plan([[280, 110], [345, northFenceY(345)]])))
-  root.add(fence('Perimeter · north and northeast', plan([[395, northFenceY(395)], ...outerBoundary.slice(1, 6)])))
-  root.add(gate('North entrance gate · open', ...mapPoint(370, northFenceY(370)), Math.hypot(50, northFenceY(395) - northFenceY(345)) * MAP_SCALE, -Math.atan2(18, 452)))
+  // Remove the redundant outer fence around the roadside mess-hall forecourt.
+  // The service enclosure remains the boundary across the building's front.
+  root.add(fence('Perimeter · north and northeast', plan(outerBoundary.slice(3, 6))))
   root.add(fence('Perimeter · northeast rail entrance north', plan([[1410, 290], [1410, 307]])))
-  root.add(fence('Perimeter · east, south and west', plan([[1410, 344], ...outerBoundary.slice(6)])))
+  root.add(fence('Perimeter · east, south and west', plan([[1410, 344], ...outerBoundary.slice(6, 12), [245, 220]])))
   root.add(fence('Fuel annex · west', plan([[91, 274], [91, 727], [111, 727]])))
   root.add(fence('Fuel annex · north', plan([[91, 274], [115, 274]])))
   root.add(fence('North service enclosure · west', plan([[245, 220], [313, 220]])))
   // Set the terminal post just outside the thick wall so its shaft stays visible.
   root.add(fence('North service enclosure · entry return', plan([[363, 220], [428.25, 220]])))
-  root.add(gate('North service yard gate · closed', ...mapPoint(338, 220), 7.5, 0, false))
+  const serviceGate = gate('North service yard gate · closed', ...mapPoint(338, 220), 7.5, 0, false)
+  serviceGate.userData = { ...serviceGate.userData, kind: 'fence-gate', open: false, interactive: false, permanentlyClosed: true }
+  root.add(serviceGate)
   root.add(fence('North service enclosure · east', plan([[614.5, 220], [915, 220]])))
   // Close the shortcut around the loading platform's western end by the water tower.
   root.add(fence('Rail yard · water tower return', plan([[915, 290], [915, 415]])))
   root.add(fence('Inner yard · railway separation and west return', plan([[1410, 415], [730, 415], [730, 460], [667, 460], [667, 529]])))
   // Entry now faces the open yard instead of the narrow gatehouse passage.
   root.add(fence('Inner yard · south gate return', plan([[667, 581], [667, 700], [447, 700], [447, 779], [456.5, 779], [456.5, 763.5]])))
-  // Join the cross fence to the observation tower's southeast foot, leaving its
-  // south-facing ladder approachable from the service yard.
-  root.add(fence('Observation tower · yard closure', plan([[447, 700], [432, 700], [432, 679]])))
+  // The tower sits forward of one continuous cross fence; the open gate is the
+  // only break. The return meets the existing inner-yard fence at (447, 700).
+  root.add(fence('Observation tower · yard closure', plan([[383, 681], [447, 681], [447, 700]])))
   root.add(fence('West cross fence', plan([[245, 681], [311, 681]])))
   root.add(gate('West service gate · open', ...mapPoint(347, 681), 10.8))
   root.add(gate('Inner yard gate · open', ...mapPoint(667, 555), 7.8, -Math.PI / 2))

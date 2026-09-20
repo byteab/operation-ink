@@ -46,7 +46,7 @@ test('Jump rises, cannot double-jump, and lands on the same ground', () => {
 test('Exterior walls and wire fence panels stop sprinting', () => {
   stand(new THREE.Vector3(-51.9, 0.14, -53.5)); simulate(2, new THREE.Vector3(1, 0, 0), true)
   assert(body.position.x < -48.45, `Crossed west wall: ${body.position.x}`)
-  const fence = scene.children.find(object => object.name === 'Perimeter · northwest entrance return')!
+  const fence = scene.children.find(object => object.name === 'North service enclosure · west')!
   const panel = fence.userData.collisionPanels[0]
   const middle = new THREE.Vector3((panel.a[0] + panel.b[0]) / 2, 0.05, (panel.a[1] + panel.b[1]) / 2)
   stand(middle.clone().add(new THREE.Vector3(0, 0, -2))); simulate(1, new THREE.Vector3(0, 0, 1), true)

@@ -28,8 +28,9 @@ function walk(target: THREE.Vector3) {
 
 body.teleport(new THREE.Vector3(...mission.spawn))
 for (const [x, z] of [[-53, -62.3], [-61.8, -52]]) walk(new THREE.Vector3(x, 0, z))
-const serviceEntry = actions.doors.find(door => door.name === 'West service entrance')!
-assert(serviceEntry && !serviceEntry.userData.open && !serviceEntry.userData.missionLocked)
+const serviceEntry = compound.getObjectByName('North service yard gate · closed')!
+assert(serviceEntry && !serviceEntry.userData.open && serviceEntry.userData.permanentlyClosed)
+assert(!actions.doors.includes(serviceEntry as THREE.Group), 'Permanent fence gate must not register as an interactive door')
 for (let frame = 0; frame < 120; frame++) body.update(1 / 60, new THREE.Vector3(0, 0, 1), false)
 assert(body.position.z < -48.2, 'Closed service entrance must block the player')
 walk(new THREE.Vector3(-61.8, 0, -49.5))
@@ -37,14 +38,51 @@ const camera = new THREE.PerspectiveCamera()
 camera.position.copy(body.position).y += 1.65
 camera.lookAt(-60.3, 1.2, -48)
 camera.updateMatrixWorld(true)
-assert.equal(actions.findTarget(camera)?.object, serviceEntry, 'Service gate must offer the normal F interaction')
-assert(actions.activate(camera), 'F opens the service entrance')
-for (let frame = 0; frame < 60; frame++) updateDoors(actions.doors, 1 / 60)
-world.refresh()
-for (const [x, z] of [[-61.8, -39], [-72, -39], [-72, 15], [-60, 15], [-60, 21], [-50, 21],
-  [-50, 4], [-20, 4], [-20, 2.25], [-11, 2.25], [-8, 13], [0, 13], [55, 16],
+assert.equal(actions.findTarget(camera), null, 'Permanent service gate must not offer an F interaction')
+assert(!actions.activate(camera), 'F must not open the permanent service gate')
+assert(!serviceEntry.userData.open)
+console.log('PASS permanent service fence gate blocks walking and cannot be opened with F')
+
+const hall = compound.getObjectByName('Northwest service building')!
+const ladder = actions.ladders.find(object => object.name === 'Mess hall · west exterior roof ladder')!
+const bottom = actions.ladderPoint(ladder, false)
+const outward = new THREE.Vector3(0, 0, 1).transformDirection(ladder.matrixWorld)
+for (const [x, z] of [[-51.5, -49.5], [-51.5, bottom.z]]) walk(new THREE.Vector3(x, 0, z))
+walk(bottom.clone().addScaledVector(outward, 0.8))
+actions.syncCamera(camera)
+camera.lookAt(bottom.clone().add(new THREE.Vector3(0, 1.25, 0)))
+camera.updateMatrixWorld(true)
+assert.equal(actions.findTarget(camera)?.object, ladder)
+assert(actions.activate(camera), 'Spawn route must reach the exterior roof ladder')
+for (let frame = 0; frame < 600 && actions.climbing; frame++) actions.updateClimb(1 / 60)
+assert(!actions.climbing)
+assert(Math.abs(body.position.y - hall.userData.roofHeight) < 0.06)
+const hallPoint = (x: number, z: number, y = hall.userData.roofHeight) => hall.localToWorld(new THREE.Vector3(x, y, z))
+const openDoor = (name: string) => {
+  const door = actions.doors.find(object => object.name === name)!
+  const hinge = door.children.find(child => child.userData.doorHinge)!
+  actions.syncCamera(camera)
+  camera.lookAt(hinge.localToWorld(new THREE.Vector3(door.userData.width * 0.7, 1.2, 0)))
+  camera.updateMatrixWorld(true)
+  assert.equal(actions.findTarget(camera)?.object, door, `${name} must be reachable on the continuous route`)
+  assert(actions.activate(camera), `F must open ${name}`)
+  for (let frame = 0; frame < 60; frame++) updateDoors(actions.doors, 1 / 60)
+  world.refresh()
+}
+walk(hallPoint(0, 6.3))
+walk(hallPoint(9.2, 6.3))
+openDoor('Rooftop access door')
+walk(hallPoint(9.2, 3.25))
+walk(hallPoint(9.2, -8.25, hall.userData.floor))
+assert(Math.abs(body.position.y - hall.userData.floor) < 0.06, 'Roof route must descend the interior staircase')
+walk(hallPoint(8.15, -8.25, hall.userData.floor))
+openDoor('Vestibule to mess hall door')
+for (const [x, z] of [[5.3, -8.25], [5.3, -6.2], [0, -6.2], [0, 8.9]]) walk(hallPoint(x, z, hall.userData.floor))
+openDoor('Mess hall yard exit')
+walk(hallPoint(0, 18, 0))
+for (const [x, z] of [[-20, -29], [-20, 2.25], [-11, 2.25], [-8, 13], [0, 13], [55, 16],
   [99, 11], [110, 5], [117, -3]]) walk(new THREE.Vector3(x, 0, z))
-console.log('PASS service gate blocks, offers F, opens and admits a connected west perimeter approach')
+console.log('PASS continuous spawn route climbs the roof ladder, descends the mess hall stairs and reaches the detention annex')
 
 walk(new THREE.Vector3(117, 0.12, -8.4))
 walk(new THREE.Vector3(117, -4.2, -22))

@@ -114,8 +114,8 @@ const WATER_TANK_RADIUS = 2.75
 const WATCH_DECK = 6.6
 const WATCH_HALF_WIDTH = 2.8
 const ZIP_PAD_HALF_WIDTH = 1.0
-const DEFAULT_WATER: PlanPoint = [10.95, -34.05]
-const DEFAULT_WATCH: PlanPoint = [-50.4, 18.15]
+export const WATER_TOWER_POSITION: PlanPoint = [10.95, -34.05]
+export const OBSERVATION_TOWER_POSITION: PlanPoint = [-50.4, 15.15]
 
 function directionBetween(from: PlanPoint, to: PlanPoint): PlanPoint {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1])
@@ -133,7 +133,7 @@ function guardrail(g: Draft, a: PlanPoint, b: PlanPoint, floor: number) {
   }
 }
 
-export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = DEFAULT_WATCH) {
+export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = OBSERVATION_TOWER_POSITION) {
   const g = new Draft('North water tower', x, z)
   const floor = WATER_DECK + 0.11, railRadius = WATER_RADIUS - 0.1
   const zipDirection = directionBetween([x, z], ziplineTarget)
@@ -220,7 +220,7 @@ export function waterTower(x: number, z: number, ziplineTarget: PlanPoint = DEFA
   return g.finish()
 }
 
-export function watchTower(x: number, z: number, ziplineTarget: PlanPoint = DEFAULT_WATER) {
+export function watchTower(x: number, z: number, ziplineTarget: PlanPoint = WATER_TOWER_POSITION) {
   const g = new Draft('West observation tower', x, z)
   const foot = 2.7, top = 1.95, deck = WATCH_DECK, floor = deck + 0.13
   const zipDirection = directionBetween([x, z], ziplineTarget)
@@ -352,7 +352,7 @@ export function towerZipline(water: PlanPoint, watch: PlanPoint): THREE.Group {
   return root
 }
 
-export function railway(startX: number, endX: number, z: number) {
+export function railway(startX: number, endX: number, z: number, loadingEndX = endX - 3) {
   const g = new Draft('Northeast railway and loading platform')
   g.userData.kind = 'railway'
   const length = endX - startX, center = (startX + endX) / 2
@@ -365,14 +365,18 @@ export function railway(startX: number, endX: number, z: number) {
     g.box(length, 0.15, 0.055, center, 0.38, rz, 'paper', false)
     g.box(length, 0.065, 0.09, center, 0.47, rz, 'paper', 'edge')
   }
-  const px = startX + 8, pl = endX - px - 3
+  // The loading area stops inside the compound fence while the rails continue
+  // through to the annex. Keep its end independent of the full track length.
+  const px = startX + 8, platformEnd = Math.min(loadingEndX, endX - 3), pl = platformEnd - px
   g.box(pl, 1.05, 5.8, px + pl / 2, 0.525, z + 5.3, 'concrete')
-  for (let x = px + 2; x < endX - 4; x += 4) g.line([[x, 1.065, z + 2.5], [x, 1.065, z + 3.1]], 'detail')
+  for (let x = px + 2; x < platformEnd - 1; x += 4) g.line([[x, 1.065, z + 2.5], [x, 1.065, z + 3.1]], 'detail')
   for (let i = 0; i < 5; i++) g.box(2.4, (5 - i) * 0.21, 0.32, px + 2, (5 - i) * 0.105, z + 8.36 + i * 0.32, 'concrete', 'detail')
-  // Fixed canopy on platform; tracks remain open underneath its independent end shelter.
-  const roofStart = px + 1, roofEnd = endX - 5
+  // The canopy overhang also stays within the shortened platform footprint.
+  const roofStart = px + 1, roofEnd = platformEnd - 2
   const underside = (offset: number) => 5.35 + Math.tan(0.04) * (offset - 5.35) - 0.07 / Math.cos(0.04)
-  for (let x = roofStart; x <= roofEnd; x += 9) {
+  const canopyBays = Math.ceil((roofEnd - roofStart) / 9)
+  for (let i = 0; i <= canopyBays; i++) {
+    const x = roofStart + (roofEnd - roofStart) * i / canopyBays
     g.beam([x, 1.05, z + 7.2], [x, underside(7.2), z + 7.2], 0.13)
     g.beam([x, 4.5, z + 7.2], [x, underside(4.1), z + 4.1], 0.09, 'paper', 'detail')
   }

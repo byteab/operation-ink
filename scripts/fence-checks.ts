@@ -4,6 +4,7 @@ import { Capsule } from 'three/addons/math/Capsule.js'
 import { CollisionWorld } from '../src/player/collision'
 import { fence, gate } from '../src/world/industrial'
 import { createDoor, setDoorOpen } from '../src/world/doors'
+import { createFenceGate } from '../src/world/fenceGate'
 import { EnemyDirector } from '../src/game/ai'
 import type { EnemyActor } from '../src/game/actors'
 import type { PlayerSense } from '../src/game/types'
@@ -54,6 +55,28 @@ console.log('PASS Wire panels pass sight and shots in both directions while bloc
   world.dispose()
 }
 console.log('PASS Wire gates pass gunfire and sight; a closed solid door behind them blocks both until opened')
+
+for (const angle of [0, Math.PI / 2]) {
+  const scene = new THREE.Scene()
+  const door = createFenceGate({ name: 'Hinged wire gate', x: 8, z: -4, width: 8, height: 3.1, angle })
+  scene.add(door)
+  const world = new CollisionWorld(scene)
+  const at = (point: THREE.Vector3) => door.localToWorld(point)
+  const from = at(v(1, 1.3, -2)), to = at(v(1, 1.3, 2))
+  const direction = to.clone().sub(from).normalize()
+  assert(!world.fits(capsule(at(v(1, 0, 0)))), 'closed hinged wire gate blocks bodies')
+  assert(world.visible(from, to, ignored), 'closed hinged wire gate passes sight through its wire')
+  assert.equal(world.rayDistance(from, direction, 4), 4, 'closed hinged wire gate passes gunfire')
+  setDoorOpen(door, true, true); world.refresh()
+  assert(world.fits(capsule(at(v(1, 0, 0)))), 'opening the wire gate clears its former collision panel')
+  const hinge = door.children.find(child => child.userData.doorHinge)!
+  const leafPoint = hinge.localToWorld(v(4, 0, 0))
+  assert(!world.fits(capsule(leafPoint)), 'the open wire leaf still blocks bodies at its swung position')
+  setDoorOpen(door, false, true); world.refresh()
+  assert(!world.fits(capsule(at(v(1, 0, 0)))), 'closing restores the wire gate barrier')
+  world.dispose()
+}
+console.log('PASS Hinged wire gates move body collision with their leaf while passing sight and gunfire')
 
 {
   const scene = new THREE.Scene(), panel = new THREE.Group()

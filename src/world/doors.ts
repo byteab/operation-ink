@@ -23,9 +23,21 @@ export function createDoor({ name, x, z, floor, width = 1.35, height = 2.35,
   root.rotation.y = angle
   root.userData = { kind: 'door', open, width, height, interactive: true }
   const frame = new Draft(`${name} frame`)
-  for (const side of [-1, 1]) frame.box(0.075, height + 0.06, 0.22,
-    side * (width / 2 + 0.04), height / 2, 0, 'roof', 'detail')
-  frame.box(width + 0.16, 0.085, 0.22, 0, height + 0.04, 0, 'roof', 'detail')
+  const frameWidth = 0.05, frameDepth = 0.14, inkOffset = 0.006
+  root.userData.frameDepth = frameDepth
+  for (const side of [-1, 1]) frame.box(frameWidth, height + frameWidth, frameDepth,
+    side * (width / 2 + frameWidth / 2), height / 2, 0, 'roof', 'detail')
+  frame.box(width + frameWidth * 2, frameWidth, frameDepth, 0, height + frameWidth / 2, 0, 'roof', 'detail')
+  // Trace the aperture on both faces and along its reveals. A contour only on
+  // the front trim disappears behind the jamb when viewed from inside or side-on.
+  const reveal = width / 2 - inkOffset, top = height - inkOffset
+  for (const depth of [-frameDepth / 2 - inkOffset, frameDepth / 2 + inkOffset]) {
+    frame.line([[-reveal, 0, depth], [-reveal, top, depth],
+      [reveal, top, depth], [reveal, 0, depth]], 'edge')
+  }
+  for (const x of [-reveal, reveal]) for (const y of [0, top]) {
+    frame.line([[x, y, -frameDepth / 2 - inkOffset], [x, y, frameDepth / 2 + inkOffset]], 'detail')
+  }
   root.add(frame.finish())
 
   const hinge = new Group()

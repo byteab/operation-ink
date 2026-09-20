@@ -12,7 +12,7 @@ export const views: Record<ViewName, { position: [number, number, number]; targe
   mess: { position: [-28.5, 2.05, -37.25], target: [-36.2, 1.45, -48.65] },
   office: { position: [-42.9, 1.98, -43.95], target: [-47, 1.48, -46.65] },
   water: { position: [24, 23, -19], target: [10.95, 13.3, -34.05] },
-  watch: { position: [-62, 15, 30], target: [-48.5, 7.8, 16.5] },
+  watch: { position: [-62, 15, 27], target: [-48.5, 7.8, 13.5] },
 }
 
 /** Inspection views share their perspective camera with the grounded player. */
