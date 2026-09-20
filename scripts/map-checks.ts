@@ -22,6 +22,26 @@ function walk(points:number[][]){body.teleport(stand(points[0][0],points[0][1],p
 for(const door of actions.doors)if(door.name.includes('house')||door.name.includes('cabin')||door.name.includes('shelter'))setDoorOpen(door,true,true)
 world.refresh()
 check('spawn fits',()=>assert(fits(stand(mission.spawn[0],mission.spawn[2]))))
+check('camera computer, alarm and exit control activate only their own function',()=>{
+  assert(!mission.stations.some(station=>station.id==='security-alarm'||station.id==='escort-rally'))
+  for(const id of ['security-computer','detention-alarm','exit-gate-control']){
+    const station=mission.stations.find(station=>station.id===id)!
+    const state=initialMission(),camera=new THREE.PerspectiveCamera()
+    state.alarm='active'
+    actions.extraTargets=()=>stationLabel(state,station.kind,id)?[{object:station.object,point:station.point,kind:'mission',label:station.label,descending:false,use:()=>useStation(state,station.kind,id).changed}]:[]
+    const outward=new THREE.Vector3(0,0,1).transformDirection(station.object.matrixWorld)
+    const approach=station.point.clone().addScaledVector(outward,1.5)
+    body.teleport(stand(approach.x,approach.z,station.object.position.y))
+    assert(fits(body.position),`${id} must have a clear approach`)
+    actions.syncCamera(camera);camera.lookAt(station.point);camera.updateMatrixWorld(true)
+    assert.equal(actions.findTarget(camera)?.object,station.object,`${id} must be targetable`)
+    assert(actions.activate(camera),`${id} must activate`)
+    assert.equal(state.camerasActive,id!=='security-computer')
+    assert.equal(state.alarm,id==='detention-alarm'?'silenced':'active')
+    assert.equal(state.gateOpen,id==='exit-gate-control')
+  }
+  actions.extraTargets=()=>[]
+})
 check('office blue-screen computer uses the real nearby interaction and rejects use through the partition',()=>{
   const station=mission.stations.find(station=>station.id===SIGNALS_COMPUTER_ID)!
   assert(station)

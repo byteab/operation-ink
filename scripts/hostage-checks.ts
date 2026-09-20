@@ -66,7 +66,38 @@ function release(state: EscortMissionState) {
   world.refresh()
 }
 
-check('one green hostage uses the real enemy skinned GLB and remains seated in jail', () => {
+// Match the rig's dual-quaternion shader: linear skinning understates the
+// rounded pelvis at a 90-degree bend, which hid the original seat intersection.
+function skinnedPoints(mesh: THREE.SkinnedMesh, frame: THREE.Object3D) {
+  mesh.updateWorldMatrix(true, false)
+  const real = mesh.skeleton.bones.map((bone, i) => new THREE.Quaternion().setFromRotationMatrix(
+    bone.matrixWorld.clone().multiply(mesh.skeleton.boneInverses[i])))
+  const dual = mesh.skeleton.bones.map((bone, i) => {
+    const translation = new THREE.Vector3().setFromMatrixPosition(
+      bone.matrixWorld.clone().multiply(mesh.skeleton.boneInverses[i]))
+    return new THREE.Quaternion(translation.x, translation.y, translation.z, 0).multiply(real[i]).toArray().map(v => v * 0.5)
+  })
+  const { position, skinIndex, skinWeight } = mesh.geometry.attributes
+  const transform = frame.matrixWorld.clone().invert().multiply(mesh.matrixWorld).multiply(mesh.bindMatrixInverse)
+  return Array.from({ length: position.count }, (_, i) => {
+    const r = new THREE.Vector4(0, 0, 0, 0), d = new THREE.Vector4(0, 0, 0, 0)
+    const reference = real[skinIndex.getX(i)]
+    for (let j = 0; j < 4; j++) {
+      const index = skinIndex.getComponent(i, j), q = real[index]
+      const weight = skinWeight.getComponent(i, j) * (q.dot(reference) < 0 ? -1 : 1)
+      r.addScaledVector(new THREE.Vector4(q.x, q.y, q.z, q.w), weight)
+      d.addScaledVector(new THREE.Vector4(...dual[index]), weight)
+    }
+    const length = r.length()
+    r.divideScalar(length); d.divideScalar(length)
+    const rotation = new THREE.Quaternion(r.x, r.y, r.z, r.w)
+    const translation = new THREE.Quaternion(d.x, d.y, d.z, d.w).multiply(rotation.clone().conjugate())
+    return new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(mesh.bindMatrix).applyQuaternion(rotation)
+      .add(new THREE.Vector3(translation.x, translation.y, translation.z).multiplyScalar(2)).applyMatrix4(transform)
+  })
+}
+
+check('one blue hostage uses the real enemy skinned GLB and remains seated in jail', () => {
   const state = fresh(); escort.sync(state)
   const before = structuredClone(state)
   tick(state, 2)
@@ -80,11 +111,40 @@ check('one green hostage uses the real enemy skinned GLB and remains seated in j
     assert(actor.rig.mesh.isSkinnedMesh)
     assert.equal((actor.rig.mesh.material as THREE.MeshBasicMaterial).color.getHex(), HOSTAGE_INK)
     const color = (actor.rig.mesh.material as THREE.MeshBasicMaterial).color
-    assert(color.g > color.r * 2 && color.g > color.b * 2, 'Hostage must be visibly green')
+    assert(color.b > color.r * 2 && color.b > color.g * 2, 'Hostage must be visibly blue')
     assert.equal(actor.root.userData.animation, 'hostage-seated')
     const hip = actor.rig.bones.hips.getWorldPosition(new THREE.Vector3())
     assert(Math.abs(hip.y - (RESCUE_LAYOUT.hostageSpawns[0][1] + 0.449)) < 0.025, `Seated hip ${hip.y}`)
   }
+})
+
+check('the chair supports the skinned body without clipping during seated idle or standing up', () => {
+  const state = fresh(); escort.sync(state)
+  const actor = escort.actors[0], chair = mission.root.getObjectByName('Hostage chair')!
+  const surfaces = chair.getObjectByName('Hostage chair: concrete surfaces') as THREE.Mesh
+  const position = surfaces.geometry.attributes.position, seat = new THREE.Box3()
+  for (let i = 0; i < position.count; i++) {
+    const point = new THREE.Vector3().fromBufferAttribute(position, i)
+    if (point.y < 0.5) seat.expandByPoint(point)
+  }
+  const clearance = () => {
+    scene.updateMatrixWorld(true)
+    const overSeat = skinnedPoints(actor.rig.mesh, chair).filter(point =>
+      point.x >= seat.min.x && point.x <= seat.max.x && point.z >= seat.min.z && point.z <= seat.max.z)
+    return Math.min(...overSeat.map(point => point.y)) - seat.max.y
+  }
+  for (let sample = 0; sample <= 12; sample++) {
+    actor.animate(sample ? 0.3 : 0, false, false, false, true)
+    const gap = clearance()
+    assert(gap >= 0.001 && gap < 0.015, `Seated skin must rest just above the chair, gap ${gap} m`)
+  }
+  const riseGaps: number[] = []
+  for (let frame = 0; frame < STAND_UP_SECONDS * 60 - 1; frame++) {
+    actor.advanceRelease(1 / 60, false)
+    actor.animate(1 / 60, false, false, false, false)
+    riseGaps.push(clearance())
+  }
+  assert(Math.min(...riseGaps) >= 0.001, `Chair clips standing-up skin: minimum gap ${Math.min(...riseGaps)} m`)
 })
 
 check('release plants the feet, shifts weight, stands fully and only then starts escort', () => {

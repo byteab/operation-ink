@@ -18,9 +18,10 @@
   const draw = () => { m.update(0); m.finishFrame() }
   const page = () => $('.walk-card').dataset.page
   const singlePage = () => [...document.querySelectorAll('[data-menu-page]')].filter(el => el.getClientRects().length).length === 1
-  const originalAI = m.ai.update, originalFallback = p.fallback
+  const originalAI = m.ai.update, originalFallback = p.fallback, originalInvincible = m.invincible
   m.ai.update = () => {}
   p.fallback = true
+  m.invincible = false
   try {
     check(page() === 'home' && !visible('.field-map') && !visible('.mission-settings'), 'Opening menu contains no map or settings clutter')
     check(!visible('#mission-retry') && !visible('#mission-restart'), 'Fresh mission hides irrelevant recovery actions')
@@ -84,14 +85,20 @@
     click('#mission-restart'); click('#mission-confirm-restart'); draw()
     check(p.playing && m.state.health === 100 && m.deaths === 0, 'Confirmed restart resets and enters a fresh mission')
 
-    p.pause(); m.state.phase = 'complete'; m.state.elapsed = 87; draw()
+    p.pause(); m.state.phase = 'complete'; m.state.elapsed = 87; m.state.kills = 9; m.state.health = 42.3; draw()
     check($('#mission-menu-title').textContent === 'Hostage safe.' && visible('#mission-restart') && !visible('#mission-retry') && !visible('#walk-start'), 'Completion offers Play again without invalid actions')
+    const recap = () => [...document.querySelectorAll('.mission-recap dd')].map(value => value.textContent).join('|')
+    check(visible('#mission-debrief') && recap() === '1:27|9|43%', 'Completion recap uses actual mission time, kills and remaining health')
+    m.state.elapsed = 0; m.state.kills = 0; m.state.health = 100; draw()
+    check(recap() === '0:00|0|100%', 'Completion recap preserves zero kills and full health')
     click('#mission-restart'); draw()
-    check(m.state.phase === 'active' && p.playing, 'Play again starts a new mission directly')
+    check(m.state.phase === 'active' && p.playing && m.state.kills === 0 && m.state.health === 100 && m.state.elapsed === 0, 'Play again starts a new mission directly with fresh recap values')
     p.pause(); draw()
+    check(!visible('#mission-debrief'), 'Fresh mission hides the previous completion recap')
     return { results, initialWords }
   } finally {
     m.ai.update = originalAI
     p.fallback = originalFallback
+    m.invincible = originalInvincible
   }
 })()

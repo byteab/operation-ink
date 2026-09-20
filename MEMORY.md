@@ -12,6 +12,19 @@
 - Only the final exit gate has a three-second eased swing. Door updates use real elapsed time, keeping timing consistent at low FPS. Gate collision follows the hinge, and the jeep waits with “Gate opening” until fully open. Instant restart clears in-flight motion and restores car collision at the parked location.
 - Build, rescue, player, escape and door-navigation checks passed, including added collision/timing regressions and actual passenger-door motion in escort checks. User authorized agent-browser: live movement stopped at all four sides, F rejected early boarding and accepted it afterward, and gate timing measured 3.0093 s normally / 3.051 s with 90 ms frame stalls. Closed/mid/open screenshots inspected; no browser/shader errors. Evidence and staged scope: `docs/transport-collision/README.md`.
 
+## Blue hostage, chair clearance and lock light
+
+- Hostage is now blue (`#2878d0`). Lowered the chair seat/supports to match the actual dual-quaternion skinned pelvis (seat top 0.3325 m, body bottom about 0.336 m). The first stand-up weight shift lifts slightly earlier so it also clears the seat.
+- Removed the large green lock panel and its rectangular inset. The white housing now carries a 6 cm domed green indicator with a black bezel in the upper corner, clear of the central interaction marker. Unlock behavior and hinge attachment are retained.
+- Build, full rescue suite and NPC transitions passed. Added actual deformed-mesh clearance checks across seated idle and every frame of standing up. Authorized agent-browser visual checks covered the seated body, stand-up, lock, actual HUD and native F release; attachment drift was zero and browser errors were empty. Evidence: `docs/hostage-seat/README.md`.
+
+## Scene controls and completion recap
+
+- Latest annotation: fixed buried bottom contours on building plinths, the warehouse platform, stairs and the annex barrier at [158, -12]. Contact ink sits at 0.055 m above paving that reaches 0.0425 m; solid geometry/collision stays unchanged.
+- Removed Security cabin's alarm pedestal and the outdoor `escort-rally` pedestal by Crew quarters. `security-computer` is now a proper desk workstation with blue surveillance monitor, keyboard, mouse and tower. `exit-gate-control` has a distinct wide lever/keypad enclosure and gate pictogram. The exterior `detention-alarm` still silences alarms separately. Scene control construction lives in `src/game/mission-controls.ts`.
+- Success menu adds actual kills and remaining health alongside elapsed time in a compact three-column recap. Health rounds like the HUD; statistics reset on Play again. Updated route tips to use walking back to the hostage now that the regroup pedestal is removed.
+- Build, map and rescue suites passed. Previously authorized agent-browser fallback passed all 34 menu checks and actual F-handler checks for independent camera/alarm/gate functions. Inspected annotated locations and both new models, plus recap at 1440×900 and 320×568; no browser/shader errors. Staged scope, evidence and reproduction: `docs/scene-controls/README.md`. No full input-only rescue playthrough.
+
 ## Exterior getaway and cell lock
 
 - Follow-up: user still found the car slow/unnatural and wanted lighter black dust. Drive is now 1.8 s (was 2.8), peak 13.89 m/s (was 9.04), with smooth acceleration and a shallow road curve instead of a sideways fishtail. Body yaw follows the route tangent and steering follows curvature. Dust is pure black with much lower opacity, density, size and lifetime; emissions interpolate over frame travel. Timings: 0.08 s launch, 1.4–1.85 s fade, 2.05–2.4 s menu.

@@ -86,6 +86,9 @@ body.mission-scoped :is(.mission-vitals, .mission-weapon) { color: #fff; --paper
 /* Keep sound/objective announcements available to assistive technology. */
 #mission-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #mission-debrief { margin-top: 12px; color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
+.mission-recap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0 0; padding-top: 20px; border-top: 1px solid var(--ink-rule); }
+.mission-recap dt { font: 12px/1.4 var(--notes); color: var(--ink-muted); }
+.mission-recap dd { margin: 6px 0 0; color: var(--ink); font: 600 24px/1.2 var(--notes); font-variant-numeric: tabular-nums; }
 .action-icon { width: 18px; height: 20px; display: block; flex: 0 0 auto; }
 .action-icon svg { width: 100%; height: 100%; }
 .mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000024; opacity: 0; }

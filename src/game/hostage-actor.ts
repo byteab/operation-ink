@@ -5,7 +5,7 @@ import { makeClip, type Key, type Pose } from '../lab/clip'
 import { Player } from '../lab/player'
 import { HOSTAGE_RUN_SPEED } from './balance'
 
-export const HOSTAGE_INK = 0x229447
+export const HOSTAGE_INK = 0x2878d0
 export const STAND_UP_SECONDS = 1.65
 export const BOARD_SECONDS = 0.9
 
@@ -20,7 +20,7 @@ export class HostageActor {
 
   private constructor(readonly rig: Rig, private clips: Record<string, THREE.AnimationClip>) {
     this.root = rig.root
-    this.root.name = 'Green stickman hostage'
+    this.root.name = 'Blue stickman hostage'
     this.root.userData = { actor: true, hostage: true, noCollision: true, model: 'stickman.glb' }
     const original = rig.mesh.material as THREE.MeshBasicMaterial
     this.material = original.clone()
@@ -65,7 +65,8 @@ export class HostageActor {
     ], { loop: true })
     const standKeys: Key[] = [
       { t: 0, pose: seated, root: [0, -0.371, -0.371] },
-      rise(0.4, 85, 110, 24, 62), rise(0.85, 54, 108, 28, 38),
+      // Start lifting while leaning forward so the rounded pelvis clears the seat.
+      rise(0.4, 78, 110, 24, 62), rise(0.85, 54, 108, 28, 38),
       rise(1.3, 20, 40, 12, 18), rise(STAND_UP_SECONDS, 0, 0, 0, 10),
     ]
     const stand = makeClip('hostage-stand-up', standKeys)

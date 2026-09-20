@@ -51,7 +51,7 @@ export class MissionMenu {
         <details class="mission-tips"><summary>Route tips</summary>
           <p>Take the mess-hall roof to the rail line, or the west service gate to the covered lanes.</p>
           <p>The office terminal stops cameras for 60 seconds. Security shuts them down permanently. Open the exit gate before the rescue.</p>
-          <p>The jeep is southeast of detention. If the hostage falls behind, use a regroup panel. Alarms bring reinforcements; you don’t need to fight everyone.</p>
+          <p>The jeep is southeast of detention. If the hostage falls behind, return to him and lead him onward. Alarms bring reinforcements; you don’t need to fight everyone.</p>
         </details>
       </section>
       <section data-menu-page="controls" hidden>
@@ -166,7 +166,7 @@ export class MissionMenu {
   }
   ready() { this.loaded = true; this.start.disabled = false; this.start.textContent = 'Begin mission'; if (this.page === 'home') this.focusPrimary() }
   error(message: string) { this.loadError = message; this.start.textContent = 'Unable to load'; this.start.disabled = true; this.show('home'); this.showError() }
-  private showError() { const debrief = this.element('#mission-debrief'); debrief.hidden = false; debrief.textContent = this.loadError }
+  private showError() { const debrief = this.element('#mission-debrief'); debrief.hidden = false; delete debrief.dataset.summary; debrief.textContent = this.loadError }
   reset() { this.phase = 'active'; this.loadError = ''; this.show('home', undefined, false) }
 
   update(state: MissionState, data: { playing: boolean; enabled: boolean; ready: boolean }) {
@@ -197,7 +197,19 @@ export class MissionMenu {
     this.restart.textContent = complete ? 'Play again' : 'Restart mission'
     const debrief = this.element('#mission-debrief')
     debrief.hidden = !complete
-    if (complete) debrief.textContent = `${Math.floor(state.elapsed / 60)}:${String(Math.floor(state.elapsed % 60)).padStart(2, '0')} mission time`
+    if (complete) {
+      const time = `${Math.floor(state.elapsed / 60)}:${String(Math.floor(state.elapsed % 60)).padStart(2, '0')}`
+      const health = Math.ceil(Math.max(0, Math.min(100, state.health)))
+      const summary = `${time}|${state.kills}|${health}`
+      if (debrief.dataset.summary !== summary) {
+        debrief.dataset.summary = summary
+        debrief.innerHTML = `<dl class="mission-recap" aria-label="Mission recap">
+          <div><dt>Time</dt><dd>${time}</dd></div>
+          <div><dt>Kills</dt><dd>${state.kills}</dd></div>
+          <div><dt>Health</dt><dd>${health}%</dd></div>
+        </dl>`
+      }
+    }
     if (this.loadError) this.showError()
     this.element('#mission-current-objective').textContent = missionObjective(state)
     if (data.enabled && ((justPaused && !dead) || complete) && this.page === 'home' && !this.card.contains(document.activeElement)) this.focusPrimary()

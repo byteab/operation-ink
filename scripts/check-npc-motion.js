@@ -24,7 +24,7 @@
   const compare = (rig, pose) => Math.max(...names.map((name,i) => Math.max(rig.bones[name].position.distanceTo(pose[i].p), rig.bones[name].quaternion.clone().normalize().angleTo(pose[i].q))))
   const rows = []
   const subjects = [
-    {actor:h, label:'Hostage · green · 2.6 m/s', reset:()=>h.restore(false), tick:(dt, run)=>h.animate(dt, run, false, false, false)},
+    {actor:h, label:'Hostage · blue · 2.6 m/s', reset:()=>h.restore(false), tick:(dt, run)=>h.animate(dt, run, false, false, false)},
     {actor:e, label:'Enemy · 4.2 m/s', reset:()=>e.restore('guard'), tick:(dt, run)=>e.update(dt, run?'combat':'guard', run, undefined, run?ENEMY_RUN_SPEED:0)},
   ]
   for (const [row, subject] of subjects.entries()) {
@@ -51,7 +51,7 @@
     rows.push({actor:subject.label, discontinuity, finalClip:actor.player.current.getClip().name})
   }
   const color=h.rig.mesh.material.color
-  if(!(color.g>2*color.r&&color.g>2*color.b))throw new Error('Hostage is not green')
+  if(!(color.b>2*color.r&&color.b>2*color.g))throw new Error('Hostage is not blue')
   if(e.rig.mesh.material.color.getHex()!==0)throw new Error('Enemy color changed')
   sheet.id='npc-transition-evidence';sheet.style.cssText='position:fixed;inset:0;z-index:999999;width:100%;height:auto;background:white'
   document.body.append(sheet)

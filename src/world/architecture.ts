@@ -17,6 +17,13 @@ export interface BuildingSpec {
 export const WALL_THICKNESS = 0.14
 const WALL_INK_OFFSET = 0.006
 
+/** Ground-contact ink must sit above the paving, which rises as high as 4.25cm. */
+export function groundOutline(g: Draft, x: number, z: number, width: number, depth: number) {
+  const y = 0.055
+  g.line([[x - width / 2, y, z - depth / 2], [x + width / 2, y, z - depth / 2],
+    [x + width / 2, y, z + depth / 2], [x - width / 2, y, z + depth / 2]], 'detail', true)
+}
+
 /** Trace inside corners on the room-facing surfaces, clear of adjoining walls. */
 export function interiorRoomOutline(g: Draft, clearWidth: number, clearDepth: number,
   floor: number, ceiling: number, x = 0, z = 0, ceilingShape: 'flat' | 'gable' = 'flat') {
@@ -169,6 +176,7 @@ export function building(spec: BuildingSpec) {
   g.userData.enterable = true
   const floor = type === 'warehouse' ? 0.65 : 0.28
   g.box(w + 0.3, floor, d + 0.3, 0, floor / 2, 0, 'concrete', 'detail')
+  groundOutline(g, 0, 0, w + 0.3, d + 0.3)
   const walls = new Draft(`${spec.name} · exterior walls`)
   walls.userData.cutaway = true
   walls.userData.kind = 'exterior-walls'
@@ -194,6 +202,7 @@ export function building(spec: BuildingSpec) {
       walls.box(3.85, 0.15, 0.5, x, floor + h - 0.15, front + 0.18, 'paper', 'detail')
     }
     g.box(w - 1.0, floor, 1.8, 0, floor / 2, front + 0.88, 'concrete')
+    groundOutline(g, 0, front + 0.88, w - 1, 1.8)
     steps(g, -w / 2 + 1.7, front + 1.94, 2, floor, 3)
     const count = w > 30 ? 3 : 2
     for (let i = 0; i < count; i++) {
@@ -261,6 +270,8 @@ export function steps(g: Draft, x: number, z: number, width: number, height: num
     const h = height * (count - i) / count
     g.box(width, h, 0.32, x, h / 2, z + i * 0.32, 'concrete', 'detail')
   }
+  // One continuous footprint avoids breaks where individual risers meet the apron.
+  groundOutline(g, x, z + (count - 1) * 0.16, width, count * 0.32)
 }
 
 export function container(name: string, x: number, z: number, w = 6.1, d = 2.45, angle = 0) {

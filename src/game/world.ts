@@ -1,17 +1,18 @@
 import * as THREE from 'three'
 import { Draft, type Point } from '../render/ink'
 import { penPalette } from '../render/ballpoint'
-import { crates, steps, WALL_THICKNESS, interiorRoomOutline, piercedWall } from '../world/architecture'
+import { crates, steps, groundOutline, WALL_THICKNESS, interiorRoomOutline, piercedWall } from '../world/architecture'
 import { createDoor } from '../world/doors'
 import { createFenceGate } from '../world/fenceGate'
 import { fence, gate, OBSERVATION_TOWER_POSITION, type PlanPoint } from '../world/industrial'
 import { pipeLadder } from '../world/ladders'
-import type { EnemySpec, MissionWorld, Station, StationKind, Vec3 } from './types'
+import type { EnemySpec, MissionWorld, Station, Vec3 } from './types'
 import { DETENTION_STAIR_HOLE, RESCUE_LAYOUT } from './rescue-layout'
 import { createRescueJeep } from './rescue-jeep'
 import { createCellLock } from './cell-lock'
 import { SIGNALS_COMPUTER_ID } from './mission'
 import { CAMERA_LIGHTS } from './security'
+import { createMissionControl as control } from './mission-controls'
 
 const FLOOR = 0.12
 const DOOR_WIDTH = 2.1
@@ -223,34 +224,6 @@ export function prepareCompound(compound: THREE.Group) {
   compound.updateMatrixWorld(true)
 }
 
-function control(kind: StationKind, id: string, label: string, position: Point, angle = 0): Station {
-  const object = new Draft(label, position[0], position[2], angle)
-  object.position.y = position[1]
-  object.userData = { environment: true, kind: 'mission-station', stationKind: kind, stationId: id }
-  const isSupply = kind === 'supply', isBell = kind === 'distraction'
-  object.box(isSupply ? 0.85 : 0.56, isSupply ? 0.6 : 0.86, 0.28, 0,
-    isSupply ? 0.7 : 1.15, 0, 'concrete', 'detail')
-  object.box(0.12, 0.74, 0.12, 0, 0.37, 0, 'roof', 'detail')
-  object.box(0.8, 0.1, 0.65, 0, 0.05, 0, 'concrete', 'detail')
-  if (isBell) {
-    object.beam([0, 1.56, 0], [0, 2.3, 0], 0.08)
-    object.cylinder(0.25, 0.34, 0, 2.13, 0, 'roof', 0.1)
-  } else if (kind === 'brake') {
-    object.beam([0, 0.98, 0.18], [0.12, 1.64, 0.26], 0.085)
-    object.beam([-0.13, 1.64, 0.26], [0.37, 1.64, 0.26], 0.08)
-  } else if (isSupply) {
-    object.box(0.34, 0.08, 0.015, 0, 0.7, 0.15, 'paper', false)
-    object.box(0.08, 0.34, 0.015, 0, 0.7, 0.16, 'paper', false)
-  } else {
-    object.box(0.37, 0.24, 0.035, 0, 1.29, 0.15, 'roof', 'detail')
-    for (const x of [-0.14, 0.14]) object.box(0.07, 0.07, 0.04, x, 0.94, 0.15, 'paper', 'detail')
-  }
-  object.finish()
-  const point = new THREE.Vector3(0, isSupply ? 0.8 : 1.3, 0.24)
-    .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(new THREE.Vector3(...position))
-  return { id, kind, object, point, label }
-}
-
 function enemy(id: string, name: string, patrol: Vec3[], weapon: EnemySpec['weapon'] = 'ak', reserve = false): EnemySpec {
   return { id, name, position: [...patrol[0]], patrol, weapon, reserve }
 }
@@ -322,11 +295,13 @@ function detentionBlock() {
   root.add(cells.finish())
   const chair = new Draft('Hostage chair')
   chair.userData = { noCollision: true, kind: 'hostage-chair' }
-  chair.box(0.48, 0.065, 0.46, 0, 0.405, -0.371, 'concrete', 'detail')
+  // The seated skin reaches 0.336 m, below the 0.449 m hip joint. Support the
+  // visible body at 0.3325 m instead of letting the seat cut through the pelvis.
+  chair.box(0.48, 0.065, 0.46, 0, 0.3, -0.371, 'concrete', 'detail')
   for (const x of [-0.205, 0.205]) for (const z of [-0.56, -0.18]) {
-    chair.beam([x, 0.025, z], [x, 0.41, z], 0.045, 'roof', 'detail')
+    chair.beam([x, 0.025, z], [x, 0.3, z], 0.045, 'roof', 'detail')
   }
-  for (const x of [-0.205, 0.205]) chair.beam([x, 0.42, -0.56], [x, 0.92, -0.59], 0.04, 'roof', 'detail')
+  for (const x of [-0.205, 0.205]) chair.beam([x, 0.31, -0.56], [x, 0.92, -0.59], 0.04, 'roof', 'detail')
   chair.box(0.47, 0.25, 0.05, 0, 0.78, -0.58, 'concrete', 'detail')
   chair.rotation.y = Math.PI / 2
   chair.position.set(...RESCUE_LAYOUT.hostageSpawns[0])
@@ -434,6 +409,7 @@ export function createMissionWorld(compound?: THREE.Group): MissionWorld {
   crates(cover, 123, -38.3, 2)
   crates(cover, 129, 6, 3)
   cover.box(4, 1.4, 0.6, 158, 0.7, -12, 'concrete', 'detail')
+  groundOutline(cover, 158, -12, 4, 0.6)
   // New gate connects to the original raised loading platform through real steps.
   steps(cover, 57, -23.99, 2.4, 1.05, 5)
   crates(cover, 52, -15, 3)
@@ -443,11 +419,9 @@ export function createMissionWorld(compound?: THREE.Group): MissionWorld {
     ...detention.cellDoors.map(createCellLock),
     control('cameras', 'security-computer', 'Disable cameras', [149, FLOOR, -45.8], -Math.PI / 2),
     control('alarm', 'detention-alarm', 'Turn off alarm', [125.4, 0, -4.5]),
-    control('alarm', 'security-alarm', 'Turn off alarm', [142.3, FLOOR, -44], Math.PI / 2),
     control('gate', 'exit-gate-control', 'Open gate', [160.5, 0, 6.3], -Math.PI / 2),
     { id: 'rescue-jeep', kind: 'jeep', object: jeep,
       point: new THREE.Vector3(154.65, 1.05, 9.95), label: 'Board jeep' } satisfies Station,
-    control('rally', 'escort-rally', 'Regroup hostage', [128, 0, 12]),
     control('supply', 'maintenance-supplies', 'Take field supplies', [114.7, FLOOR, -45.5], -Math.PI / 2),
     control('distraction', 'service-bell', 'Ring service bell', [-39, 0, 3]),
   ]
