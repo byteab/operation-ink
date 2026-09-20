@@ -120,3 +120,9 @@ Bookmarks are also available through `?view=overview`, `?view=yard`, `?view=rail
 Three.js reuses the prototype's WebGL / unlit-surface approach. Its maintained [LineMaterial](https://threejs.org/docs/pages/LineMaterial.html) provides screen-space stroke widths and anti-aliased line edges. Tank cylinders use 80 radial segments with separately drawn rims and a silhouette shell; smaller ladder pipes use 24 segments and smooth silhouettes. Static geometry is batched by object and material. First-person mode renders continuously while playing; paused and inspection views sleep when nothing changes.
 
 All fourteen buildings have real entry openings and furnished interiors. The starting route enters the mess hall from the roof: use the west ladder beside the entrance drive, cross the flat roof, and descend through the rooftop doorway and stairs into the vestibule. A marked ground-level exit at the south end of the dining hall opens onto the compound yard, beyond the closed service-yard gate; the door also allows re-entry from the yard. Other camp buildings include barracks, stores, communications, medical and equipment rooms. The two elevated towers are connected by a zipline, and the water tower has a widened ring walkway. Roofs and exterior walls can be hidden together with the cutaway shortcut while floors, furnishings and interior partitions remain visible.
+
+## License
+
+The source code is released under the [MIT License](LICENSE).
+
+Audio is credited in [public/sounds/CREDITS.md](public/sounds/CREDITS.md). The CC0 and CC BY recordings listed there keep their own licenses. The files in `public/sounds/igi/` are third-party recordings from Project I.G.I.; they are **not** covered by the MIT License and no license to reuse them is granted here. The game runs without them: delete that folder and it falls back to the CC0 sounds (guard voices become caption-only).

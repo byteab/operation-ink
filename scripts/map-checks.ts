@@ -88,7 +88,8 @@ check('only pines remain and their crowns clear compound and annex fences',()=>{
   assert.equal(intersections.length,0,intersections.join('\n'))
 })
 for(const station of mission.stations)check(`station ${station.kind} standing and visible`,()=>{
-  const outward=new THREE.Vector3(0,0,1).transformDirection(station.object.matrixWorld)
+  // Wall controls face local +Z; the solid jeep is boarded from the driver's side, local -Z.
+  const outward=new THREE.Vector3(0,0,station.kind==='jeep'?-1:1).transformDirection(station.object.matrixWorld)
   const p=station.point.clone().addScaledVector(outward,1.25);const feet=stand(p.x,p.z,station.point.y-1.3)
   assert(fits(feet),`station has no clear standing point: ${feet.toArray()}`)
   assert(world.visible(feet.clone().add(new THREE.Vector3(0,1.65,0)),station.point,station.object),'station occluded')
