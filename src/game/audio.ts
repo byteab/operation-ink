@@ -29,6 +29,8 @@ const SAMPLES: Record<string, { files: string[]; gain: number; pitch?: number }>
   damage: { files: series('hit_flesh', 5), gain: 0.5 },
 }
 const URGENT = new Set(['contact', 'hurt', 'down', 'retreat'])
+const SOURCE_LIMIT = 80
+const INCIDENTAL = new Set(['footstep', 'enemy-footstep', 'impact'])
 const PAIN_PITCH = [0.93, 1, 1.06, 0.97]
 const HIT_COLOR = { head: { pitch: 1.22, gain: 1.06 }, torso: { pitch: 0.82, gain: 1 }, arm: { pitch: 1.1, gain: 0.8 }, leg: { pitch: 0.94, gain: 0.88 } }
 
@@ -36,8 +38,11 @@ export class MissionAudio {
   private context: AudioContext | null = null
   private master: GainNode | null = null
   private sources = new Set<AudioScheduledSourceNode>()
+  private incidentalSources = new Set<AudioScheduledSourceNode>()
+  private whizSources = new Set<AudioScheduledSourceNode>()
   private cleanup = new Map<AudioScheduledSourceNode, () => void>()
   private noise: AudioBuffer | null = null
+  private crackNoise: AudioBuffer | null = null
   private ambience: AudioBufferSourceNode | null = null
   private music: AudioBufferSourceNode | null = null
   private alarmSource: AudioScheduledSourceNode | null = null
@@ -47,6 +52,7 @@ export class MissionAudio {
   private loading = false
   private lastIndex = new Map<string, number>()
   private whizUntil = 0
+  private bulletHitUntil = 0
   private voiceUntil = 0
   private speakerUntil = new Map<number, number>()
   private phraseUntil = new Map<string, number>()
@@ -74,6 +80,9 @@ export class MissionAudio {
         const data = this.noise.getChannelData(0)
         let previous = 0
         for (let i = 0; i < data.length; i++) { previous = (previous + (Math.random() * 2 - 1) * 0.05) / 1.05; data[i] = previous * 4 }
+        this.crackNoise = this.context.createBuffer(1, this.context.sampleRate * 0.5, this.context.sampleRate)
+        const crack = this.crackNoise.getChannelData(0)
+        for (let i = 0; i < crack.length; i++) crack[i] = Math.random() * 2 - 1
         this.musicBuffer = this.composeMusic(this.context)
       }
       if (this.active) await this.context.resume()
@@ -156,16 +165,34 @@ export class MissionAudio {
     return buffer
   }
 
-  private track(source: AudioScheduledSourceNode, nodes: AudioNode[]) {
+  private track(source: AudioScheduledSourceNode, nodes: AudioNode[], priority?: 'incidental' | 'whiz') {
     this.sources.add(source)
+    if (priority === 'incidental') this.incidentalSources.add(source)
+    if (priority === 'whiz') this.whizSources.add(source)
     const release = () => {
       source.onended = null; source.disconnect(); nodes.forEach(node => node.disconnect())
       this.sources.delete(source); this.cleanup.delete(source)
+      this.incidentalSources.delete(source)
+      this.whizSources.delete(source)
       this.painSources.delete(source)
       if (this.spoken?.source === source) this.spoken = null
       if (this.alarmSource === source) this.alarmSource = null
     }
     this.cleanup.set(source, release); source.onended = release
+  }
+
+  /** Reserve every layer together. Weapon reports also outrank passing air;
+   * existing reports, voices, hit thumps, alarms and music remain protected. */
+  private reserveSources(count: number, reclaimWhiz = false) {
+    const needed = this.sources.size + count - SOURCE_LIMIT
+    if (needed <= 0) return true
+    const available = [...this.incidentalSources, ...(reclaimWhiz ? this.whizSources : [])]
+    if (available.length < needed) return false
+    for (const source of available.slice(0, needed)) {
+      try { source.stop() } catch { /* already ended */ }
+      this.cleanup.get(source)?.()
+    }
+    return true
   }
 
   private duckMusic() {
@@ -181,8 +208,10 @@ export class MissionAudio {
     const panner = event.position ? context.createPanner() : null
     if (panner) {
       const vocal = event.kind === 'callout' || event.kind === 'enemy-pain'
-      panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse'; panner.refDistance = event.kind === 'horn' ? 24 : vocal ? 10 : 4
-      panner.maxDistance = event.radius ?? 60; panner.rolloffFactor = event.kind === 'horn' ? 0.65 : vocal ? 0.85 : 1.35
+      const enemyReport = event.kind.startsWith('enemy-shot-')
+      panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse'
+      panner.refDistance = event.kind === 'horn' ? 24 : enemyReport ? event.kind === 'enemy-shot-sniper' ? 16 : 10 : vocal ? 10 : 4
+      panner.maxDistance = event.radius ?? 60; panner.rolloffFactor = event.kind === 'horn' ? 0.65 : vocal || enemyReport ? 0.85 : 1.35
       panner.positionX.value = event.position!.x; panner.positionY.value = event.position!.y; panner.positionZ.value = event.position!.z
       gain.connect(panner).connect(this.master!)
     } else gain.connect(this.master!)
@@ -234,7 +263,7 @@ export class MissionAudio {
     source.playbackRate.value = event.kind === 'horn' ? 1 : pitch
     if (event.kind === 'horn') { source.loop = true; this.alarmSource = source }
     source.connect(gain)
-    this.track(source, panner ? [gain, panner] : [gain]); source.start()
+    this.track(source, panner ? [gain, panner] : [gain], INCIDENTAL.has(event.kind) ? 'incidental' : undefined); source.start()
     if (event.kind === 'callout') this.spoken = { source, speaker: event.speaker ?? 0 }
     if (event.kind === 'enemy-pain') this.painSources.add(source)
     return true
@@ -282,6 +311,65 @@ export class MissionAudio {
     return true
   }
 
+  /** The runtime emits this at the bullet's closest approach. A small bias
+   * toward its muzzle connects the crack to the report without losing the
+   * passing side; the quieter tail then travels beyond the closest point. */
+  private incomingWhiz(event: SoundEvent, strength: number) {
+    const context = this.context!, t = context.currentTime
+    const closest = event.position?.clone()
+    const travel = closest && event.source ? closest.clone().sub(event.source) : null
+    const position = closest?.clone()
+    if (position && travel && travel.lengthSq() > 0.0001) {
+      const bias = Math.min(0.65, travel.length() * 0.06)
+      travel.normalize(); position.addScaledVector(travel, -bias)
+    }
+    const variation = 0.96 + Math.random() * 0.08
+    const layers = [
+      { buffer: this.crackNoise, duration: 0.038, attack: 0.002, peak: 0.28 * Math.sqrt(strength), from: 2600, to: 1500 },
+      { buffer: this.noise, duration: 0.15, attack: 0.012, peak: 0.085 * strength, from: 1750, to: 500 },
+    ]
+    layers.forEach((layer, index) => {
+      const { gain, panner } = this.output({ ...event, position })
+      gain.gain.setValueAtTime(0.001, t)
+      gain.gain.exponentialRampToValueAtTime(layer.peak, t + layer.attack)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + layer.duration)
+      const filter = context.createBiquadFilter(), source = context.createBufferSource()
+      filter.type = 'bandpass'; filter.Q.value = 0.65
+      filter.frequency.setValueAtTime(layer.from * variation, t)
+      filter.frequency.exponentialRampToValueAtTime(layer.to * variation, t + layer.duration)
+      source.buffer = layer.buffer; source.playbackRate.value = variation
+      if (index === 1 && panner && position && closest && travel) {
+        const end = closest.clone().addScaledVector(travel, 0.9)
+        for (const axis of ['x', 'y', 'z'] as const) {
+          const param = axis === 'x' ? panner.positionX : axis === 'y' ? panner.positionY : panner.positionZ
+          param.setValueAtTime(position[axis], t)
+          param.linearRampToValueAtTime(end[axis], t + layer.duration)
+        }
+      }
+      source.connect(filter).connect(gain)
+      this.track(source, panner ? [filter, gain, panner] : [filter, gain], 'whiz')
+      source.start(t); source.stop(t + layer.duration)
+    })
+  }
+
+  /** One short chest-level thump layers under the original player-hit sample. */
+  private incomingHit(strength: number) {
+    const context = this.context!, t = context.currentTime, duration = 0.13
+    const { gain } = this.output({ kind: 'bullet-hit' })
+    const peak = 0.14 * Math.sqrt(strength)
+    gain.gain.setValueAtTime(0.001, t)
+    gain.gain.exponentialRampToValueAtTime(peak, t + 0.003)
+    gain.gain.exponentialRampToValueAtTime(peak * 0.5, t + 0.035)
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration)
+    const source = context.createOscillator(), filter = context.createBiquadFilter()
+    source.type = 'sine'
+    source.frequency.setValueAtTime(138, t)
+    source.frequency.exponentialRampToValueAtTime(52, t + duration)
+    filter.type = 'lowpass'; filter.frequency.value = 280
+    source.connect(filter).connect(gain)
+    this.track(source, [filter, gain]); source.start(t); source.stop(t + duration)
+  }
+
   /** Runtime owns the siren lifetime, including silence, pause and checkpoint restore. */
   setAlarm(enabled: boolean, position?: THREE.Vector3) {
     const audible = enabled && this.active && !this.muted && this.volume > 0 &&
@@ -297,9 +385,21 @@ export class MissionAudio {
     const context = this.context
     if (!context || !this.master || !this.active || this.muted || this.volume <= 0 || this.disposed) return
     if (event.kind === 'horn' && this.alarmSource) return
-    const distance = event.position?.distanceTo(this.listenerPosition) ?? 0
+    const distance = event.kind === 'bullet-hit' ? 0 : event.position?.distanceTo(this.listenerPosition) ?? 0
     if (distance > (event.radius ?? 60)) return
-    if (this.sources.size >= 80) return
+    if (event.kind === 'enemy-bullet-whiz' || event.kind === 'bullet-hit') {
+      const whiz = event.kind === 'enemy-bullet-whiz', t = context.currentTime
+      const strength = THREE.MathUtils.clamp(event.intensity ?? (whiz ? 1 - distance / (event.radius ?? 5) : 1), 0, 1)
+      if (!Number.isFinite(strength) || strength <= 0 || t < (whiz ? this.whizUntil : this.bulletHitUntil)) return
+      if (!this.reserveSources(whiz ? 2 : 1)) return
+      if (whiz) { this.whizUntil = t + 0.09; this.incomingWhiz(event, strength) }
+      else { this.bulletHitUntil = t + 0.08; this.incomingHit(strength) }
+      this.duckMusic()
+      return
+    }
+    const report = event.kind.startsWith('shot-') || event.kind.startsWith('enemy-shot-')
+    if (report) { if (!this.reserveSources(1, true)) return }
+    else if (this.sources.size >= SOURCE_LIMIT) return
     if (event.kind === 'enemy-pain') {
       const speaker = event.speaker ?? 0, t = context.currentTime
       if (t < (this.painUntil.get(speaker) ?? 0) || this.painSources.size >= 3) return
@@ -331,34 +431,27 @@ export class MissionAudio {
       this.duckMusic()
       return
     }
-    if (event.kind === 'enemy-bullet-whiz') {
-      if (context.currentTime < this.whizUntil) return
-      this.whizUntil = context.currentTime + 0.09
-      this.duckMusic()
-    }
     if (event.kind.includes('shot') || event.kind === 'damage') this.duckMusic()
     if (this.sample(event)) return
     // Climbing emits one sampled rung sound every 0.5s, never a synthetic tone.
     if (event.kind === 'ladder') return
     if (this.confirmation(event)) return
-    const whiz = event.kind === 'enemy-bullet-whiz'
     const shot = event.kind.includes('shot'), horn = event.kind === 'horn', step = event.kind.endsWith('footstep')
     const metal = ['door', 'reload', 'enemy-reload', 'reload-ready', 'weapon-pump', 'shell-load', 'switch', 'pickup', 'drop', 'empty', 'impact', 'enemy-down'].includes(event.kind)
-    const duration = whiz ? 0.09 : horn ? 1.8 : shot ? event.kind.includes('sniper') ? 0.34 : 0.16 : step ? 0.08 : event.kind === 'empty' ? 0.045 : event.kind === 'callout' ? 0.18 : metal ? 0.11 : 0.28
+    const duration = horn ? 1.8 : shot ? event.kind.includes('sniper') ? 0.34 : 0.16 : step ? 0.08 : event.kind === 'empty' ? 0.045 : event.kind === 'callout' ? 0.18 : metal ? 0.11 : 0.28
     const t = context.currentTime
     const { gain, panner } = this.output(event)
-    const volume = whiz ? 0.22 : horn ? 0.28 : shot ? 0.7 : step ? 0.15 : metal ? 0.17 : 0.12
+    const volume = horn ? 0.28 : shot ? 0.7 : step ? 0.15 : metal ? 0.17 : 0.12
     gain.gain.setValueAtTime(0.001, t)
     gain.gain.exponentialRampToValueAtTime(volume, t + 0.007)
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration)
-    const noisy = whiz || shot || step || event.kind === 'impact'
+    const noisy = shot || step || event.kind === 'impact'
     const source = noisy ? context.createBufferSource() : context.createOscillator()
     const filter = context.createBiquadFilter()
     if (noisy) {
       const noiseSource = source as AudioBufferSourceNode
       noiseSource.buffer = this.noise; noiseSource.playbackRate.value = shot ? event.kind.includes('sniper') ? 1.25 : 2.4 : 0.8
-      filter.type = whiz ? 'bandpass' : 'highpass'; filter.frequency.value = whiz ? 3200 : shot ? 650 : 90
-      if (whiz) filter.frequency.exponentialRampToValueAtTime(900, t + duration)
+      filter.type = 'highpass'; filter.frequency.value = shot ? 650 : 90
     } else {
       const tone = source as OscillatorNode
       tone.type = horn ? 'sawtooth' : metal ? 'triangle' : 'sine'
@@ -370,12 +463,13 @@ export class MissionAudio {
     }
     source.connect(filter).connect(gain)
     if (horn) this.alarmSource = source
-    this.track(source, panner ? [filter, gain, panner] : [filter, gain]); source.start(t); source.stop(t + duration)
+    this.track(source, panner ? [filter, gain, panner] : [filter, gain], INCIDENTAL.has(event.kind) ? 'incidental' : undefined); source.start(t); source.stop(t + duration)
   }
 
   clear() {
     for (const source of [...this.sources]) { try { source.stop() } catch { /* already ended */ }; this.cleanup.get(source)?.() }
-    this.ambience = null; this.music = null; this.musicGain = null; this.alarmSource = null; this.voiceUntil = 0; this.whizUntil = 0
+    this.ambience = null; this.music = null; this.musicGain = null; this.alarmSource = null; this.voiceUntil = 0; this.whizUntil = 0; this.bulletHitUntil = 0
+    this.incidentalSources.clear(); this.whizSources.clear()
     this.speakerUntil.clear(); this.phraseUntil.clear(); this.painUntil.clear(); this.painSources.clear(); this.spoken = null
   }
   reset() { this.clear() }
@@ -384,7 +478,7 @@ export class MissionAudio {
     decodedSamples: this.buffers.size, acceptedVoices: this.acceptedVoices, suppressedVoices: this.suppressedVoices, muted: this.muted, volume: this.volume, disposed: this.disposed } }
   dispose() {
     this.disposed = true; this.active = false; this.loadAbort.abort(); this.reset()
-    this.buffers.clear(); this.noise = null; this.musicBuffer = null
+    this.buffers.clear(); this.noise = null; this.crackNoise = null; this.musicBuffer = null
     this.master?.disconnect(); this.master = null; void this.context?.close().catch(() => {}); this.context = null
   }
 }

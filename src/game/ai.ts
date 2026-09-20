@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { penPalette } from '../render/ballpoint'
+import { BulletTrails, bulletNearMiss } from './bullet-trails'
 import { Capsule } from 'three/addons/math/Capsule.js'
 import { EnemyActor, type ActorPostureSnapshot } from './actors'
 import type { Posture } from '../lab/postures'
@@ -131,10 +131,11 @@ export class EnemyDirector {
   private lastPlayer: PlayerSense | null = null
   private reserveDestination: THREE.Vector3 | null = null
   private elapsed = 0
-  private traces: { line: THREE.Line; life: number }[] = []
+  readonly bulletTrails: BulletTrails
 
   constructor(private context: AIContext, private actorFactory: (weapon: WeaponName) => Promise<EnemyActor> = EnemyActor.create) {
     this.navigation = new EnemyNavigation(context.world, context.doors, context.emit)
+    this.bulletTrails = new BulletTrails(context.scene, 'Enemy bullet')
   }
 
   async init() {
@@ -340,11 +341,7 @@ export class EnemyDirector {
     this.lastPlayer = player
     // Even a difficult radio investigation must not monopolize a rendered frame.
     this.advancePlans()
-    for (const trace of this.traces) {
-      trace.life -= dt
-      if (trace.life <= 0) { trace.line.removeFromParent(); trace.line.geometry.dispose(); (trace.line.material as THREE.Material).dispose() }
-    }
-    this.traces = this.traces.filter(trace => trace.life > 0)
+    this.bulletTrails.update(dt)
     for (const enemy of this.enemies) {
       if (enemy.state === 'reserve') continue
       if (enemy.state === 'dead') { enemy.actor.update(dt, 'dead', false); continue }
@@ -906,18 +903,22 @@ export class EnemyDirector {
     enemy.shots++
     enemy.magazine--
     enemy.actor.shoot()
-    this.context.emit({ kind: `enemy-shot-${enemy.spec.weapon}`, position: muzzle.clone(), radius: enemy.spec.weapon === 'sniper' ? 120 : 36 })
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([muzzle, end]),
-      new THREE.LineBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.4, depthTest: true }))
-    this.context.scene.add(line)
-    this.traces.push({ line, life: 0.085 })
-    if (!hitPlayer) {
-      // Only a real unobstructed bullet segment near the listener produces a flyby.
-      const closest = new THREE.Line3(muzzle, end).closestPointToPoint(player.eye, true, new THREE.Vector3())
-      if (closest.distanceTo(player.eye) < 1.6 && closest.distanceTo(muzzle) > 2) {
-        this.context.emit({ kind: 'enemy-bullet-whiz', position: closest, radius: 5 })
+    // A guard's muzzle report must reach every player it can engage. The local
+    // flyby is additional feedback, not a substitute for hearing the firing gun.
+    const reportRange = (enemy.spec.role === 'sniper' || enemy.spec.weapon === 'sniper'
+      ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) + 20
+    this.context.emit({ kind: `enemy-shot-${enemy.spec.weapon}`, position: muzzle.clone(), radius: reportRange })
+    const near = !hitPlayer && bulletNearMiss(muzzle, end, player.eye)
+    this.bulletTrails.emit(muzzle, end, enemy.spec.weapon, near ? { fraction: near.fraction, fire: () => {
+      // Sound arrives with the visible round. Recheck the current listener and cover,
+      // including a wall alongside the path, not only the original muzzle ray.
+      const eye = this.lastPlayer?.eye
+      if (!eye || !this.lastPlayer?.alive) return
+      const pass = bulletNearMiss(muzzle, end, eye)
+      if (pass && this.context.world.visible(pass.point, eye, ignore)) {
+        this.context.emit({ kind: 'enemy-bullet-whiz', position: pass.point, source: muzzle.clone(), intensity: pass.intensity, radius: 5 })
       }
-    }
+    } } : undefined)
     if (hitPlayer) this.context.damagePlayer(weapon.damage, enemy.position.clone(), {
       ...bodyHit, point: end.clone(), direction: direction.clone(), weapon: enemy.spec.weapon,
     })
@@ -1234,14 +1235,14 @@ export class EnemyDirector {
   }
 
   private clearTraces() {
-    for (const trace of this.traces) { trace.line.removeFromParent(); trace.line.geometry.dispose(); (trace.line.material as THREE.Material).dispose() }
-    this.traces = []
+    this.bulletTrails.clear()
   }
 
   dispose() {
     this.disposed = true
     this.plans.clear()
     this.clearTraces()
+    this.bulletTrails.dispose()
     this.enemies.forEach(enemy => enemy.actor.dispose())
     this.enemies.length = 0
     this.navigation.clear()

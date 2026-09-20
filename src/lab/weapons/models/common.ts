@@ -29,9 +29,9 @@ export function part(geom: THREE.BufferGeometry, mat: THREE.Material, pos: V, ro
     mat.polygonOffsetUnits = 1
   }
   const mesh = new THREE.Mesh(geom, mat)
-  mesh.add(createPenEdges(geom, penSeed(`${geom.type}:${pos.join(',')}:${rot.join(',')}`), 'edge'))
+  mesh.add(createPenEdges(geom, penSeed(`${geom.type}:${pos.join(',')}:${rot.join(',')}`), 'edge', 'weapon'))
   if (['CylinderGeometry', 'SphereGeometry', 'ConeGeometry', 'TorusGeometry', 'CapsuleGeometry'].includes(geom.type)) {
-    mesh.add(createPenSilhouette(geom))
+    mesh.add(createPenSilhouette(geom, 2.1, penPalette.ink, 'weapon'))
   }
   mesh.position.set(...pos)
   mesh.rotation.set(...rot.map(v => v * THREE.MathUtils.DEG2RAD) as V)

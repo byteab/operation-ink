@@ -42,6 +42,22 @@ for (const weapon of ['pistol', 'ak', 'smg', 'sniper'] as const) {
   }
 }
 console.log('PASS All weapons acquire and shoot after at least 800ms and within 1.3s at 30/60/144fps')
+for (const weapon of ['pistol', 'ak', 'smg', 'shotgun', 'sniper'] as const) {
+  const f = await fixture(weapon)
+  const range = weapon === 'sniper' ? ENEMY_COMBAT.sniperEngagedRange : ENEMY_COMBAT.engagedRange
+  f.player.feet.z = f.player.eye.z = range
+  f.ai.hear({ kind: 'shot-ak', position: f.player.eye.clone(), radius: 8 })
+  f.step(1.35)
+  const reports = f.events.filter(event => event.kind === `enemy-shot-${weapon}`)
+  assert(reports.length > 0, `${weapon} returns fire at its maximum engagement range`)
+  assert.equal(reports.length, f.enemy.shots, 'Every fired round emits its own weapon report')
+  for (const report of reports) {
+    assert(report.position!.distanceTo(f.player.eye) < report.radius!, 'The muzzle report reaches the player receiving its bullets')
+    assert(report.radius! >= range + 10, 'Audio range leaves room for elevated or offset muzzles')
+  }
+  f.dispose()
+}
+console.log('PASS Every enemy weapon reports each shot throughout its full engagement range, including 60 m ordinary guards and 110 m snipers')
 {
   const f = await fixture('ak', 44)
   const e = f.ai.enemies[43]

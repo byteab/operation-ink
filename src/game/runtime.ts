@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { penPalette } from '../render/ballpoint'
+import { BulletTrails } from './bullet-trails'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
@@ -27,6 +27,7 @@ export class MissionRuntime {
   readonly audio = new MissionAudio()
   readonly blood: MissionBlood
   readonly impacts: MissionImpacts
+  readonly bulletTrails: BulletTrails
   readonly playerHits = new PlayerHitReactions()
   readonly hud: MissionHUD
   readonly escort: HostageEscort
@@ -45,13 +46,12 @@ export class MissionRuntime {
   private wasVR = false
   private safePosition = new THREE.Vector3()
   private safeQuaternion = new THREE.Quaternion()
-  private traces: { line: THREE.Line; time: number }[] = []
   private hitFlash = 0
   private impactPoint: THREE.Vector3 | null = null
   private disposed = false
   private gunfireUntil = 0
 
-  constructor(private scene: THREE.Scene, private camera: EnvironmentCamera,
+  constructor(scene: THREE.Scene, private camera: EnvironmentCamera,
     readonly player: FirstPersonController, readonly world: MissionWorld, private invalidate: () => void) {
     player.missionMode = true
     player.canPlay = () => this.ready && this.state.phase === 'active'
@@ -65,6 +65,7 @@ export class MissionRuntime {
       return enemy.actor.rig.bones.chest.getWorldPosition(new THREE.Vector3())
     })
     this.impacts = new MissionImpacts(scene)
+    this.bulletTrails = new BulletTrails(scene, 'Player bullet')
     player.lookSensitivity = () => this.weapons.lookSensitivity
     this.ai = new EnemyDirector({ scene, world: player.world, doors: player.actions.doors, specs: world.enemies,
       emit: event => this.emit(event, false), damagePlayer: (amount, source, hit) => this.damage(amount, source, hit),
@@ -215,6 +216,9 @@ export class MissionRuntime {
     const distance = event.position ? eye.distanceTo(event.position) : 0
     const inRange = !event.position || distance <= (event.radius ?? 38)
     if (inRange) this.audio.play(event)
+    if (inRange && event.kind === 'enemy-bullet-whiz' && this.isActive()) {
+      this.hud.nearMiss(event.intensity ?? 0.5, this.soundDirection(event.source ?? event.position ?? eye))
+    }
     if (audible && event.radius && event.position) this.ai.hear(event)
     if (event.text && inRange && !event.kind.startsWith('shot-') && !event.kind.startsWith('enemy-shot')) {
       const text = event.kind === 'callout' && event.position ? `${this.soundDirection(event.position)} · “${event.text}”` : event.text
@@ -242,8 +246,7 @@ export class MissionRuntime {
       this.audio.play({kind:'impact',position:end,radius:18})
       this.impacts.emit(end, shot.direction)
     }
-    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([shot.origin,end]),new THREE.LineBasicMaterial({color:penPalette.ink,transparent:true,opacity:0.35}))
-    line.userData.noCollision=true; this.scene.add(line); this.traces.push({line,time:0.055})
+    this.bulletTrails.emit(shot.origin, end, shot.weapon)
   }
 
   damage(amount: number, source?: THREE.Vector3, hit?: PlayerBulletHit) {
@@ -254,6 +257,10 @@ export class MissionRuntime {
         amount, this.player.body.grounded && !this.player.actions.traversing)
     }
     this.hud.hurt(); this.audio.play({kind:'damage'})
+    if (source) {
+      this.audio.play({ kind: 'bullet-hit', intensity: Math.min(1, amount / 28) })
+      this.hud.nearMiss(1, this.soundDirection(source))
+    }
     this.hud.notify(source ? `Taking fire · ${this.soundDirection(source).toLowerCase()}. Break line of sight.` : 'You fell. Find a safer route.',2.5)
     if (this.state.phase==='dead') { this.playerHits.clear(); this.deaths++; this.player.pause(); this.cancelInput() }
     this.invalidate()
@@ -276,7 +283,7 @@ export class MissionRuntime {
     this.camera.perspective.quaternion.fromArray(saved.quaternion)
     this.safePosition.copy(this.player.body.position); this.safeQuaternion.copy(this.camera.perspective.quaternion)
     this.stepTime=0; this.interactionTime=0; this.hitFlash=0; this.lastCaptionAt=-100
-    this.clearTraces(); this.impacts.clear(); this.hud.reset(); this.security.reset(); this.syncWorld(true); this.invalidate()
+    this.bulletTrails.clear(); this.impacts.clear(); this.hud.reset(); this.security.reset(); this.syncWorld(true); this.invalidate()
   }
 
   retry() { if(this.checkpoint) { this.restore(this.checkpoint); this.hud.notify('Checkpoint restored. Resume when ready.',5) } }
@@ -336,7 +343,9 @@ export class MissionRuntime {
   update(dt:number) {
     this.finishFrame()
     const active=this.isActive()
-    if (this.player.immersive || !this.player.enabled || this.state.phase !== 'active') this.playerHits.clear()
+    if (this.player.immersive || !this.player.enabled || this.state.phase !== 'active') {
+      this.playerHits.clear(); this.bulletTrails.clear(); this.ai.bulletTrails.clear(); this.hud.clearThreat()
+    }
     if(this.player.immersive && !this.wasVR) {
       this.cancelInput()
       // Entering VR resets transit to a tower landing. Preserve that safe
@@ -396,9 +405,7 @@ export class MissionRuntime {
       this.state.alarmPosition ? new THREE.Vector3(...this.state.alarmPosition) : undefined)
     this.hud.setScoped(this.weapons.scoped, this.weapons.scopeMagnification)
     if(active) {
-      for(const trace of this.traces) trace.time-=dt
-      for(const trace of this.traces.filter(t=>t.time<=0)) { trace.line.removeFromParent();trace.line.geometry.dispose();(trace.line.material as THREE.Material).dispose() }
-      this.traces=this.traces.filter(t=>t.time>0)
+      this.bulletTrails.update(dt)
       this.hitFlash-=dt
     }
     const crosshair=document.querySelector<HTMLElement>('.crosshair')!
@@ -409,7 +416,6 @@ export class MissionRuntime {
     return active
   }
 
-  private clearTraces() { for(const trace of this.traces) { trace.line.removeFromParent();trace.line.geometry.dispose();(trace.line.material as THREE.Material).dispose() };this.traces=[] }
   finishFrame() { this.playerHits.removeCamera() }
-  dispose() { this.playerHits.clear();this.disposed=true;this.abort.abort();this.clearTraces();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
+  dispose() { this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
 }

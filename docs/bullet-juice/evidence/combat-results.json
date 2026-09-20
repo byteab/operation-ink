@@ -1,0 +1,122 @@
+{
+  "audio": {
+    "acceptedVoices": 0,
+    "active": true,
+    "alarm": false,
+    "ambience": true,
+    "decodedSamples": 96,
+    "disposed": false,
+    "music": true,
+    "muted": false,
+    "sources": 5,
+    "suppressedVoices": 0,
+    "volume": 0.55
+  },
+  "results": [
+    {
+      "label": "ak firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Pointer fire produces one visible round and consumes one cartridge",
+      "passed": true
+    },
+    {
+      "label": "Fast round has a finite readable flight",
+      "passed": true
+    },
+    {
+      "label": "Pause freezes visual flight",
+      "passed": true
+    },
+    {
+      "label": "Projectile afterimage expires",
+      "passed": true
+    },
+    {
+      "label": "shotgun firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Shotgun draws eight compact pellets for one cartridge",
+      "passed": true
+    },
+    {
+      "label": "ak firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Surface hit has a brief contact burst",
+      "passed": true
+    },
+    {
+      "label": "Contact burst expires",
+      "passed": true
+    },
+    {
+      "label": "ak firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Actual enemy firing path runs",
+      "passed": true
+    },
+    {
+      "label": "Flyby waits for traveling round",
+      "passed": true
+    },
+    {
+      "label": "Real near miss emits directional intensity without damage",
+      "passed": true
+    },
+    {
+      "label": "Near miss reaches peripheral pressure and directional caption",
+      "passed": true
+    },
+    {
+      "label": "Pause freezes pressure recovery",
+      "passed": true
+    },
+    {
+      "label": "Reduced Motion suppresses pressure, retains direction text",
+      "passed": true
+    },
+    {
+      "label": "Pressure clears fully after quiet",
+      "passed": true
+    },
+    {
+      "label": "Actual enemy firing path runs",
+      "passed": true
+    },
+    {
+      "label": "Bullet damage still drives anatomical flinch",
+      "passed": true
+    },
+    {
+      "label": "Checkpoint clears trails, callbacks and threat",
+      "passed": true
+    },
+    {
+      "label": "ak firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Actual enemy firing path runs",
+      "passed": true
+    },
+    {
+      "label": "VR entry clears incoming effects",
+      "passed": true
+    },
+    {
+      "label": "ak firing lane clear",
+      "passed": true
+    },
+    {
+      "label": "Actual enemy firing path runs",
+      "passed": true
+    }
+  ],
+  "staged": true
+}

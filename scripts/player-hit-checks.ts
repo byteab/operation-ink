@@ -186,8 +186,10 @@ console.log('PASS All five weapons keep connected fixed-length arms during overl
   for (const impact of hits) {
     const muzzle = enemy.actor.muzzle()
     assert(impact.direction.distanceTo(impact.point.clone().sub(muzzle).normalize()) < 1e-8)
-    const trace = (ai as any).traces[hits.indexOf(impact)].line.geometry.attributes.position
-    assert(v().fromBufferAttribute(trace, 1).distanceTo(impact.point) < 1e-5, 'Trace ends at reported body part')
+    const round = (ai.bulletTrails as any).rounds[hits.indexOf(impact)]
+    assert(round.origin.distanceTo(muzzle) < 1e-8, 'Moving round starts at the actual muzzle')
+    assert(round.origin.clone().addScaledVector(round.direction, round.distance).distanceTo(impact.point) < 1e-8,
+      'Moving round terminates at the reported body part')
   }
   cover.position.x = 0; world.refresh(); fire(0.8)
   assert.notEqual(hits.at(-1)!.region, 'leg', 'Low cover prevents reporting a hidden leg hit')

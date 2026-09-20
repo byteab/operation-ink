@@ -1,5 +1,15 @@
 # Project memory
 
+## Bullet feedback and gun distance
+
+- Follow-up enemy gunshot fix: the user reported inaudible firing. Native browser tracing found ordinary muzzle reports hard-culled beyond36m although guards engage to60m; local flybys still played. Enemy report radius now engagement range+20m (80/130m), with refDistance10m (sniper16m) and rolloff.85. Shots reserve capacity by reclaiming incidental effects then whiz layers, protecting other reports/voices/loops/hit thumps under80 sources. All5 maximum-range AI/native-route tests and real browser AK20/40/59m +sniper70/109m checks passed, including saturation/mute/pause. Helper: `scripts/check-enemy-audio.js`.
+
+- Replaced full-path player/enemy lines with `BulletTrails`: reusable ink heads, paper contrast rims and short wakes, capped at 96 per pool; cosmetic flight 55–150 ms, 35 ms afterimage. Damage/hit tests remain immediate and unchanged. Enemy misses schedule sound at closest approach and recheck current eye position and lateral cover. Runtime clears effects on checkpoint/restart/death/inspection/VR; pause freezes travel.
+- Incoming audio uses a 38 ms crack plus 150 ms spatial passing air, 90 ms gate; bullet hits add a local 130 ms low thump with an 80 ms gate. All effects share volume/mute/pause and atomic 80-source budget. Old incidental footsteps/impacts may be reclaimed for incoming cues. Native weapon reports remain intact.
+- `IncomingFire` drives bounded directional edge shading and a short text cue, recovering within 650 ms. Reduced Motion suppresses shading. Surface impacts add an 85 ms ink burst capped at 24.
+- Gun rendering opts into an earlier distance profile in `ballpoint.ts`: full weight through 2 m, ~55% at12m/~31% at20m/~16% at40m. Edges, offsets and curved silhouettes match; scenery/default profile stays unchanged. Shared held/drop/FPS factory; orthographic unchanged.
+- User authorized agent-browser fallback and isolated subagents. Build, test:bullets/player-hits/weapons/ai/polish/player/vr and existing near-miss checks passed. Staged real-mission pointer/guard checks and GPU gun comparisons passed with no browser/shader errors. Pixel-comparison near criterion uses footprint agreement because identical GPU draws showed small pigment variance. Sources, scope and screenshots: `docs/bullet-juice/README.md`. No commits made.
+
 ## Directional player bullet reactions
 
 - Incoming enemy rounds carry anatomical region/side, exact aimed point, travel direction and weapon into `MissionRuntime.damage`. The existing seeded hit-chance model remains; successful rounds sample torso, shoulder, arm, hand, leg or head and check cover/friendlies against that segment.

@@ -15,17 +15,23 @@ export const penPalette = {
 
 export type PenRole = 'edge' | 'detail' | 'mesh' | 'landscape'
 export type PenMaterialOptions = { density?: number; scale?: number; seed?: number }
+export type PenDistanceProfile = 'world' | 'weapon'
 
-/** Shared perspective taper for strokes and silhouettes, measured in view-space metres. */
-export const penDistanceGLSL = `
+/** Weapon details are centimetres apart, so their contours must thin before scenery's. */
+function distanceShader(profile: PenDistanceProfile) {
+  const [near, falloff, minimum] = profile === 'weapon' ? [2, 10, 0.1] : [8, 32, 0.24]
+  return `
   float penDistanceScale(float viewDepth) {
     // Orthographic plan views have no perspective distance shrinkage.
     if (projectionMatrix[2][3] != -1.0) return 1.0;
-    // Keep the first 8 m bold, then taper smoothly toward a legible distant contour.
-    float depthRatio = max(viewDepth - 8.0, 0.0) / 32.0;
-    return 0.24 + 0.76 / (1.0 + depthRatio * depthRatio);
+    float depthRatio = max(viewDepth - ${near.toFixed(1)}, 0.0) / ${falloff.toFixed(1)};
+    return ${minimum} + ${(1 - minimum).toFixed(2)} / (1.0 + depthRatio * depthRatio);
   }
 `
+}
+
+/** Shared scenery taper for strokes and silhouettes, measured in view-space metres. */
+export const penDistanceGLSL = distanceShader('world')
 
 /** Semantic seeds survive reloads and are independent of the scene's allocation order. */
 export function penSeed(value: string | number): number {
@@ -179,27 +185,31 @@ export function sketchSegments(segments: ArrayLike<number>, seed: number, role: 
   return result
 }
 
-const edgeMaterial = new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 2.1,
-  depthTest: true, depthWrite: false, alphaToCoverage: true, toneMapped: false })
-edgeMaterial.onBeforeCompile = shader => {
-  shader.vertexShader = shader.vertexShader
-    .replace('uniform float linewidth;', `uniform float linewidth;
-      ${penDistanceGLSL}
-      attribute float instancePenWidth;
-      attribute vec2 instancePenOffset;`)
-    .replace('// ndc space', `// Foreground contours stay continuous with only a small pressure variation.
-      float penStartScale = penDistanceScale(-start.z);
-      float penEndScale = penDistanceScale(-end.z);
-      float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
-      vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
-      penDirection /= max(length(penDirection), 0.0001);
-      vec2 penNormal = vec2(-penDirection.y, penDirection.x);
-      clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
-      clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
-      // ndc space`)
-    .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
+function createEdgeMaterial(distance: PenDistanceProfile) {
+  const material = new LineMaterial({ color: 0xffffff, vertexColors: true, linewidth: 2.1,
+    depthTest: true, depthWrite: false, alphaToCoverage: true, toneMapped: false })
+  material.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('uniform float linewidth;', `uniform float linewidth;
+        ${distanceShader(distance)}
+        attribute float instancePenWidth;
+        attribute vec2 instancePenOffset;`)
+      .replace('// ndc space', `// Foreground contours stay continuous with only a small pressure variation.
+        float penStartScale = penDistanceScale(-start.z);
+        float penEndScale = penDistanceScale(-end.z);
+        float penWidthScale = (position.y < 0.5) ? penStartScale : penEndScale;
+        vec2 penDirection = (clipEnd.xy / clipEnd.w - clipStart.xy / clipStart.w) * resolution;
+        penDirection /= max(length(penDirection), 0.0001);
+        vec2 penNormal = vec2(-penDirection.y, penDirection.x);
+        clipStart.xy += penNormal * instancePenOffset.x * penStartScale * 2.0 / resolution * clipStart.w;
+        clipEnd.xy += penNormal * instancePenOffset.y * penEndScale * 2.0 / resolution * clipEnd.w;
+        // ndc space`)
+      .replace('offset *= linewidth;', 'offset *= linewidth * instancePenWidth * penWidthScale;')
+  }
+  material.customProgramCacheKey = () => `ballpoint-foreground-edges-v4:${distance}`
+  return material
 }
-edgeMaterial.customProgramCacheKey = () => 'ballpoint-foreground-edges-v3'
+const edgeMaterials = { world: createEdgeMaterial('world'), weapon: createEdgeMaterial('weapon') }
 const penViewport = new THREE.Vector4()
 
 /** Logical desktop viewport keeps widths in CSS pixels despite supersampling. */
@@ -211,7 +221,8 @@ function updatePenResolution(resolution: THREE.Vector2, renderer: THREE.WebGLRen
 }
 
 /** Caller owns the returned geometry; all gun outlines share the material. */
-export function createPenEdges(geometry: THREE.BufferGeometry, seed: number, role: PenRole = 'detail'): LineSegments2 {
+export function createPenEdges(geometry: THREE.BufferGeometry, seed: number, role: PenRole = 'detail',
+  distance: PenDistanceProfile = 'world'): LineSegments2 {
   // Curved pieces get a separate silhouette. Keep their cap rims, not the facets
   // of low-segment cylinders or spheres, as authored hard edges.
   const curved = ['CylinderGeometry', 'SphereGeometry', 'ConeGeometry', 'TorusGeometry', 'CapsuleGeometry'].includes(geometry.type)
@@ -219,21 +230,23 @@ export function createPenEdges(geometry: THREE.BufferGeometry, seed: number, rol
   const marks = sketchSegments(source.getAttribute('position').array, seed, role, 0.07,
     { retraceScale: 0.18, deviationScale: 0.12, pressureScale: 0.25 })
   source.dispose()
-  return createPenStrokeMesh(marks)
+  return createPenStrokeMesh(marks, 2.1, distance)
 }
 
 /** Draw an authored connected path directly, without extracting triangle edges. */
-export function createPenLines(points: readonly THREE.Vector3[], seed: number, role: PenRole = 'detail', width = 1.8): LineSegments2 {
+export function createPenLines(points: readonly THREE.Vector3[], seed: number, role: PenRole = 'detail', width = 1.8,
+  distance: PenDistanceProfile = 'world'): LineSegments2 {
   const segments: number[] = []
   for (let i = 1; i < points.length; i++) segments.push(...points[i - 1].toArray(), ...points[i].toArray())
   const marks = sketchSegments(segments, seed, role, 0.07,
     { retraceScale: 0, deviationScale: 0.12, pressureScale: 0.25 })
-  const line = createPenStrokeMesh(marks, width)
+  const line = createPenStrokeMesh(marks, width, distance)
   line.name = 'Continuous black pen path'
   return line
 }
 
-function createPenStrokeMesh(marks: SketchSegments, width = 2.1): LineSegments2 {
+function createPenStrokeMesh(marks: SketchSegments, width: number, distance: PenDistanceProfile): LineSegments2 {
+  const edgeMaterial = edgeMaterials[distance]
   const lineGeometry = new LineSegmentsGeometry().setPositions(marks.positions).setColors(marks.colors)
   const widths = marks.widths.map(pressure => pressure * width / edgeMaterial.linewidth)
   lineGeometry.setAttribute('instancePenWidth', new THREE.InstancedBufferAttribute(new Float32Array(widths), 1))
@@ -257,9 +270,9 @@ const silhouetteMaterials = new Map<string, THREE.ShaderMaterial>()
  * never writes it, so hands and other parts can still hide it normally.
  */
 export function createPenSilhouette(geometry: THREE.BufferGeometry, width = 2.1,
-  color: THREE.ColorRepresentation = penPalette.ink): THREE.Mesh {
+  color: THREE.ColorRepresentation = penPalette.ink, distance: PenDistanceProfile = 'world'): THREE.Mesh {
   const pigment = new THREE.Color(color)
-  const key = `${width}:${pigment.getHexString()}`
+  const key = `${width}:${pigment.getHexString()}:${distance}`
   let material = silhouetteMaterials.get(key)
   if (!material) {
     material = new THREE.ShaderMaterial({
@@ -267,7 +280,7 @@ export function createPenSilhouette(geometry: THREE.BufferGeometry, width = 2.1,
       vertexShader: `
         uniform vec2 resolution;
         uniform float width;
-        ${penDistanceGLSL}
+        ${distanceShader(distance)}
         void main() {
           vec4 view = modelViewMatrix * vec4(position, 1.0);
           vec4 clip = projectionMatrix * view;

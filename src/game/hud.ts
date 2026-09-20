@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { loadedCount, releasedCount, missionObjective, type MissionState, SIGNALS_COMPUTER_ID } from './mission'
 import type { MissionWorld } from './types'
 import './game.css'
+import { IncomingFire } from './incoming-fire'
 
 const icons: Record<string, string> = {
   door: '<path d="M5 21V3h14v18M9 21V5l8 2v14M13 13h1"/>',
@@ -32,6 +33,9 @@ export class MissionHUD {
   private captionTimer = 0
   private start: HTMLButtonElement
   private damageTimer = 0
+  readonly incoming = new IncomingFire()
+  private threat: HTMLElement
+  private threatLabel: HTMLElement
   reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
   constructor(world: MissionWorld, callbacks: { retry: () => void; restart: () => void; volume: (value: number) => void; mute: (value: boolean) => void }) {
@@ -52,6 +56,13 @@ export class MissionHUD {
     this.root.id = 'mission-hud'
     this.root.innerHTML = '<div class="mission-objective"><span>Mission</span><strong id="mission-objective"></strong><small id="mission-detail"></small></div><div id="mission-alert" role="status"></div><div id="mission-caption" role="status"></div><div class="mission-vitals"><span>Condition</span><strong id="mission-health">100</strong></div><div class="mission-weapon"><span id="mission-weapon"></span><strong id="mission-ammo"></strong><small>Magazine / reserve</small></div><div class="mission-damage" aria-hidden="true"></div>'
     document.body.append(this.root)
+    this.threat = document.createElement('div')
+    this.threat.className = 'mission-threat'
+    this.threat.setAttribute('aria-hidden', 'true')
+    this.threat.innerHTML = '<i></i><span></span>'
+    this.threatLabel = this.threat.querySelector('span')!
+    this.root.append(this.threat)
+    this.clearThreat()
     this.objective = $('#mission-objective'); this.detail = $('#mission-detail'); this.health = $('#mission-health')
     this.health.parentElement!.querySelector('span')!.textContent = 'Health'
     this.health.setAttribute('aria-label', 'Health: 100 of 100')
@@ -104,7 +115,9 @@ export class MissionHUD {
   error(message: string) { this.start.textContent = 'Reload to retry loading'; this.debrief.hidden = false; this.debrief.textContent = message }
   notify(message: string, duration = 5) { this.caption.textContent = message; this.captionTimer = duration }
   hurt() { this.damageTimer = 0.32 }
-  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false) }
+  nearMiss(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
+  clearThreat() { this.incoming.clear(); this.threat.hidden = true }
+  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat() }
   setScoped(scoped: boolean, magnification = 4) {
     this.scope.hidden = !scoped
     document.body.classList.toggle('mission-scoped', scoped)
@@ -125,7 +138,11 @@ export class MissionHUD {
     this.healthBar.classList.toggle('danger', state.health <= 35)
     this.weapon.textContent = data.label; this.ammo.textContent = data.reloading ? 'Reloading…' : data.ammo
     this.alert.textContent = state.alarm === 'active' ? 'ALARM · Barracks responding' : state.alarm === 'silenced' ? 'Alarm silenced · Guards searching' : data.blocked ? 'Weapon obstructed · step back' : ['routine','clear','UNDETECTED'].includes(data.alert) ? '' : data.alert
-    if (data.playing) { this.captionTimer -= dt; this.damageTimer -= dt }
+    if (data.playing) { this.captionTimer -= dt; this.damageTimer -= dt; this.incoming.update(dt) }
+    this.threat.hidden = !this.incoming.visible || state.phase !== 'active'
+    this.threat.dataset.direction = this.incoming.direction.toLowerCase()
+    this.threat.style.setProperty('--pressure', String(this.reducedMotion ? 0 : this.incoming.strength * 0.48))
+    this.threatLabel.textContent = `Incoming · ${this.incoming.direction.toLowerCase()}`
     this.caption.hidden = this.captionTimer <= 0
     this.root.classList.toggle('hurt', this.damageTimer > 0 && !this.reducedMotion)
     const kind = document.querySelector<HTMLElement>('#action-prompt')!.dataset.kind ?? 'mission'

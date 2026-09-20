@@ -59,7 +59,7 @@
       assert('All impact chips expire', m.impacts.mesh.count === 0);
       m.impacts.emit(point, direction);
       m.restart(); m.update(0);
-      assert('Restart clears transient effects and health', m.impacts.mesh.count === 0 && m.traces.length === 0 && m.state.health === 100 && m.audio.diagnostics.sources === 0);
+      assert('Restart clears transient effects and health', m.impacts.mesh.count === 0 && m.bulletTrails.count === 0 && m.ai.bulletTrails.count === 0 && m.state.health === 100 && m.audio.diagnostics.sources === 0);
       return results;
     },
     surfaceShot() {

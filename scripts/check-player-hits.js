@@ -31,7 +31,7 @@
     }
   }
   const setup = (name = 'ak') => {
-    m.playerHits.clear(); m.weapons.cancel(); m.clearTraces()
+    m.playerHits.clear(); m.weapons.cancel(); m.bulletTrails.clear()
     m.state.health = 100; m.state.phase = 'active'; m.state.jeep = 'waiting'
     p.enabled = p.playing = true; p.immersive = false; p.actions.reset(); p.movementLocked = false
     p.body.teleport(v(0, 0.03, -62)); p.body.grounded = true

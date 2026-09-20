@@ -15,7 +15,7 @@
   ai.context.emit = event => { if (event.kind.startsWith('enemy-shot')) events.push({ kind: event.kind, posture: e.actor.posture, y: event.position.y - e.position.y }); emit(event) }
   ai.context.damagePlayer = () => {}
   const reset = () => {
-    ai.restore(saved); m.blood.clear(); m.clearTraces(); events.length = 0
+    ai.restore(saved); m.blood.clear(); m.bulletTrails.clear(); events.length = 0
     for (const other of ai.enemies) { other.state = 'reserve'; other.actor.root.visible = false }
     e.position.copy(ai.navigation.floor(v(0, .1, -58)) ?? v(0, .03, -58)); e.yaw = 0
     Object.assign(e, { state: 'guard', health: 100, canSee: false, lastKnown: null, senseTimer: 10, scanTimer: 0, scanCooldown: 0,

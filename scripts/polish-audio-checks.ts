@@ -6,15 +6,23 @@ import { readFileSync } from 'node:fs'
 
 class Param {
   value = 0
-  setValueAtTime(value: number) { this.value = value }
-  exponentialRampToValueAtTime(value: number) { this.value = value }
-  linearRampToValueAtTime(value: number) { this.value = value }
+  events: { kind: string; value: number; time: number }[] = []
+  setValueAtTime(value: number, time: number) { this.value = value; this.events.push({ kind: 'set', value, time }) }
+  exponentialRampToValueAtTime(value: number, time: number) { this.value = value; this.events.push({ kind: 'exponential', value, time }) }
+  linearRampToValueAtTime(value: number, time: number) { this.value = value; this.events.push({ kind: 'linear', value, time }) }
   cancelScheduledValues() {}
 }
 class Node {
   disconnected = false
-  connect(target: Node) { return target }
+  connections: Node[] = []
+  connect(target: Node) { this.connections.push(target); return target }
   disconnect() { this.disconnected = true }
+}
+class Gain extends Node { gain = new Param() }
+class Filter extends Node { frequency = new Param(); Q = new Param(); type = '' }
+class Panner extends Node {
+  positionX = new Param(); positionY = new Param(); positionZ = new Param()
+  panningModel = ''; distanceModel = ''; refDistance = 0; maxDistance = 0; rolloffFactor = 0
 }
 class Source extends Node {
   buffer: unknown
@@ -24,8 +32,10 @@ class Source extends Node {
   type = 'sine'
   onended: (() => void) | null = null
   stopped = false
-  start() {}
-  stop(time?: number) { if (time === undefined) { this.stopped = true; this.onended?.() } }
+  startTime = 0
+  stopTime = 0
+  start(time = 0) { this.startTime = time }
+  stop(time?: number) { this.stopTime = time ?? 0; if (time === undefined) { this.stopped = true; this.onended?.() } }
 }
 class FakeAudioContext {
   static latest: FakeAudioContext
@@ -37,9 +47,9 @@ class FakeAudioContext {
   listener = Object.fromEntries(['positionX', 'positionY', 'positionZ', 'forwardX', 'forwardY', 'forwardZ', 'upX', 'upY', 'upZ'].map(name => [name, new Param()]))
   constructor() { FakeAudioContext.latest = this }
   keep<T extends Node>(node: T) { this.nodes.push(node); return node }
-  createGain() { return this.keep(Object.assign(new Node(), { gain: new Param() })) }
-  createBiquadFilter() { return this.keep(Object.assign(new Node(), { frequency: new Param(), type: '' })) }
-  createPanner() { return this.keep(Object.assign(new Node(), { positionX: new Param(), positionY: new Param(), positionZ: new Param() })) }
+  createGain() { return this.keep(new Gain()) }
+  createBiquadFilter() { return this.keep(new Filter()) }
+  createPanner() { return this.keep(new Panner()) }
   createBufferSource() { return this.keep(new Source()) }
   createOscillator() { return this.keep(new Source()) }
   createBuffer(_channels: number, length: number, rate: number) { const data = new Float32Array(length); return { duration: length / rate, getChannelData: () => data } }
@@ -92,6 +102,100 @@ audio.dispose(); audio.setActive(true); await audio.unlock()
 assert.equal(audio.diagnostics.sources, 0); assert.equal(audio.status, 'locked'); assert.equal(audio.diagnostics.active, false)
 assert(FakeAudioContext.latest.nodes.every(node => node.disconnected))
 console.log('PASS mute, pause, resume, reset and disposal clean nodes and do not duplicate loops')
+
+const incoming = new MissionAudio()
+incoming.play({ kind: 'enemy-bullet-whiz', intensity: 1 }); incoming.play({ kind: 'bullet-hit', intensity: 1 })
+assert.equal(incoming.diagnostics.sources, 0, 'Incoming cues remain locked until audio activation')
+incoming.setActive(true); await incoming.unlock()
+const incomingContext = FakeAudioContext.latest
+const incomingSources = () => incomingContext.nodes.filter(node => node instanceof Source) as Source[]
+const filterFor = (source: Source) => source.connections[0] as Filter
+const gainFor = (source: Source) => filterFor(source).connections[0] as Gain
+const pannerFor = (source: Source) => gainFor(source).connections[0] as Panner
+const peakFor = (source: Source) => Math.max(...gainFor(source).gain.events.map(event => event.value))
+const listener = new THREE.PerspectiveCamera(); listener.position.set(10, 1.6, -5)
+incoming.update(listener)
+const closest = listener.position.clone().add(new THREE.Vector3(0.5, 0, 0))
+const muzzle = closest.clone().add(new THREE.Vector3(0, 0, -20))
+const whiz = { kind: 'enemy-bullet-whiz', position: closest, source: muzzle, radius: 5, intensity: 0.9 }
+incoming.play(whiz)
+const [crack, air] = incomingSources().slice(-2)
+assert.equal(incoming.diagnostics.sources, 4, 'One pass adds exactly two layers')
+assert(crack.buffer && air.buffer && crack.buffer !== air.buffer, 'The crisp crack and soft air use different noise colors')
+assert.equal(crack.startTime, air.startTime, 'Both layers start at the arrival event without another timing delay')
+assert.equal(crack.stopTime, 0.038); assert.equal(air.stopTime, 0.15)
+assert(peakFor(crack) <= 0.28 && peakFor(air) < peakFor(crack) * 0.4, 'The air tail stays below the sharp transient')
+for (const layer of [crack, air]) {
+  const filter = filterFor(layer)
+  assert.equal(filter.type, 'bandpass'); assert(filter.Q.value < 1, 'No resonant ringing is introduced')
+  assert(filter.frequency.events[0].value > filter.frequency.events.at(-1)!.value, 'Both noise colors descend briefly')
+  assert.equal(gainFor(layer).gain.events.at(-1)!.value, 0.001)
+  assert.equal(pannerFor(layer).positionX.value, closest.x, 'The passing side remains audible')
+  assert(!layer.loop)
+}
+assert.equal(pannerFor(crack).positionZ.value, closest.z - 0.65, 'The crack has a bounded muzzle-direction bias')
+assert.equal(pannerFor(air).positionZ.events[0].value, closest.z - 0.65)
+assert.equal(pannerFor(air).positionZ.events.at(-1)!.value, closest.z + 0.9, 'The air tail moves past the closest point')
+assert.equal(closest.z, -5); assert.equal(muzzle.z, -25, 'Spatial shaping never mutates gameplay positions')
+const afterWhiz = incomingContext.nodes.length
+incomingContext.currentTime = 0.089; incoming.play(whiz)
+assert.equal(incomingContext.nodes.length, afterWhiz, 'Automatic fire within 90 ms does not stack passing cues')
+incomingContext.currentTime = 0.09
+incoming.play({ ...whiz, position: listener.position.clone().add(new THREE.Vector3(-4.5, 0, 0)), intensity: undefined })
+const [farCrack, farAir] = incomingSources().slice(-2)
+assert(peakFor(farCrack) < peakFor(crack) * 0.5 && peakFor(farAir) < peakFor(air) * 0.2, 'Outer-radius passes are quieter')
+assert(pannerFor(farCrack).positionX.value < listener.position.x, 'Left-side passes retain left spatial placement')
+incomingContext.currentTime = 0.2
+const beforeRejected = incomingContext.nodes.length
+incoming.play({ ...whiz, position: listener.position.clone().add(new THREE.Vector3(6, 0, 0)) })
+incoming.play({ ...whiz, intensity: 0 }); incoming.play({ ...whiz, intensity: Number.NaN })
+assert.equal(incomingContext.nodes.length, beforeRejected, 'Out-of-range, inaudible and invalid cues allocate no layers')
+incoming.play(whiz)
+assert.equal(incomingSources().length, 8, 'Rejected events do not consume the arrival cooldown')
+console.log('PASS Incoming rounds layer a sharp crack and quieter descending pass, scale with distance, preserve side/source direction and rate-limit at 90 ms')
+
+for (const mode of ['muted', 'zero-volume', 'paused'] as const) {
+  incoming.setMuted(mode === 'muted'); incoming.setVolume(mode === 'zero-volume' ? 0 : 0.55); incoming.setActive(mode !== 'paused')
+  const count = incomingContext.nodes.length
+  incoming.play(whiz); incoming.play({ kind: 'bullet-hit', intensity: 1 })
+  assert.equal(incomingContext.nodes.length, count, `${mode} rejects all incoming layers before allocation`)
+}
+incoming.setMuted(false); incoming.setVolume(0.55); incoming.setActive(true)
+incoming.reset()
+for (let i = 0; i < 79; i++) incoming.play({ kind: 'shot-ak' })
+const protectedReports = incomingSources().filter(source => !source.disconnected)
+const at79 = incomingContext.nodes.length
+incoming.play(whiz)
+assert.equal(incoming.diagnostics.sources, 79)
+assert.equal(incomingContext.nodes.length, at79, 'A two-layer cue never partially allocates its last available slot')
+protectedReports[0].onended?.()
+incoming.play(whiz)
+assert.equal(incoming.diagnostics.sources, 80, 'Failed capacity reservations leave the cue eligible on immediate retry')
+assert(protectedReports.slice(1).every(source => !source.stopped), 'Urgent cues preserve active weapon reports')
+incoming.reset()
+for (let i = 0; i < 80; i++) incoming.play({ kind: 'impact' })
+const expendable = incomingSources().filter(source => !source.disconnected)
+incoming.play(whiz)
+assert.equal(incoming.diagnostics.sources, 80)
+assert(expendable[0].stopped && expendable[1].stopped && !expendable[2].stopped, 'Only the two oldest incidental effects make room for a full pass')
+incoming.play({ kind: 'bullet-hit', intensity: 1 })
+assert.equal(incoming.diagnostics.sources, 80); assert(expendable[2].stopped, 'Damage reserves only its one required source')
+const incomingNodes = incomingContext.nodes.length
+incomingContext.currentTime += 0.1; incoming.play(whiz)
+assert.equal(incoming.diagnostics.sources, 80)
+assert.equal(incomingContext.nodes.length, incomingNodes + 8, 'Another accepted pass replaces only its bounded layers')
+incoming.reset(); assert.equal(incoming.diagnostics.sources, 0)
+assert(incomingContext.nodes.slice(1).every(node => node.disconnected), 'Reset disconnects every replaced and retained effect node')
+incoming.play(whiz); assert.equal(incoming.diagnostics.sources, 2, 'Reset clears the incoming rate limits')
+const completed = incomingSources().slice(-2)
+completed.forEach(source => source.onended?.())
+assert.equal(incoming.diagnostics.sources, 0, 'Natural completion releases both layers from the source budget')
+assert(completed.every(source => source.disconnected && filterFor(source).disconnected && gainFor(source).disconnected && pannerFor(source).disconnected))
+incoming.dispose(); const disposedIncomingNodes = incomingContext.nodes.length
+incoming.play(whiz); incoming.play({ kind: 'bullet-hit', intensity: 1 }); await incoming.unlock()
+assert.equal(incomingContext.nodes.length, disposedIncomingNodes)
+assert(incomingContext.nodes.every(node => node.disconnected))
+console.log('PASS Incoming cues obey pause/mute/volume, atomically cap all layers at 80 sources, preserve reports, reclaim old incidental effects and release all nodes')
 
 let releaseFetch!: () => void
 const pending = new Promise<void>(resolve => { releaseFetch = resolve })
@@ -203,6 +307,88 @@ assert.equal(igi.diagnostics.sources, 0, 'Flyby respects mute')
 igi.dispose()
 console.log('PASS Bullet flyby synthesis is bounded, spatial, resettable and muted with other effects')
 console.log('PASS All IGI routes select deployed WAVs; climbing varies one-shots, detection/hurt use original vocals, and hits interrupt barks')
+
+const reports = new MissionAudio(); reports.setActive(true); await reports.unlock()
+await new Promise(resolve => setTimeout(resolve, 0))
+const reportContext = FakeAudioContext.latest
+const reportSources = () => reportContext.nodes.filter(node => node instanceof Source) as Source[]
+const latestReport = () => reportSources().at(-1)!
+const reportCamera = new THREE.PerspectiveCamera(); reportCamera.position.set(0, 1.6, 0)
+reports.update(reportCamera)
+for (const weapon of ['pistol', 'ak', 'smg', 'shotgun', 'sniper']) {
+  const kind = `enemy-shot-${weapon}`, radius = weapon === 'sniper' ? 130 : 80
+  for (const distance of weapon === 'sniper' ? [20, 40, 60, 110] : [20, 40, 60]) {
+    const before = reports.diagnostics.sources
+    reports.play({ kind, position: new THREE.Vector3(distance, 1.6, 0), radius })
+    assert.equal(reports.diagnostics.sources, before + 1, `${kind} remains audible throughout its combat range`)
+    const source = latestReport(), gain = source.connections[0] as Gain, panner = gain.connections[0] as Panner
+    const url = (source.buffer as { url: string }).url
+    assert(IGI_SAMPLES[kind].files.some(file => url.endsWith(`/sounds/${file}`)), `${kind} retains its native recording`)
+    assert.equal(gain.gain.value, IGI_SAMPLES[kind].gain, 'Restoring range does not boost the original sample gain')
+    assert(source.playbackRate.value >= 0.94 && source.playbackRate.value <= 1.06, 'Native report pitch is preserved')
+    assert.equal(panner.panningModel, 'HRTF'); assert.equal(panner.distanceModel, 'inverse')
+    assert.equal(panner.positionX.value, distance); assert.equal(panner.positionY.value, 1.6); assert.equal(panner.positionZ.value, 0)
+    assert.equal(panner.refDistance, weapon === 'sniper' ? 16 : 10); assert.equal(panner.rolloffFactor, 0.85)
+    assert.equal(panner.maxDistance, radius)
+    const attenuation = panner.refDistance / (panner.refDistance + panner.rolloffFactor * (distance - panner.refDistance))
+    assert(attenuation > (distance === 110 ? 0.15 : 0.18), 'Report retains a useful level beside local passing cues')
+    assert(!source.loop)
+  }
+  const count = reportContext.nodes.length
+  reports.play({ kind, position: new THREE.Vector3(radius + 1, 1.6, 0), radius })
+  assert.equal(reportContext.nodes.length, count, 'Reports beyond the explicit event range are still culled')
+}
+reports.play({ kind: 'impact', position: new THREE.Vector3(12, 1.6, 0), radius: 18 })
+const impactPanner = latestReport().connections[0].connections[0] as Panner
+assert.equal(impactPanner.refDistance, 4); assert.equal(impactPanner.rolloffFactor, 1.35, 'Other spatial effects retain their existing attenuation')
+console.log('PASS All enemy guns retain their native sampled report, source position and usable attenuation at 20/40/60 m and sniper 110 m')
+
+reports.reset(); reports.update(reportCamera)
+reports.play({ kind: 'callout', voice: 'contact', speaker: 99 })
+reports.play({ kind: 'horn', position: new THREE.Vector3(10, 1.6, 0), radius: 100 })
+reports.play({ kind: 'bullet-hit', intensity: 1 })
+const protectedSources = reportSources().filter(source => !source.disconnected)
+reports.play({ kind: 'enemy-bullet-whiz', position: new THREE.Vector3(0.5, 1.6, 0), intensity: 1 })
+const passingSources = reportSources().slice(-2)
+const room = 80 - reports.diagnostics.sources
+for (let i = 0; i < room; i++) reports.play({ kind: i % 2 ? 'footstep' : 'impact' })
+const incidentalSources = reportSources().slice(-room)
+assert.equal(reports.diagnostics.sources, 80)
+reports.play({ kind: 'enemy-shot-ak', position: new THREE.Vector3(40, 1.6, 0), radius: 80 })
+const admittedEnemy = latestReport()
+assert((admittedEnemy.buffer as { url: string }).url.endsWith('/igi/ak47_single.wav'))
+assert.equal(reports.diagnostics.sources, 80, 'A weapon report replaces an incidental sound without exceeding capacity')
+assert(incidentalSources[0].stopped && !incidentalSources[1].stopped)
+assert(passingSources.every(source => !source.stopped), 'Footsteps and impacts are reclaimed before older whiz layers')
+reports.play({ kind: 'shot-pistol' })
+const admittedPlayer = latestReport()
+assert((admittedPlayer.buffer as { url: string }).url.includes('/igi/glock_shot_'))
+assert(incidentalSources[1].stopped && !incidentalSources[2].stopped, 'Player reports receive the same source priority')
+assert.equal(reports.diagnostics.sources, 80)
+incidentalSources.forEach(source => source.onended?.())
+while (reports.diagnostics.sources < 80) reports.play({ kind: 'shot-ak' })
+const reportsBeforeWhizReclaim = reportSources().filter(source => !source.disconnected && !protectedSources.includes(source) && !passingSources.includes(source))
+reports.play({ kind: 'enemy-shot-sniper', position: new THREE.Vector3(110, 1.6, 0), radius: 130 })
+const admittedSniper = latestReport()
+assert((admittedSniper.buffer as { url: string }).url.endsWith('/igi/svddrag_shot_1.wav'))
+assert(passingSources[0].stopped && !passingSources[1].stopped, 'The oldest whiz layer yields when no incidental sound remains')
+assert.equal(reports.diagnostics.sources, 80)
+reports.play({ kind: 'shot-smg' })
+assert(passingSources[1].stopped, 'The remaining passing-air layer can also yield to a report')
+assert.equal(reports.diagnostics.sources, 80)
+assert(protectedSources.every(source => !source.stopped), 'Ambience, music, alarm, speech and impact thump remain protected')
+assert(reportsBeforeWhizReclaim.every(source => !source.stopped) && !admittedSniper.stopped, 'Previously playing weapon reports are never interrupted')
+const allProtected = reportContext.nodes.length
+reports.play({ kind: 'enemy-shot-ak', position: new THREE.Vector3(20, 1.6, 0), radius: 80 })
+assert.equal(reportContext.nodes.length, allProtected, 'A fully protected budget rejects another report safely')
+reports.reset(); assert.equal(reports.diagnostics.sources, 0)
+assert(reportContext.nodes.slice(1).every(node => node.disconnected), 'Reset releases reclaimed and protected sources and their nodes')
+for (let i = 0; i < 80; i++) reports.play({ kind: 'shot-ak' })
+const afterReset = reportContext.nodes.length
+reports.play({ kind: 'enemy-shot-ak' })
+assert.equal(reportContext.nodes.length, afterReset, 'Reset leaves no stale reclaimable source entries')
+reports.dispose(); assert(reportContext.nodes.every(node => node.disconnected))
+console.log('PASS Gun reports reclaim incidental sounds then whizzes at capacity, preserve reports/voices/loops/thumps, cap at 80 and clean up completely')
 
 const shotgunAudio = new MissionAudio(); shotgunAudio.setActive(true); await shotgunAudio.unlock()
 await new Promise(resolve => setTimeout(resolve, 0))

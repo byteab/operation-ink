@@ -29,6 +29,8 @@ Confirmed hits produce dense red blood sprays and immediate solid red splashes w
 
 Incoming bullets also produce directional first-person reactions: the struck hand, arm or shoulder recoils with the weapon, torso hits brace the arms, and leg hits dip the stance and tilt the view toward the injured side. A small delayed camera response follows the body and smoothly recovers without losing mouse aim. Repeated hits stay bounded; scope zoom scales the motion and Reduced Motion suppresses it. See [player hit reactions and verification](docs/player-hit-reactions/README.md); run `npm run test:player-hits` for the focused checks.
 
+Bullets now travel as compact ink marks with white contrast rims and short tapered trails. Close enemy misses produce a directional crack, passing whizz and brief peripheral pressure; hits add a low thump, and surface impacts burst into ink chips. Reduced Motion keeps the incoming direction cue without the pressure pulse. Enemy and dropped guns also use finer outlines at combat distances. See [bullet feedback and verification](docs/bullet-juice/README.md); run `npm run test:bullets` for the focused checks.
+
 - [Gameplay polish implementation and balance](docs/gameplay-polish/IMPLEMENTATION.md)
 - [Gameplay polish verification and evidence](docs/gameplay-polish/VERIFICATION.md)
 

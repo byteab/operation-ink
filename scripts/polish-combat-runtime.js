@@ -52,7 +52,7 @@ if(mode==='actors') {
     for(const e of m.ai.enemies){e.state='reserve';e.actor.root.visible=false;}
     const e=r.target;e.position.set(0,.03,-58);e.yaw=Math.PI;e.health=100;e.state='guard';e.actor.root.visible=true;e.actor.root.position.copy(e.position);e.actor.root.rotation.y=e.yaw;
     camera.position.set(0,1.5,-62);camera.lookAt(e.position.clone().add({x:0,y:1,z:0}));env.player.body.teleport(camera.position.clone().setY(.03));
-    r.resetTarget=()=>{e.health=100;e.state='guard';e.actor.restore('guard');m.blood.clear();m.clearTraces();};
+    r.resetTarget=()=>{e.health=100;e.state='guard';e.actor.restore('guard');m.blood.clear();m.bulletTrails.clear();};
     r.hitBone=(bone,damage=1,weapon='pistol')=>{
       const volume=e.actor.hitVolumes.volumes().find(v=>v.bone===bone),point=volume.a.clone().lerp(volume.b,.5);
       let origin,direction,predicted;
@@ -76,7 +76,7 @@ if(mode==='actors') {
 if(mode==='ai') {
   console.log(evaluate(`(() => {
     const env=__environment,m=env.mission,r=__combatReview,ai=m.ai;
-    r.fresh=()=>{ai.restore(m.initial.enemies);m.state.health=100;m.state.phase='active';for(const e of ai.enemies){e.state='reserve';e.actor.root.visible=false;}m.clearTraces();m.blood.clear();};
+    r.fresh=()=>{ai.restore(m.initial.enemies);m.state.health=100;m.state.phase='active';for(const e of ai.enemies){e.state='reserve';e.actor.root.visible=false;}m.bulletTrails.clear();m.blood.clear();};
     r.sense=(feet)=>({feet,eye:feet.clone().add({x:0,y:1.65,z:0}),velocity:feet.clone().set(0,0,0),alive:true,radioEnabled:false});
     r.results=[];r.events=[];r.surface=[];r.damage=[];
     r.originalEmit=ai.context.emit;r.originalDamage=ai.context.damagePlayer;r.originalSurface=ai.context.onSurfaceHit;

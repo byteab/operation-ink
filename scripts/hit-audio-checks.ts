@@ -16,7 +16,8 @@ class Param {
 }
 class Node {
   disconnected = false
-  connect(target: Node) { return target }
+  connections: Node[] = []
+  connect(target: Node) { this.connections.push(target); return target }
   disconnect() { this.disconnected = true }
 }
 class Source extends Node {
@@ -42,7 +43,7 @@ class FakeAudioContext {
   constructor() { FakeAudioContext.latest = this }
   keep<T extends Node>(node: T) { this.nodes.push(node); return node }
   createGain() { return this.keep(Object.assign(new Node(), { gain: new Param() })) }
-  createBiquadFilter() { return this.keep(Object.assign(new Node(), { frequency: new Param(), type: '' })) }
+  createBiquadFilter() { return this.keep(Object.assign(new Node(), { frequency: new Param(), Q: new Param(), type: '' })) }
   createPanner() { return this.keep(Object.assign(new Node(), { positionX: new Param(), positionY: new Param(), positionZ: new Param() })) }
   createBufferSource() { return this.keep(new Source()) }
   createOscillator() { return this.keep(new Source()) }
@@ -83,6 +84,7 @@ for (const mode of ['muted', 'zero-volume', 'paused'] as const) {
   audio.setMuted(mode === 'muted'); audio.setVolume(mode === 'zero-volume' ? 0 : 0.55); audio.setActive(mode !== 'paused')
   const count = sources().length
   audio.confirmHit({ ...head, lethal: true })
+  audio.play({ kind: 'bullet-hit', intensity: 1 })
   assert.equal(sources().length, count, `${mode} may not allocate confirmation sources`)
 }
 audio.setMuted(false); audio.setVolume(0.55); audio.setActive(true)
@@ -142,5 +144,34 @@ const sampledHead = sampledContext.nodes.filter(node => node instanceof Source).
 assert(sampledBody.buffer && sampledHead.buffer)
 assert(sampledHead.playbackRate.value > sampledBody.playbackRate.value, 'decoded local flesh samples retain distinct region coloration')
 assert.notEqual(sampledHead.buffer, sampledBody.buffer, 'successive hits select different flesh samples')
+const beforeDamage = sampled.diagnostics.sources
+sampled.play({ kind: 'damage' })
+const originalDamage = sampledContext.nodes.filter(node => node instanceof Source).at(-1) as Source
+assert(originalDamage.buffer, 'Bullet thumps preserve the existing recorded player damage layer')
+const beforeThumpPanners = sampledContext.nodes.filter(node => 'positionX' in node).length
+sampled.play({ kind: 'bullet-hit', intensity: 0.25, position: new THREE.Vector3(200, 0, 0), source: new THREE.Vector3(20, 0, 0) })
+const softThump = sampledContext.nodes.filter(node => node instanceof Source).at(-1) as Source
+assert.equal(sampled.diagnostics.sources, beforeDamage + 2, 'A bullet hit layers one brief thump under the damage sample')
+assert.equal(softThump.buffer, undefined); assert.equal(softThump.type, 'sine')
+assert.equal(softThump.stopTime, 0.13); assert(!softThump.loop)
+assert.equal(softThump.frequency.values[0], 138); assert.equal(softThump.frequency.values.at(-1), 52)
+assert.equal(sampledContext.nodes.filter(node => 'positionX' in node).length, beforeThumpPanners, 'Impact weight is local even if an event includes spatial metadata')
+const thumpPeak = (source: Source) => Math.max(...(source.connections[0].connections[0] as Node & { gain: Param }).gain.values)
+assert(thumpPeak(softThump) <= 0.07, 'The body layer stays below the original damage sample')
+const afterThump = sampledContext.nodes.length
+sampledContext.currentTime = 0.079; sampled.play({ kind: 'bullet-hit', intensity: 1 })
+assert.equal(sampledContext.nodes.length, afterThump, 'Pellets and very rapid hits cannot stack thumps')
+sampledContext.currentTime = 0.08; sampled.play({ kind: 'bullet-hit', intensity: 1 })
+const hardThump = sampledContext.nodes.filter(node => node instanceof Source).at(-1) as Source
+assert.equal(thumpPeak(hardThump), thumpPeak(softThump) * 2, 'Damage intensity controls impact weight without changing pitch')
+assert.deepEqual(hardThump.frequency.values, softThump.frequency.values)
+sampled.reset(); sampled.play({ kind: 'bullet-hit', intensity: 1 })
+assert.equal(sampled.diagnostics.sources, 1, 'Reset clears the hit stacking limit')
+const completedThump = sampledContext.nodes.filter(node => node instanceof Source).at(-1) as Source
+completedThump.onended?.()
+assert.equal(sampled.diagnostics.sources, 0, 'A finished thump releases its source, filter and gain')
+assert(completedThump.disconnected && completedThump.connections[0].disconnected && completedThump.connections[0].connections[0].disconnected)
 sampled.dispose()
+assert(sampledContext.nodes.every(node => node.disconnected))
 console.log('PASS Loaded flesh samples layer with original local cues, vary without immediate repeats and preserve head/body pitch distinction')
+console.log('PASS Bullet damage retains its sample and adds one local, low descending thump with intensity, pellet rate limiting and complete cleanup')

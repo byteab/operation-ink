@@ -61,6 +61,14 @@ body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; 
 .action-icon svg { width: 100%; height: 100%; }
 .mission-damage { position: absolute; inset: 0; box-shadow: inset 0 0 130px #00000060; opacity: 0; }
 .hurt .mission-damage { opacity: 1; }
+.mission-threat { position: absolute; inset: 0; pointer-events: none; }
+.mission-threat[hidden] { display: none; }
+.mission-threat i { position: absolute; inset: 0; opacity: var(--pressure, 0); background: radial-gradient(ellipse at center, transparent 48%, #000 115%); }
+.mission-threat i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #000000b0, transparent 24%); }
+.mission-threat[data-direction="right"] i::after { transform: rotate(180deg); }
+.mission-threat[data-direction="ahead"] i::after { background: linear-gradient(180deg, #000000b0, transparent 22%); }
+.mission-threat[data-direction="behind"] i::after { background: linear-gradient(0deg, #000000b0, transparent 22%); }
+.mission-threat span { position: absolute; left: 50%; top: 23%; transform: translateX(-50%); padding: 5px 10px; border-top: 2px solid var(--ink); background: #ffffffde; color: var(--ink); font: 600 10px/1.2 var(--font-mono, monospace); letter-spacing: 0.12em; text-transform: uppercase; }
 body[data-reduced-motion="true"] #action-marker,body[data-reduced-motion="true"] #action-prompt kbd { animation: none; }
 body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; gap: 12px; bottom: 25px; }
 @media(max-width:800px) {

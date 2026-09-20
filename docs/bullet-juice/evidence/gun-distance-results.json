@@ -1,0 +1,210 @@
+{
+  "baseline": "Isolated cloned material sets on the same gun object/geometry; unchanged scenery taper versus weapon taper",
+  "compiledPrograms": 6,
+  "controls": [
+    {
+      "fullWeightAt1m": {
+        "changedPixels": 344,
+        "footprintAreaRatio": 1,
+        "footprintDifference": 0,
+        "relativeFootprintDifference": 0,
+        "relativeInkDifference": 0.00014992340395857917
+      },
+      "passed": true,
+      "repeatedNew": {
+        "changedPixels": 377,
+        "footprintAreaRatio": 1.000068667170226,
+        "footprintDifference": 1,
+        "relativeFootprintDifference": 0.00006866717022591499,
+        "relativeInkDifference": 0.0001651782465043346
+      },
+      "repeatedPrevious": {
+        "changedPixels": 294,
+        "footprintAreaRatio": 1,
+        "footprintDifference": 0,
+        "relativeFootprintDifference": 0,
+        "relativeInkDifference": 0.0001281322115227392
+      },
+      "weapon": "ak"
+    },
+    {
+      "fullWeightAt1m": {
+        "changedPixels": 729,
+        "footprintAreaRatio": 1.000430246316016,
+        "footprintDifference": 4,
+        "relativeFootprintDifference": 0.0004302463160159191,
+        "relativeInkDifference": 0.009025127977896483
+      },
+      "passed": true,
+      "repeatedNew": {
+        "changedPixels": 621,
+        "footprintAreaRatio": 1,
+        "footprintDifference": 0,
+        "relativeFootprintDifference": 0,
+        "relativeInkDifference": 0.0020167052849193747
+      },
+      "repeatedPrevious": {
+        "changedPixels": 729,
+        "footprintAreaRatio": 1.000430246316016,
+        "footprintDifference": 4,
+        "relativeFootprintDifference": 0.0004302463160159191,
+        "relativeInkDifference": 0.01071003320110264
+      },
+      "weapon": "smg"
+    }
+  ],
+  "criteria": "Near views: <1% native dark-pixel area change AND <1% footprint XOR. Far views: >10% pigment reduction. All 1m and identical-repeat footprint controls must also pass.",
+  "fov": 75,
+  "nativeViewport": [
+    1280,
+    720
+  ],
+  "passed": true,
+  "pigmentNote": "Identical GPU renders showed about 1% pigment variation with stable pixel coverage; pigment sums remain diagnostic for near views. This does not establish which GPU raster stage causes the variation.",
+  "pixelRatio": 1.5,
+  "samples": [
+    {
+      "currentDarkPixels": 6424,
+      "currentInkMass": 3897.78431372536,
+      "distance": 2,
+      "inkRatio": 1.0147443626447543,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 1010,
+        "footprintAreaRatio": 1.0006230529595015,
+        "footprintDifference": 10,
+        "relativeFootprintDifference": 0.001557632398753894,
+        "relativeInkDifference": 0.017025134431793508
+      },
+      "previousDarkPixels": 6420,
+      "previousInkMass": 3841.149019607721,
+      "weapon": "ak"
+    },
+    {
+      "currentDarkPixels": 438,
+      "currentInkMass": 250.52941176470583,
+      "distance": 12,
+      "inkRatio": 0.7505374828181722,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 545,
+        "footprintAreaRatio": 0.7617391304347826,
+        "footprintDifference": 139,
+        "relativeFootprintDifference": 0.2417391304347826,
+        "relativeInkDifference": 0.4053149120642881
+      },
+      "previousDarkPixels": 575,
+      "previousInkMass": 333.79999999999995,
+      "weapon": "ak"
+    },
+    {
+      "currentDarkPixels": 176,
+      "currentInkMass": 86.84705882352947,
+      "distance": 20,
+      "inkRatio": 0.5351214208046401,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 281,
+        "footprintAreaRatio": 0.6219081272084805,
+        "footprintDifference": 107,
+        "relativeFootprintDifference": 0.37809187279151946,
+        "relativeInkDifference": 0.5176996496315099
+      },
+      "previousDarkPixels": 283,
+      "previousInkMass": 162.2941176470587,
+      "weapon": "ak"
+    },
+    {
+      "currentDarkPixels": 54,
+      "currentInkMass": 21.11764705882352,
+      "distance": 40,
+      "inkRatio": 0.4297342590375864,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 98,
+        "footprintAreaRatio": 0.5625,
+        "footprintDifference": 42,
+        "relativeFootprintDifference": 0.4375,
+        "relativeInkDifference": 0.5800015960418156
+      },
+      "previousDarkPixels": 96,
+      "previousInkMass": 49.14117647058826,
+      "weapon": "ak"
+    },
+    {
+      "currentDarkPixels": 3870,
+      "currentInkMass": 2425.972549019585,
+      "distance": 2,
+      "inkRatio": 1.010590714542423,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 587,
+        "footprintAreaRatio": 0.9969088098918084,
+        "footprintDifference": 14,
+        "relativeFootprintDifference": 0.0036063884595569297,
+        "relativeInkDifference": 0.01481523834416974
+      },
+      "previousDarkPixels": 3882,
+      "previousInkMass": 2400.5490196078244,
+      "weapon": "smg"
+    },
+    {
+      "currentDarkPixels": 238,
+      "currentInkMass": 139.21960784313717,
+      "distance": 12,
+      "inkRatio": 0.7875809743544231,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 290,
+        "footprintAreaRatio": 0.7828947368421053,
+        "footprintDifference": 66,
+        "relativeFootprintDifference": 0.21710526315789477,
+        "relativeInkDifference": 0.3208581063093446
+      },
+      "previousDarkPixels": 304,
+      "previousInkMass": 176.7686274509804,
+      "weapon": "smg"
+    },
+    {
+      "currentDarkPixels": 97,
+      "currentInkMass": 49.10588235294115,
+      "distance": 20,
+      "inkRatio": 0.5922807681392486,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 149,
+        "footprintAreaRatio": 0.6598639455782312,
+        "footprintDifference": 50,
+        "relativeFootprintDifference": 0.3401360544217687,
+        "relativeInkDifference": 0.43732854034622975
+      },
+      "previousDarkPixels": 147,
+      "previousInkMass": 82.90980392156862,
+      "weapon": "smg"
+    },
+    {
+      "currentDarkPixels": 23,
+      "currentInkMass": 12.133333333333333,
+      "distance": 40,
+      "inkRatio": 0.46603404127127585,
+      "passed": true,
+      "pixelDifference": {
+        "changedPixels": 50,
+        "footprintAreaRatio": 0.4693877551020408,
+        "footprintDifference": 26,
+        "relativeFootprintDifference": 0.5306122448979592,
+        "relativeInkDifference": 0.5893959933724957
+      },
+      "previousDarkPixels": 49,
+      "previousInkMass": 26.035294117647055,
+      "weapon": "smg"
+    }
+  ],
+  "shaderErrors": [],
+  "sheet": {
+    "height": 1168,
+    "id": "gun-distance-contact-sheet",
+    "width": 1168
+  },
+  "source": "createMissionGun: same factory used by held guards, dropped pickups and FPS weapons"
+}
