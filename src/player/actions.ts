@@ -95,7 +95,7 @@ export class PlayerActions {
       // Follow the leaf when it swings so an open doorway still offers "Close".
       const hinge = door.children.find(child => child.userData.doorHinge)!
       const point = hinge.localToWorld(new THREE.Vector3(door.userData.width * 0.7, 1.2, 0))
-      consider({ object: door, point, kind: 'door', label: door.userData.open ? 'Close door' : 'Open door', descending: false })
+      consider({ object: door, point, kind: 'door', label: door.userData.open ? 'Close' : 'Open', descending: false })
     }
     for (const ladder of this.ladders) for (const descending of [false, true]) {
       const endpoint = this.ladderPoint(ladder, descending)
@@ -112,7 +112,7 @@ export class PlayerActions {
         Math.hypot(this.body.position.x - endpoint.x, this.body.position.z - endpoint.z) > 2.3) continue
       const point = endpoint.clone().add(new THREE.Vector3(0, 1.3, 0))
       consider({ object: zipline, point, kind: 'zipline', descending: false,
-        label: 'Ride cable to observation tower' })
+        label: 'Ride zipline' })
     }
     for (const target of this.extraTargets()) consider(target)
     return this.target

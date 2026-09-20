@@ -533,7 +533,7 @@ export class FirstPersonWeapons {
   pickupTargets() {
     return [...this.loose.values()].map(({ item, model }) => ({
       object: model as THREE.Object3D, point: model.position.clone().add(new THREE.Vector3(0, 0.10, 0)),
-      label: `${this.inventory.every(Boolean) ? 'Swap for' : 'Pick up'} ${WEAPON_RULES[item.name].label} · ${item.magazine} / ${item.reserve}`, id: item.id,
+      label: `${this.inventory.every(Boolean) ? 'Swap' : 'Take'} ${WEAPON_RULES[item.name].label}`, id: item.id,
     }))
   }
 

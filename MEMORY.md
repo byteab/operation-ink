@@ -1,5 +1,10 @@
 # Project memory
 
+## Compact interaction prompts
+
+- User requested minimal action labels after the HUD cleanup. Prompts now use one compact line: F, an icon and the short action; removed object/location descriptions and the blinking key. Ladder directions remain explicit; doors show Open/Close; zipline shows Ride zipline; pickups show Take/Swap plus the weapon name without ammo counts. Mission labels are shorter while preserving the temporary camera shutdown duration and jeep prerequisites.
+- Build, weapon, mission and player suites passed. Agent-browser verified the actual roof-ladder prompt (143×40 px at 1440×900), native F descent, Climb up at 390×844, door labels and shortened mission labels; no browser errors.
+
 ## Icon-only health and ammunition
 
 - Removed the in-play mission/objective panel, Inspect map button and movement/status text from the mission HUD. Follow-up also removes the guard/alarm status banner and bottom controls strip; notifications such as “Weapon ready” are now screen-reader-only. The M shortcut still opens the field map; exploration mode retains its controls.
@@ -16,6 +21,7 @@
 
 ## Ink bullets and surface splashes
 
+- Latest shotgun damage follow-up: user requested another increase after 18→22; player pellet damage is now 28 (another ~27%). Spread, pellet count, falloff, recoil, reload and enemy shotgun damage are unchanged. Actual animated-target checks kill all centered 2m/3m cases; mean damage is ~83 at 6m, ~84 at 8m, ~41 at 16m and ~15 at 28m. The range assertion compares bands because hit-region sampling and the 100-health kill cap can reverse nearby averages. Build and the full weapon suite passed.
 - Player and enemy rounds now use rounded ink heads and darker tapered wakes. Actual surface contacts trigger a wet blot, outward droplets and a projected black splatter at visual arrival; damage remains immediate. Enemy misses continue to a real surface within their weapon range instead of ending two metres beyond the player.
 - `ink-splashes.ts` batches eight procedural blot variants, clipped to surface triangles and anchored to the hit mesh, including doors moving during/after flight. Stains last 45 active seconds, fade over the final five, and reuse 128 slots. Reset/disposal clear marks and pending arrivals; non-colliding effects cannot intercept shots.
 - User's latest follow-up: splashes were still too big after the first reduction. Cut dimensions by more than half again (ordinary 0.16m, shotgun pellet 0.08m, sniper 0.22m before variation), reduced the contact blot to 0.038m scale, halved droplet size and reduced outward scatter.

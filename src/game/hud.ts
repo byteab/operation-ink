@@ -10,6 +10,7 @@ import type { PlayerDeathSequence } from './player-death'
 const icons: Record<string, string> = {
   door: '<path d="M5 21V3h14v18M9 21V5l8 2v14M13 13h1"/>',
   ladder: '<path d="M7 2v20M17 2v20M7 5h10M7 10h10M7 15h10M7 20h10"/>',
+  zipline: '<path d="M2 3l20 7M8 5l-1 4 5 2 1-4M10 10l-1 6 5 2m-5-2-4 5m9-3 3 3"/>',
   pickup: '<path d="M4 13v7h16v-7M12 2v13m-5-5 5 5 5-5"/>',
   mission: '<path d="M5 20V4h14v16ZM8 8h8M8 12h3m4 0h1M8 16h8"/>',
 }

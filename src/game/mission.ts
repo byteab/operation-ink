@@ -29,13 +29,13 @@ export function stationLabel(state: MissionState, kind: StationKind, id: string)
   switch (kind) {
     case 'hostage': return state.hostages.find(h => h.id === id)?.status === 'captive' ? 'Release hostage' : null
     case 'cameras': return state.camerasActive || (id !== SIGNALS_COMPUTER_ID && state.camerasDisabledUntil !== null)
-      ? id === SIGNALS_COMPUTER_ID ? 'Disable cameras for 60 seconds' : 'Disable cameras' : null
-    case 'alarm': return state.alarm === 'active' ? 'Turn off alarm' : null
-    case 'gate': return state.gateOpen ? null : 'Open exit gate'
-    case 'jeep': return loadedCount(state) < state.hostages.length ? 'Bring the hostage to the jeep' : !state.gateOpen ? 'Open the exit gate first' : 'Board jeep'
+      ? id === SIGNALS_COMPUTER_ID ? 'Disable cameras · 60s' : 'Disable cameras' : null
+    case 'alarm': return state.alarm === 'active' ? 'Silence alarm' : null
+    case 'gate': return state.gateOpen ? null : 'Open gate'
+    case 'jeep': return loadedCount(state) < state.hostages.length ? 'Hostage needed' : !state.gateOpen ? 'Open gate first' : 'Board jeep'
     case 'rally': return state.hostages.some(h => h.status === 'following') ? 'Regroup hostage' : null
-    case 'supply': return state.supplies.includes(id) ? null : 'Take field dressing'
-    case 'distraction': return state.elapsed < state.distractionUntil ? null : 'Ring service bell'
+    case 'supply': return state.supplies.includes(id) ? null : 'Heal'
+    case 'distraction': return state.elapsed < state.distractionUntil ? null : 'Ring bell'
     default: return null
   }
 }

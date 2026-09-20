@@ -35,7 +35,6 @@ export class FirstPersonController {
   private walkButton = document.querySelector<HTMLButtonElement>('#walk-mode')!
   private prompt = document.querySelector<HTMLElement>('#action-prompt')!
   private actionLabel = document.querySelector<HTMLElement>('#action-label')!
-  private objectLabel = document.querySelector<HTMLElement>('#action-object')!
   private marker = document.querySelector<HTMLElement>('#action-marker')!
   private status = document.querySelector<HTMLElement>('#walk-status')!
 
@@ -195,7 +194,6 @@ export class FirstPersonController {
     this.marker.hidden = !target
     if (target) {
       this.actionLabel.textContent = target.label
-      this.objectLabel.textContent = target.object.name
       this.marker.textContent = target.kind === 'door' ? '▯' : target.kind === 'ladder' ? '☷' : target.kind === 'zipline' ? '↘' : target.kind === 'pickup' ? '+' : '⚙'
       this.prompt.dataset.kind = target.kind
       this.projected.copy(target.point).project(this.camera.active)
