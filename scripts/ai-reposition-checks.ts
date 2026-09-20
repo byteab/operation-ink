@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { EnemyDirector, type Enemy } from '../src/game/ai'
+import { ENEMY_RUN_SPEED } from '../src/game/balance'
 import { CollisionWorld } from '../src/player/collision'
 import type { EnemySpec, PlayerSense, Vec3 } from '../src/game/types'
 
@@ -79,7 +80,7 @@ async function check(name: string, run: () => Promise<void>) {
 }
 
 function assertRun(enemy: Enemy) {
-  assert(Math.abs(enemy.moveSpeed - 3.36) < 0.01, `offensive run speed was ${enemy.moveSpeed}`)
+  assert(Math.abs(enemy.moveSpeed - ENEMY_RUN_SPEED) < 0.01, `offensive run speed was ${enemy.moveSpeed}`)
   assert.equal(enemy.actor.player.current?.getClip().name, 'run', 'navigation must visibly play the loaded running animation')
 }
 

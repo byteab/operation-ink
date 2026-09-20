@@ -71,7 +71,8 @@ function render(now: number, xrFrame?: XRFrame) {
   else moving = player.update(dt) || camera.update(dt)
   let missionMoving = false
   try {
-    missionMoving = mission?.update(dt) ?? false
+    // Cinematic travel follows real frame time; physics keeps its safe step cap.
+    missionMoving = mission?.update(dt, elapsed) ?? false
     renderer.render(scene, vr.active ? vr.rig.camera : camera.active)
   }
   finally { mission?.finishFrame() }
@@ -90,6 +91,11 @@ function resize() {
   invalidate()
 }
 window.addEventListener('resize', resize)
+const visibilityChanged = () => {
+  lastTime = performance.now()
+  if (!document.hidden) invalidate()
+}
+document.addEventListener('visibilitychange', visibilityChanged)
 canvas.addEventListener('webglcontextlost', event => {
   event.preventDefault()
   contextLost = true
@@ -136,6 +142,7 @@ import.meta.hot?.dispose(() => {
   cancelAnimationFrame(frame)
   renderer.setAnimationLoop(null)
   window.removeEventListener('resize', resize)
+  document.removeEventListener('visibilitychange', visibilityChanged)
   vr.dispose()
   mission?.dispose()
   player.dispose()

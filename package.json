@@ -9,6 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "test:player": "node scripts/check-player.mjs",
     "test:gait": "node scripts/check-player.mjs scripts/gait-checks.ts",
+    "test:npc-transitions": "node scripts/check-player.mjs scripts/npc-transition-checks.ts",
+    "test:escape": "node scripts/check-player.mjs scripts/escape-cinematic-checks.ts",
     "test:vr": "node scripts/check-player.mjs scripts/vr-checks.ts",
     "test:mission": "node scripts/check-player.mjs scripts/mission-checks.ts",
     "test:rescue": "npm run test:mission && node scripts/check-player.mjs scripts/rescue-map-checks.ts && node scripts/check-player.mjs scripts/hostage-checks.ts && node scripts/check-player.mjs scripts/security-checks.ts",

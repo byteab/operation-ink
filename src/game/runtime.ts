@@ -12,6 +12,8 @@ import { MissionBlood, type BloodSnapshot } from './hit-reactions'
 import { MissionImpacts } from './impacts'
 import { PlayerHitReactions, type PlayerBulletHit } from './player-hit-reactions'
 import { PlayerDeathSequence } from './player-death'
+import { EscapeCinematic } from './escape-cinematic'
+import { EscapeDust } from './escape-dust'
 import { advanceMission, completeEscape, damageMission, initialMission, loadedCount, stationLabel, useStation, type MissionState } from './mission'
 import { HostageEscort } from './hostages'
 import { SecuritySystem } from './security'
@@ -31,11 +33,15 @@ export class MissionRuntime {
   readonly bulletTrails: BulletTrails
   readonly playerHits = new PlayerHitReactions()
   readonly death = new PlayerDeathSequence()
+  readonly escape = new EscapeCinematic()
+  readonly escapeDust: EscapeDust
   readonly hud: MissionHUD
   readonly escort: HostageEscort
   readonly security: SecuritySystem
   ready = false
   deaths = 0
+  // Temporary playthrough protection. Set false to restore normal player damage.
+  invincible = true
   private abort = new AbortController()
   private checkpoint: Checkpoint | null = null
   private initial: Checkpoint | null = null
@@ -56,7 +62,7 @@ export class MissionRuntime {
   constructor(scene: THREE.Scene, private camera: EnvironmentCamera,
     readonly player: FirstPersonController, readonly world: MissionWorld, private invalidate: () => void) {
     player.missionMode = true
-    player.canPlay = () => this.ready && this.state.phase === 'active'
+    player.canPlay = () => this.ready && this.state.phase === 'active' && !this.escape.active
     if (!camera.perspective.parent) scene.add(camera.perspective)
     this.weapons = new FirstPersonWeapons({ scene, camera: camera.perspective, world: player.world,
       aimDistance: (origin, direction, maxDistance) => this.ai.aimDistance(origin, direction, maxDistance),
@@ -68,6 +74,7 @@ export class MissionRuntime {
     })
     this.impacts = new MissionImpacts(scene, player.world)
     this.bulletTrails = new BulletTrails(scene, 'Player bullet')
+    this.escapeDust = new EscapeDust(scene)
     player.lookSensitivity = () => this.weapons.lookSensitivity
     this.ai = new EnemyDirector({ scene, world: player.world, doors: player.actions.doors, specs: world.enemies,
       emit: event => this.emit(event, false), damagePlayer: (amount, source, hit) => this.damage(amount, source, hit),
@@ -79,7 +86,10 @@ export class MissionRuntime {
       retry: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
       restart: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
       volume: value => this.audio.setVolume(value), mute: value => this.audio.setMuted(value) })
-    player.onPlayingChange = playing => this.hud.setPlaying(playing)
+    player.onPlayingChange = playing => {
+      this.hud.setPlaying(playing)
+      if (this.escape.active) this.hud.setEscape(this.escape)
+    }
     this.escort = new HostageEscort(scene, player.world, player.actions.doors)
     this.security = new SecuritySystem(player.world, world, this.ai, event => this.emit(event, false))
     this.syncWorld()
@@ -152,9 +162,10 @@ export class MissionRuntime {
     this.safePosition.copy(this.player.body.position); this.safeQuaternion.copy(this.camera.perspective.quaternion)
   }
 
-  private isActive() { return this.ready && this.state.phase === 'active' && this.player.enabled && this.player.playing && !this.player.immersive }
+  private isActive() { return this.ready && this.state.phase === 'active' && !this.escape.active && this.player.enabled && this.player.playing && !this.player.immersive }
   private cancelInput() { this.aiming = false; this.weapons.cancel() }
   private keyDown = (event: KeyboardEvent) => {
+    if (this.escape.active) return
     const zoomKey = event.code === 'KeyQ' || event.code === 'KeyE'
     if (event.ctrlKey || event.metaKey || event.altKey || (event.repeat && !zoomKey) || !this.player.enabled || this.player.immersive) return
     if (event.target instanceof HTMLElement && event.target.closest('button,input,select,textarea,summary,[contenteditable="true"]')) return
@@ -206,8 +217,7 @@ export class MissionRuntime {
       position: station.point.clone(), radius: station.kind === 'distraction' ? 27 : 6 }, station.kind === 'distraction')
     if (station.kind === 'rally') this.escort.rally(this.state)
     if (station.kind === 'jeep') {
-      this.player.actions.reset(); this.player.movementLocked = true
-      this.camera.perspective.lookAt(new THREE.Vector3(...RESCUE_LAYOUT.escapeRoute.at(-1)!).add(new THREE.Vector3(0, 1.8, 0)))
+      this.beginEscape()
     }
     if (this.state.phase === 'complete') { this.player.pause(); this.cancelInput() }
     this.syncWorld(); this.invalidate()
@@ -255,7 +265,7 @@ export class MissionRuntime {
   }
 
   damage(amount: number, source?: THREE.Vector3, hit?: PlayerBulletHit) {
-    if (!this.isActive() || !damageMission(this.state,amount)) return
+    if (this.invincible || !this.isActive() || !damageMission(this.state,amount)) return
     if (source && this.state.phase !== 'dead' && !this.hud.reducedMotion) {
       const point = this.player.body.position.clone().add(new THREE.Vector3(0, 1.17, 0))
       this.playerHits.hit(hit ?? { region: 'torso', side: 0, point, direction: point.clone().sub(source) },
@@ -287,6 +297,8 @@ export class MissionRuntime {
   }
 
   private restore(saved: Checkpoint) {
+    this.escape.reset(this.camera.perspective)
+    this.escapeDust.clear()
     this.death.reset(); this.weapons.resetDeath()
     this.playerHits.clear()
     this.player.pause(); this.cancelInput(); this.audio.reset(); this.player.actions.reset()
@@ -319,7 +331,8 @@ export class MissionRuntime {
       })
       rescue.jeep.position.set(...RESCUE_LAYOUT.escapeRoute[0])
       if (resetEscort) {
-        for (const wheel of rescue.jeep.userData.wheels as THREE.Group[] ?? []) wheel.rotation.z = 0
+        rescue.jeep.quaternion.identity()
+        for (const wheel of rescue.jeep.userData.wheels as THREE.Group[] ?? []) wheel.rotation.set(0, 0, 0)
         const door = rescue.jeep.userData.passengerDoor as THREE.Group
         door.rotation.y = 0
       }
@@ -329,34 +342,69 @@ export class MissionRuntime {
     if (this.state.alarm !== 'active') this.audio.setAlarm(false)
   }
 
-  private updateEscape(dt: number) {
-    if (this.state.jeep !== 'escaping') return
-    const route = RESCUE_LAYOUT.escapeRoute.map(point => new THREE.Vector3(...point))
-    const length = route.slice(1).reduce((sum, point, index) => sum + point.distanceTo(route[index]), 0)
-    this.state.escapeProgress = Math.min(length, this.state.escapeProgress + dt * 5)
-    let remaining = this.state.escapeProgress
-    const position = route[0].clone()
-    for (let index = 1; index < route.length; index++) {
-      const distance = route[index - 1].distanceTo(route[index])
-      position.copy(route[index - 1]).lerp(route[index], Math.min(1, remaining / distance))
-      if (remaining <= distance) break
-      remaining -= distance
-    }
-    this.escort.jeepOffset.copy(position).sub(route[0])
-    this.world.rescue?.jeep.position.copy(position)
-    const jeep = this.world.rescue?.jeep
-    if (jeep) for (const wheel of jeep.userData.wheels as THREE.Group[] ?? []) wheel.rotation.z = -this.state.escapeProgress / jeep.userData.wheelRadius
-    // Body position is feet-based; subtract eye height to sit at the driver's seat.
-    this.player.body.teleport(position.clone().add(new THREE.Vector3(-0.35, -0.12, -0.46)))
-    this.player.actions.syncCamera(this.camera.perspective)
-    if (completeEscape(this.state, this.state.escapeProgress >= length && loadedCount(this.state) === this.state.hostages.length)) {
-      this.player.pause(); this.cancelInput()
-      this.hud.notify('Hostage safely extracted.', 8)
-    }
+  private beginEscape() {
+    this.cancelInput(); this.playerHits.clear()
+    this.player.actions.reset(); this.player.movementLocked = true
+    this.player.body.velocity.set(0, 0, 0)
+    this.weapons.update(0, { active: false, climbing: false, moving: 0, aiming: false,
+      reducedMotion: this.hud.reducedMotion, feet: this.player.body.position })
+    this.hud.setScoped(false); this.hud.clearThreat()
+    this.bulletTrails.clear(); this.ai.bulletTrails.clear()
+    this.escape.begin(this.camera.perspective)
+    this.escapeDust.clear()
+    this.player.pause()
+    this.hud.setEscape(this.escape)
+    this.audio.setAlarm(false)
   }
 
-  update(dt:number) {
+  private updateEscape(dt: number, elapsed: number) {
+    const visible = this.player.enabled && !this.player.immersive
+    const playing = visible && !document.hidden && this.escape.running
+    const step = playing ? dt : 0
+    const cinematicStep = playing ? elapsed : 0
+    if (!visible) { this.hud.clearEscape(); this.audio.setActive(false); return false }
+    this.escape.update(cinematicStep)
+    const position = this.escape.position
+    this.state.escapeProgress = this.escape.progress
+    this.escort.jeepOffset.copy(position).sub(new THREE.Vector3(...RESCUE_LAYOUT.escapeRoute[0]))
+    this.escort.jeepRotation.copy(this.escape.rotation)
+    this.world.rescue?.jeep.position.copy(position)
+    const jeep = this.world.rescue?.jeep
+    if (jeep) {
+      jeep.quaternion.copy(this.escape.rotation)
+      for (const wheel of jeep.userData.wheels as THREE.Group[] ?? []) {
+        wheel.rotation.y = wheel.position.x > 0 ? this.escape.steering : 0
+        wheel.rotation.z = -this.state.escapeProgress / jeep.userData.wheelRadius
+      }
+    }
+    this.escapeDust.update(cinematicStep, position, this.escape.rotation, this.escape.speed)
+    // Keep the player aboard for world state, while the camera stays outside.
+    this.player.body.teleport(new THREE.Vector3(-0.35, -0.12, -0.46).applyQuaternion(this.escape.rotation).add(position))
+    if (playing) {
+      advanceMission(this.state, step)
+      this.player.world.refresh()
+      this.ai.update(step, { feet: this.player.body.position, eye: this.camera.perspective.position,
+        velocity: this.player.body.velocity, alive: false, radioEnabled: false })
+      this.escort.update(step, this.state, this.player.body.position, false)
+      if (jeep) updateRescueJeepDoor(jeep, this.state.hostages[0].position, true, step)
+      this.blood.update(step); this.impacts.update(step); this.bulletTrails.update(step)
+      this.security.sync(this.state, this.state.elapsed)
+    }
+    if (completeEscape(this.state, this.escape.crossedGate && loadedCount(this.state) === this.state.hostages.length)) {
+      this.hud.notify('Hostage safely extracted.', 8)
+    }
+    this.escape.applyCamera(this.camera.perspective)
+    this.audio.setActive(playing && !this.escape.menuVisible)
+    this.audio.setAlarm(false); this.audio.update(this.camera.perspective)
+    this.hud.update(step, this.state, { playing: false, enabled: true, weapon: this.weapons.current, reloading: false,
+      position: this.player.body.position, yaw: 0, deaths: this.deaths, ready: this.ready })
+    this.hud.setEscape(this.escape)
+    return playing && this.escape.running
+  }
+
+  update(dt:number, elapsed = dt) {
     this.finishFrame()
+    if (this.escape.active) return this.updateEscape(dt, elapsed)
     const active=this.isActive()
     if (this.player.immersive || !this.player.enabled || this.state.phase !== 'active') {
       this.playerHits.clear(); this.hud.clearThreat()
@@ -394,7 +442,6 @@ export class MissionRuntime {
       this.ai.update(dt,{feet:body.position,eye:this.camera.perspective.position,velocity:body.velocity,alive:this.state.phase==='active',radioEnabled:true,
         yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y})
       const danger = this.gunfireUntil > this.state.elapsed
-      this.updateEscape(dt)
       this.escort.update(dt, this.state, body.position, danger)
       if (this.world.rescue) {
         const hostage = this.state.hostages[0]
@@ -461,5 +508,5 @@ export class MissionRuntime {
   }
 
   finishFrame() { this.playerHits.removeCamera() }
-  dispose() { this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.onPlayingChange=()=>{};this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
+  dispose() { this.escape.reset(this.camera.perspective);this.escapeDust.dispose();this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.onPlayingChange=()=>{};this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
 }

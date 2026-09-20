@@ -9,9 +9,13 @@ npm run dev
 
 Open the local URL shown by Vite. Click **Begin mission**. You start behind the mess hall, sheltered by its rear wall. For the quieter approach, follow the wall west and open the service gate to bypass the occupied mess hall. The roof ladder and interior stairs provide the northern railway approach. **M** pauses and opens your field map. Both routes lead to detention in the eastern annex.
 
+Temporary playthrough mode is enabled: the player takes no damage and cannot die, including after restarting the mission. Set `invincible = false` in `src/game/runtime.ts` to restore normal damage.
+
 **Controls:** WASD move, mouse look, Shift sprint, Space jump, left click fire, right click hold aim, F use/pick up, R reload, 1–4 select weapon slot, G drop, Esc pause. Pause includes retry checkpoint, full restart, volume/mute, and reduced motion. You start with 1 pistol, 2 pump shotgun, 3 AK and 4 SMG, with ammunition for each. The AK-47 is equipped by default when starting or restarting the mission. No starting sniper. Four slots; a pickup swaps the selected weapon onto the ground when full. The shotgun fires eight pellets with short-range damage falloff, pumps between shots, and reloads one shell at a time; firing interrupts its reload while preserving loaded shells. Ammunition stays with each weapon. Retry restores the insertion checkpoint, including enemies, doors, hostages, cameras, alarm, gate and jeep.
 
-The single hostage uses the same skinned stickman model as enemies, solid black and unarmed. He waits on a chair behind the barred door in cell 01, stands before following, and takes cover during nearby gunfire. Lead him along the marked stair and surface route; walk back or use the regroup panel if he falls behind. He boards the passenger side of the Willys-inspired jeep and sits down. Once he is aboard and the gate is open, **F Board jeep** at the driver's side starts a short scripted drive outside the compound. No kill quota is required. See the [single-hostage revision and visual checks](docs/hostage-rescue/REVISION-SINGLE-HOSTAGE.md).
+The single hostage uses the same skinned stickman model as enemies, green and unarmed. He waits on a chair behind the barred door in cell 01. Approach the green lock box on the door and press **F Unlock**; the lock swings with the door and the old freestanding control is gone. He stands before following, and takes cover during nearby gunfire. Lead him along the marked stair and surface route; walk back or use the regroup panel if he falls behind. He boards the passenger side of the Willys-inspired jeep and sits down. Once he is aboard and the gate is open, **F Board jeep** at the driver's side starts an exterior cinematic: the jeep accelerates to 50 km/h, follows a shallow turn with light black dust from its rear wheels, and speeds through the exit in 1.8 seconds. The camera stays outside; the scene fades to black while the jeep is moving, then the completion menu appears. **Play again** starts a fresh mission. See the [getaway and verification](docs/escape-cinematic/README.md). No kill quota is required. See the [single-hostage revision and visual checks](docs/hostage-rescue/REVISION-SINGLE-HOSTAGE.md).
+
+The hostage runs at 2.6 m/s and enemies at 4.2 m/s, with stride playback matched to travel speed. Running, walking, idle and aiming blend from the currently visible pose over 220 ms, including interrupted transitions. `npm run test:npc-transitions` checks continuity and foot clearance at 30, 60 and 144 fps.
 
 - [Rescue design and agent architecture](docs/hostage-rescue/DESIGN.md)
 - [Rescue map and geometry](docs/hostage-rescue/MAP.md)
@@ -45,6 +49,7 @@ npm run test:player
 npm run test:vr
 npm run test:mission
 npm run test:rescue
+npm run test:escape
 npm run test:weapons
 npm run test:map
 npm run test:ai

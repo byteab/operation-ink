@@ -2,8 +2,9 @@ import type { HitZone } from './hit-reactions'
 import type { WeaponItem, WeaponName } from './types'
 import { GAIT_SPEED } from '../lab/gait'
 
-// Match the lab's 1.2× run setting, including its stride/cadence adaptation.
-export const ENEMY_RUN_SPEED = GAIT_SPEED.run * 1.2
+// Faster mission running, with stride/cadence adaptation shared with the lab.
+export const ENEMY_RUN_SPEED = GAIT_SPEED.run * 1.5
+export const HOSTAGE_RUN_SPEED = 2.6
 
 // No armor or damage immunity: every confirmed hit applies this damage immediately.
 export const ENEMY_HEALTH = 100

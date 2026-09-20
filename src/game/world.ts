@@ -9,6 +9,7 @@ import { pipeLadder } from '../world/ladders'
 import type { EnemySpec, MissionWorld, Station, StationKind, Vec3 } from './types'
 import { DETENTION_STAIR_HOLE, RESCUE_LAYOUT } from './rescue-layout'
 import { createRescueJeep } from './rescue-jeep'
+import { createCellLock } from './cell-lock'
 import { SIGNALS_COMPUTER_ID } from './mission'
 import { CAMERA_LIGHTS } from './security'
 
@@ -438,9 +439,7 @@ export function createMissionWorld(compound?: THREE.Group): MissionWorld {
   root.add(cover.finish())
 
   const stations = [
-    ...RESCUE_LAYOUT.hostageSpawns.map((position, index) => control('hostage', `hostage-${index + 1}`,
-      'Release hostage', [114, -4.2, position[2] + 1.25],
-      index % 2 === 0 ? Math.PI / 2 : -Math.PI / 2)),
+    ...detention.cellDoors.map(createCellLock),
     control('cameras', 'security-computer', 'Disable cameras', [149, FLOOR, -45.8], -Math.PI / 2),
     control('alarm', 'detention-alarm', 'Turn off alarm', [125.4, 0, -4.5]),
     control('alarm', 'security-alarm', 'Turn off alarm', [142.3, FLOOR, -44], Math.PI / 2),
@@ -451,7 +450,7 @@ export function createMissionWorld(compound?: THREE.Group): MissionWorld {
     control('supply', 'maintenance-supplies', 'Take field supplies', [114.7, FLOOR, -45.5], -Math.PI / 2),
     control('distraction', 'service-bell', 'Ring service bell', [-39, 0, 3]),
   ]
-  stations.forEach(station => root.add(station.object))
+  stations.forEach(station => { if (!station.object.parent) root.add(station.object) })
   // Register the existing office monitor without moving it out of its workstation.
   compound?.updateMatrixWorld(true)
   compound?.traverse(object => {

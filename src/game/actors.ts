@@ -175,8 +175,8 @@ export class EnemyActor {
       }
     } else if (!transitioning && mode !== this.mode) {
       this.mode = mode
-      // Match the lab's grounded gait transitions; crossfading absolute hips tracks sinks the feet.
-      void this.player.play(this.bodyPosture !== 'stand' ? this.lib.postures.postureClips[this.bodyPosture] : this.lib.clips[mode], { fade: this.bodyPosture !== 'stand' || moving || turning || ['walk', 'run', 'turnL', 'turnR'].includes(this.player.current?.getClip().name ?? '') ? 0 : 0.12 })
+      void this.player.play(this.bodyPosture !== 'stand' ? this.lib.postures.postureClips[this.bodyPosture] : this.lib.clips[mode],
+        { fade: 0.22, poseFade: true })
       if (mode === 'lookRelaxed' && (state === 'guard' || state === 'patrol' || state === 'idle')) this.player.current!.time = this.idlePhase
     }
     if (this.reacting <= 0 && this.player.current) this.player.setActionSpeed(transitioning || this.bodyPosture !== 'stand' ? 1 : moving ? THREE.MathUtils.clamp(speed / GAIT_SPEED[mode === 'run' ? 'run' : 'walk'], 0.35, 1.8) : turning ? THREE.MathUtils.clamp(Math.abs(yawDelta) / dt / 2.1, 0.6, 1.8) : 1)
@@ -262,6 +262,7 @@ export class EnemyActor {
     this.kick = Math.max(0, this.kick - dt)
     this.flash.visible = this.kick > 0.065
     if (this.kick > 0) this.player.adjustBones([this.rig.bones.chest], () => { this.rig.bones.chest.rotation.x -= this.kick * 0.17 })
+    this.player.blendPose(this.bodyPosture === 'stand')
     this.root.updateMatrixWorld(true)
   }
 

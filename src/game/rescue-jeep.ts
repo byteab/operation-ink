@@ -234,8 +234,9 @@ export function createRescueJeep() {
 /** Open before the approach; close only once the hostage has settled inside. */
 export function updateRescueJeepDoor(jeep: THREE.Group, hostagePosition: readonly number[], loaded: boolean, dt: number) {
   const door = jeep.userData.passengerDoor as THREE.Group
-  const localX = hostagePosition[0] - jeep.position.x
-  const localZ = hostagePosition[2] - jeep.position.z
+  const local = new THREE.Vector3(...hostagePosition).sub(jeep.position).applyQuaternion(jeep.quaternion.clone().invert())
+  const localX = local.x
+  const localZ = local.z
   const boarding = loaded && localZ > 0.57
   const approaching = !loaded && Math.hypot(localX, localZ - 1.25) < 3
   const target = approaching || boarding ? 1.12 : 0

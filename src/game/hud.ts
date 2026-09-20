@@ -6,6 +6,7 @@ import './game.css'
 import { IncomingFire } from './incoming-fire'
 import { MissionMenu } from './menu'
 import type { PlayerDeathSequence } from './player-death'
+import type { EscapeCinematic } from './escape-cinematic'
 
 const icons: Record<string, string> = {
   door: '<path d="M5 21V3h14v18M9 21V5l8 2v14M13 13h1"/>',
@@ -36,6 +37,8 @@ export class MissionHUD {
   private death = document.createElement('div')
   private pause = document.querySelector<HTMLElement>('#walk-pause')!
   private deathMenuShown = false
+  private escape = document.createElement('div')
+  private escapeMenuShown = false
   readonly incoming = new IncomingFire()
   private threat: HTMLElement
   private threatLabel: HTMLElement
@@ -86,6 +89,10 @@ export class MissionHUD {
     this.death.setAttribute('aria-hidden', 'true')
     this.death.innerHTML = '<div class="death-blur"></div><div class="death-dim"></div>'
     document.body.append(this.death)
+    this.escape.className = 'mission-escape'
+    this.escape.hidden = true
+    this.escape.setAttribute('aria-hidden', 'true')
+    document.body.append(this.escape)
     this.threat = document.createElement('div')
     this.threat.className = 'mission-threat'
     this.threat.setAttribute('aria-hidden', 'true')
@@ -146,7 +153,27 @@ export class MissionHUD {
   hurt() { this.damageTimer = 0.32 }
   hitFrom(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
   clearThreat() { this.incoming.clear(); this.threat.hidden = true }
-  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat(); this.clearDeath(); this.menu.reset() }
+  reset() { this.damageTimer = 0; this.captionTimer = 0; this.root.classList.remove('hurt'); this.setScoped(false); this.clearThreat(); this.clearDeath(); this.clearEscape(); this.menu.reset() }
+  setEscape(sequence: EscapeCinematic) {
+    document.body.dataset.escape = sequence.menuVisible ? 'menu' : 'driving'
+    this.escape.hidden = false
+    this.escape.style.opacity = String(sequence.fade)
+    this.root.hidden = true
+    this.pause.hidden = !sequence.menuVisible
+    this.pause.inert = !sequence.menuVisible
+    this.pause.style.opacity = String(sequence.menuOpacity)
+    if (sequence.menuVisible && !this.escapeMenuShown) {
+      this.escapeMenuShown = true
+      this.menu.focusPrimary()
+    }
+  }
+  clearEscape() {
+    delete document.body.dataset.escape
+    this.escape.hidden = true
+    this.escapeMenuShown = false
+    this.pause.inert = false
+    this.pause.style.removeProperty('opacity')
+  }
   setDeath(sequence: PlayerDeathSequence) {
     document.body.dataset.death = sequence.menuVisible ? 'menu' : 'falling'
     this.death.hidden = false
@@ -212,5 +239,5 @@ export class MissionHUD {
     }
     this.menu.update(state, data)
   }
-  dispose() { this.menu.dispose(); this.abort.abort(); this.clearDeath(); this.death.remove(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
+  dispose() { this.menu.dispose(); this.abort.abort(); this.clearDeath(); this.clearEscape(); this.escape.remove(); this.death.remove(); this.setScoped(false); this.scope.remove(); this.root.remove(); this.icon.remove(); delete document.body.dataset.mission }
 }

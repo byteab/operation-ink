@@ -1,4 +1,11 @@
 body[data-mission="true"] { color: var(--ink-deep); font-family: var(--notes); }
+.mission-escape { position: fixed; inset: 0; z-index: 5; background: #000; pointer-events: none; }
+body[data-escape] #walk-hud { z-index: 6; }
+body[data-escape] #walk-hud > :not(#walk-pause), body[data-escape] #mission-hud,
+body[data-escape] .mission-scope, body[data-escape] .mode-button { visibility: hidden; }
+body[data-escape="driving"] #walk-pause { visibility: hidden; pointer-events: none; }
+body[data-mission="true"][data-mode="walk"][data-escape] #walk-pause { background: transparent; }
+body[data-escape] #world { cursor: default; }
 .mission-death { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 .death-blur, .death-dim { position: absolute; inset: 0; }
 .death-blur { backdrop-filter: blur(var(--death-blur, 0px)); -webkit-backdrop-filter: blur(var(--death-blur, 0px)); }

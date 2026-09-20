@@ -11,6 +11,7 @@ import { CollisionWorld } from '../src/player/collision'
 import { setDoorOpen, updateDoors } from '../src/world/doors'
 import type { Vec3 } from '../src/game/types'
 import { HOSTAGE_INK, STAND_UP_SECONDS } from '../src/game/hostage-actor'
+import { HOSTAGE_RUN_SPEED } from '../src/game/balance'
 
 const bytes = readFileSync('public/models/stickman.glb'), load = GLTFLoader.prototype.loadAsync
 GLTFLoader.prototype.loadAsync = async function () {
@@ -45,7 +46,7 @@ function tick(state: EscortMissionState, seconds: number, danger = false, verify
     if (verifyMovement) state.hostages.forEach((hostage, index) => {
       if (hostage.status !== 'following') return
       const position = new THREE.Vector3(...hostage.position), previous = new THREE.Vector3(...before[index])
-      assert(Math.hypot(position.x - previous.x, position.z - previous.z) <= 0.041, `hostage ${index} teleported`)
+      assert(Math.hypot(position.x - previous.x, position.z - previous.z) <= HOSTAGE_RUN_SPEED / 60 + 0.002, `hostage ${index} teleported`)
       assert(Math.abs(position.y - previous.y) <= 0.3, `hostage ${index} skipped a stair`)
       capsule.start.copy(position).y += 0.27
       capsule.end.copy(position).y += 1.47
@@ -62,7 +63,7 @@ function release(state: EscortMissionState) {
   world.refresh()
 }
 
-check('one solid black hostage uses the real enemy skinned GLB and remains seated in jail', () => {
+check('one green hostage uses the real enemy skinned GLB and remains seated in jail', () => {
   const state = fresh(); escort.sync(state)
   const before = structuredClone(state)
   tick(state, 2)
@@ -75,6 +76,8 @@ check('one solid black hostage uses the real enemy skinned GLB and remains seate
     assert(!actor.root.getObjectByName('gun'))
     assert(actor.rig.mesh.isSkinnedMesh)
     assert.equal((actor.rig.mesh.material as THREE.MeshBasicMaterial).color.getHex(), HOSTAGE_INK)
+    const color = (actor.rig.mesh.material as THREE.MeshBasicMaterial).color
+    assert(color.g > color.r * 2 && color.g > color.b * 2, 'Hostage must be visibly green')
     assert.equal(actor.root.userData.animation, 'hostage-seated')
     const hip = actor.rig.bones.hips.getWorldPosition(new THREE.Vector3())
     assert(Math.abs(hip.y - (RESCUE_LAYOUT.hostageSpawns[0][1] + 0.449)) < 0.025, `Seated hip ${hip.y}`)
@@ -120,6 +123,17 @@ check('the hostage traverses his cell, corridor, stairs and surface route before
     assert.equal(hostage.position[0], RESCUE_LAYOUT.jeepSeats[index][0] + 20)
     assert.deepEqual(escort.actors[index].root.position.toArray(), hostage.position)
   })
+  const origin = new THREE.Vector3(...RESCUE_LAYOUT.escapeRoute[0])
+  for (const yaw of [0.28, -0.28, 0]) {
+    escort.jeepRotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
+    tick(state, 0.1)
+    state.hostages.forEach((hostage, index) => {
+      const seat = new THREE.Vector3(...RESCUE_LAYOUT.jeepSeats[index]).sub(origin)
+        .applyQuaternion(escort.jeepRotation).add(origin).add(escort.jeepOffset)
+      assert(seat.distanceTo(new THREE.Vector3(...hostage.position)) < 1e-9, 'Passenger slips during getaway turn')
+      assert(escort.actors[index].root.quaternion.angleTo(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2 + yaw, 0))) < 1e-6)
+    })
+  }
 })
 
 check('boarding reaches the passenger side and settles continuously with feet above the footwell', () => {
@@ -168,6 +182,7 @@ check('hostages wait when the player falls behind, then resume with a leader ahe
 check('restart restores captive mesh positions, cell routes and vehicle offset', () => {
   const state = fresh(); escort.sync(state)
   assert.deepEqual(escort.jeepOffset.toArray(), [0, 0, 0])
+  assert(escort.jeepRotation.equals(new THREE.Quaternion()))
   state.hostages.forEach((hostage, index) => {
     assert.equal(hostage.status, 'captive')
     assert.deepEqual(escort.actors[index].root.position.toArray(), RESCUE_LAYOUT.hostageSpawns[index])

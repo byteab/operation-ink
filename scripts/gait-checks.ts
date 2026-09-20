@@ -6,7 +6,7 @@ import { loadStickman } from '../src/lab/rig'
 import { GAIT_SPEED, gaitStance, SHIN_LENGTH } from '../src/lab/gait'
 import { Player } from '../src/lab/player'
 import { EnemyActor } from '../src/game/actors'
-import { ENEMY_RUN_SPEED } from '../src/game/balance'
+import { ENEMY_RUN_SPEED, HOSTAGE_RUN_SPEED } from '../src/game/balance'
 import { HostageActor } from '../src/game/hostage-actor'
 
 const bytes = readFileSync('public/models/stickman.glb'), load = GLTFLoader.prototype.loadAsync
@@ -229,7 +229,7 @@ try {
     for (const side of ['L', 'R'] as const) assert(rig.bones[`shin.${side}`].position.distanceTo(rig.rest[`shin.${side}`].pos) < 1e-6)
   }
   assert(rig.bones['thigh.L'].quaternion.angleTo(rig.rest['thigh.L'].quat) < 0.001, 'Gait correction leaked into idle')
-  assert(Math.abs(ENEMY_RUN_SPEED / GAIT_SPEED.run - 1.2) < 1e-9, 'Game running must use the lab\'s 1.2× setting')
+  assert(Math.abs(ENEMY_RUN_SPEED / GAIT_SPEED.run - 1.5) < 1e-9, 'Game running must use the lab\'s 1.5× setting')
   for (const weapon of ['pistol', 'ak'] as const) for (const speed of [1.4, ENEMY_RUN_SPEED]) {
     const actor = await EnemyActor.create(weapon)
     try {
@@ -240,11 +240,11 @@ try {
       assert(actor.player.current!.timeScale <= speed / GAIT_SPEED[name], 'Mission ignores the longer stride')
       if (name === 'walk') assert(actor.player.current!.timeScale < speed / GAIT_SPEED[name], 'Faster mission walking only changes cadence')
       else {
-        player.setSpeed(1.2)
+        player.setSpeed(1.5)
         void player.play(clips.run, { fade: 0 })
-        assert.equal(activeClip, player.current!.getClip(), 'Game run must use the same stride as the lab at 1.2×')
+        assert.equal(activeClip, player.current!.getClip(), 'Game run must use the same stride as the lab at 1.5×')
         assert(Math.abs(actor.player.current!.getEffectiveTimeScale() - player.current!.getEffectiveTimeScale() * player.mixer.timeScale) < 1e-9,
-          'Game run cadence must match the lab at 1.2×')
+          'Game run cadence must match the lab at 1.5×')
       }
       if (weapon === 'pistol') for (const bone of ['upper_arm.L', 'forearm.L', 'hand.L'] as const) {
         const track = activeClip.tracks.find(t => t.name === `${actor.rig.bones[bone].name}.quaternion`)!
@@ -258,7 +258,7 @@ try {
     hostage.restore(false)
     for (let i = 0; i < 60; i++) hostage.animate(1 / 60, true, false, false, false)
     assert.equal(hostage.player.current!.getClip(), clips.run)
-    assert.equal(hostage.player.current!.timeScale, 2.05 / GAIT_SPEED.run)
+    assert.equal(hostage.player.current!.timeScale, HOSTAGE_RUN_SPEED / GAIT_SPEED.run)
   } finally { hostage.dispose() }
   console.log('PASS gait transitions, armed mission actors and hostage share the corrected clips and speed')
 } finally { GLTFLoader.prototype.loadAsync = load }

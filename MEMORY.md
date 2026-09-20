@@ -1,5 +1,19 @@
 # Project memory
 
+## Exterior getaway and cell lock
+
+- Follow-up: user still found the car slow/unnatural and wanted lighter black dust. Drive is now 1.8 s (was 2.8), peak 13.89 m/s (was 9.04), with smooth acceleration and a shallow road curve instead of a sideways fishtail. Body yaw follows the route tangent and steering follows curvature. Dust is pure black with much lower opacity, density, size and lifetime; emissions interpolate over frame travel. Timings: 0.08 s launch, 1.4–1.85 s fade, 2.05–2.4 s menu.
+- Found the cinematic inherited the 50 ms physics cap, making low-FPS playback slow. Runtime now receives uncapped frame elapsed time for cinematic travel/dust, keeping physics capped; visibility changes reset the frame timestamp. Build, escape checks at 10/15/30/60/144 fps and player-death checks passed. Real browser loop with 90 ms frame stalls finished in 2.403 s over 25 frames (24 capped physics steps); peak speed 13.89 m/s and no browser/shader errors. Updated dust/turn screenshots inspected.
+- The cell's freestanding release pedestal is replaced by a green lock box attached to the door hinge. F Unlock uses a dynamic world interaction point and the existing release/open flow. Native F browser check showed following hostage, unlocked/open door, no old pedestal, 2.917 m lock movement and zero attachment drift.
+- Build, `test:escape` (30/60/144 fps, desktop/portrait framing, gate clearance, acceleration, runtime lifecycle and dust), `test:player-death` and `test:rescue` passed. Agent-browser confirmed the exterior moving car, visible dust, passenger attachment, fade/menu and native Play again cleanup; browser/shader errors were empty. Evidence, timing and staged verification scope: `docs/escape-cinematic/README.md` and `docs/cell-lock/README.md`. No full input-only rescue run performed.
+
+## Green hostage and smooth NPC transitions
+
+- User requested a green hostage, faster running for hostage/enemies, and animated state transitions. Hostage color is `#229447`, travel speed is 2.6 m/s (was 2.05), and enemy running is 4.2 m/s (was 3.36). Enemy patrol walking stays unchanged; escort stride playback follows measured horizontal travel.
+- Mission actors use `Player.play(..., { poseFade: true, fade: 0.22 })` and call `blendPose()` after procedural posing. Interruptions capture the visible pose; underlying mixer/IK poses are restored each frame. Ground compensation prevents interpolated legs sinking. Existing posture/flinch/death flows remain intact.
+- Build, gait, escort/boarding, combat, death, AI and new multi-fps `test:npc-transitions` checks passed. One parallel patrol run missed a reserve waypoint; separate rerun passed. Agent-browser visual checks passed, enemies remained black, no browser errors. Evidence and reproduction: `docs/npc-motion/README.md`.
+- The preceding request's temporary invincibility remains enabled through `MissionRuntime.invincible = true`; set it false to restore player damage.
+
 ## Compact interaction prompts
 
 - User requested minimal action labels after the HUD cleanup. Prompts now use one compact line: F, an icon and the short action; removed object/location descriptions and the blinking key. Ladder directions remain explicit; doors show Open/Close; zipline shows Ride zipline; pickups show Take/Swap plus the weapon name without ammo counts. Mission labels are shorter while preserving the temporary camera shutdown duration and jeep prerequisites.

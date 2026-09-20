@@ -1,9 +1,11 @@
 import * as THREE from 'three'
-import { gaitPlayback } from './gait'
+import { gaitPlayback, FOOT_CLEARANCE, SHIN_LENGTH } from './gait'
 
 export type PlayOpts = {
   /** crossfade seconds from the current action; default Player.fade */
   fade?: number
+  /** Blend from the rendered pose; call blendPose after frame-local IK/weapon adjustments. */
+  poseFade?: boolean
   /** default: !once */
   loop?: boolean
   /** per-action time scale */
@@ -25,6 +27,8 @@ type BoneTransition = {
   elapsed: number
   duration: number
 }
+type BonePose = { position: THREE.Vector3; quaternion: THREE.Quaternion }
+type PoseTransition = { from: Map<THREE.Bone, BonePose>; elapsed: number; duration: number; floor: number }
 
 // ponytail: single active action + crossfade. No additive layers; add when a feature needs one.
 export class Player {
@@ -41,21 +45,34 @@ export class Player {
   private sourceClip: THREE.AnimationClip | null = null
   private actionSpeed = 1
   private lastPlaybackSpeed = 1
+  private readonly bones: THREE.Bone[] = []
+  private readonly shins: THREE.Bone[] = []
+  private poseTransition: PoseTransition | null = null
+  private readonly unblendedPose = new Map<THREE.Bone, BonePose>()
+  private readonly footPoint = new THREE.Vector3()
 
   constructor(root: THREE.Object3D) {
     this.mixer = new THREE.AnimationMixer(root)
     const hips = root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName('hips'))
     this.hips = hips instanceof THREE.Bone ? hips : null
+    root.traverse(object => { if (object instanceof THREE.Bone) this.bones.push(object) })
+    this.shins = this.bones.filter(bone => ['shinL', 'shinR'].includes(bone.name))
     this.mixer.addEventListener('finished', e => { if (e.action === this.current) this.settle(true) })
   }
 
   /** Resolves `true` when a one-shot finishes (immediately for loops), `false` if interrupted by play/stop. */
-  play(clip: THREE.AnimationClip, { fade = this.fade, once = false, loop = !once, speed = 1 }: PlayOpts = {}): Promise<boolean> {
+  play(clip: THREE.AnimationClip, { fade = this.fade, poseFade = false, once = false, loop = !once, speed = 1 }: PlayOpts = {}): Promise<boolean> {
     this.revision++
-    const boneTransition = this.captureAdjustedPose(fade)
+    const poseTransition = poseFade && this.current && fade > 0
+      ? { from: this.capturePose(), elapsed: 0, duration: fade, floor: this.footHeight() } : null
+    const boneTransition = poseFade ? null : this.captureAdjustedPose(fade)
+    this.restoreBlendedPose()
     this.restoreAdjustedBones()
     this.settle()
     const prev = this.current
+    // A pose blend owns the transition, including interrupted blends. Keep one
+    // target action so rapid state changes cannot accumulate fading actions.
+    if (poseFade) this.mixer.stopAllAction()
     this.sourceClip = clip
     this.actionSpeed = speed
     const playback = gaitPlayback(clip, speed * this.lastPlaybackSpeed)
@@ -65,13 +82,14 @@ export class Player {
     action.timeScale = speed / playback.stride
     action.play()
     if (prev && prev !== action) {
-      if (fade > 0) prev.crossFadeTo(action, fade, false)
+      if (fade > 0 && !poseFade) prev.crossFadeTo(action, fade, false)
       else prev.stop()
-      this.rootTransition = fade > 0 ? this.makeRootTransition(action, fade) : null
+      this.rootTransition = fade > 0 && !poseFade ? this.makeRootTransition(action, fade) : null
     } else {
       this.rootTransition = null
     }
     this.current = action
+    this.poseTransition = poseTransition
     this.boneTransition = boneTransition
     this.blendAdjustedPose(0)
     return loop ? Promise.resolve(true) : new Promise(resolve => { this.finish = resolve })
@@ -85,6 +103,8 @@ export class Player {
   stop(fade = this.fade) {
     this.revision++
     const boneTransition = this.captureAdjustedPose(fade)
+    this.restoreBlendedPose()
+    this.poseTransition = null
     this.restoreAdjustedBones()
     if (fade > 0) this.current?.fadeOut(fade)
     else this.current?.stop()
@@ -144,6 +164,7 @@ export class Player {
   update(dt: number) {
     // The mixer skips writes when a track's value is unchanged. Restore its original
     // output before evaluation so frame-local IK cannot become the next pose's input.
+    this.restoreBlendedPose()
     this.restoreAdjustedBones()
     this.mixer.update(dt)
     const transition = this.rootTransition
@@ -157,6 +178,48 @@ export class Player {
       if (transition.elapsed >= transition.duration) this.rootTransition = null
     }
     this.blendAdjustedPose(dt)
+    if (this.poseTransition) this.poseTransition.elapsed += Math.max(0, dt * this.mixer.timeScale)
+  }
+
+  /** Finish after procedural posing, so the next state starts at the actual visible pose. */
+  blendPose(grounded = false) {
+    const transition = this.poseTransition
+    if (!transition) return
+    const t = Math.min(1, transition.elapsed / transition.duration)
+    if (t >= 1) { this.poseTransition = null; return }
+    const weight = t * t * (3 - 2 * t)
+    const floor = grounded ? Math.min(FOOT_CLEARANCE, transition.floor, this.footHeight()) : -Infinity
+    for (const [bone, from] of transition.from) {
+      this.unblendedPose.set(bone, { position: bone.position.clone(), quaternion: bone.quaternion.clone() })
+      bone.position.lerp(from.position, 1 - weight)
+      bone.quaternion.slerp(from.quaternion, 1 - weight)
+    }
+    // Interpolating bent legs can temporarily lengthen their reach. Lift only
+    // enough to keep the end caps grounded; never move the navigation root.
+    if (this.hips && grounded) this.hips.position.y += Math.max(0, floor - this.footHeight())
+  }
+
+  private capturePose() {
+    return new Map(this.bones.map(bone => [bone, { position: bone.position.clone(), quaternion: bone.quaternion.clone() }]))
+  }
+
+  private restoreBlendedPose() {
+    for (const [bone, pose] of this.unblendedPose) {
+      bone.position.copy(pose.position); bone.quaternion.copy(pose.quaternion)
+    }
+    this.unblendedPose.clear()
+  }
+
+  private footHeight() {
+    let height = Infinity
+    for (const shin of this.shins) {
+      this.footPoint.set(0, SHIN_LENGTH, 0)
+      for (let bone: THREE.Object3D | null = shin; bone && bone !== this.hips?.parent; bone = bone.parent) {
+        this.footPoint.applyQuaternion(bone.quaternion).add(bone.position)
+      }
+      height = Math.min(height, this.footPoint.y)
+    }
+    return height
   }
 
   private captureAdjustedPose(duration: number): BoneTransition | null {

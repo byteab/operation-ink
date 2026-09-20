@@ -4,6 +4,7 @@ import { MissionRuntime } from '../src/game/runtime'
 import { initialMission } from '../src/game/mission'
 import { PlayerDeathSequence, DEATH_TIMING } from '../src/game/player-death'
 import { PlayerHitReactions } from '../src/game/player-hit-reactions'
+import { EscapeCinematic } from '../src/game/escape-cinematic'
 
 // Exercise the real mission update/damage/restore methods. Collaborators are
 // deliberately small so this checks the lifecycle without a browser or GPU.
@@ -28,7 +29,7 @@ const player = { enabled: true, immersive: false, playing: true, body, movementL
 Object.assign(m, {
   state: initialMission(), ready: true, deaths: 0, camera: { perspective: camera }, player,
   world: { bounds: { minX: -100, maxX: 100, minZ: -100, maxZ: 100 } },
-  death: new PlayerDeathSequence(), playerHits: new PlayerHitReactions(),
+  death: new PlayerDeathSequence(), escape: new EscapeCinematic(), escapeDust: { clear: noop }, playerHits: new PlayerHitReactions(),
   weapons: { cancel: noop, beginDeath: noop, updateDeath: (_elapsed: number, _reduced: boolean, kick: number) => { deathUpdates++; fatalKick = kick }, resetDeath: () => deathResets++,
     update: () => weaponUpdates++, restore: noop },
   audio: { setActive: (active: boolean) => audioActive = active, play: ({ kind }: { kind: string }) => audioEvents.push(kind),

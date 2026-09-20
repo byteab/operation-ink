@@ -1,11 +1,11 @@
 import * as THREE from 'three'
-import { penPalette } from '../render/ballpoint'
 import { loadStickman, type Rig } from '../lab/rig'
 import { GAIT_SPEED } from '../lab/gait'
 import { makeClip, type Key, type Pose } from '../lab/clip'
 import { Player } from '../lab/player'
+import { HOSTAGE_RUN_SPEED } from './balance'
 
-export const HOSTAGE_INK = penPalette.character
+export const HOSTAGE_INK = 0x229447
 export const STAND_UP_SECONDS = 1.65
 export const BOARD_SECONDS = 0.9
 
@@ -20,7 +20,7 @@ export class HostageActor {
 
   private constructor(readonly rig: Rig, private clips: Record<string, THREE.AnimationClip>) {
     this.root = rig.root
-    this.root.name = 'Black stickman hostage'
+    this.root.name = 'Green stickman hostage'
     this.root.userData = { actor: true, hostage: true, noCollision: true, model: 'stickman.glb' }
     const original = rig.mesh.material as THREE.MeshBasicMaterial
     this.material = original.clone()
@@ -89,22 +89,23 @@ export class HostageActor {
     this.boardingFor = loaded ? BOARD_SECONDS : 0
   }
 
-  animate(dt: number, moving: boolean, cowering: boolean, seated: boolean, captive: boolean) {
+  animate(dt: number, moving: boolean, cowering: boolean, seated: boolean, captive: boolean, speed = HOSTAGE_RUN_SPEED) {
     if (seated) this.boardingFor = Math.min(BOARD_SECONDS, this.boardingFor + dt)
-    // Escort travel is 2.05 m/s: use the shared run instead of doubling the walk's cadence.
+    // Keep the shared running stride in sync with actual escort travel.
     const mode = captive ? 'seated' : seated ? this.boardingFor < BOARD_SECONDS ? 'board' : 'seated' : !this.canWalk ? 'stand' : cowering ? 'cower' : moving ? 'run' : 'idle'
     if (mode !== this.mode) {
+      const initialized = this.mode !== ''
       this.mode = mode
-      const groundedTransition = mode === 'run' || this.player.current?.getClip().name === 'run'
-      void this.player.play(this.clips[mode], { fade: groundedTransition || ['stand', 'seated', 'board'].includes(mode) ? 0 : 0.12, once: mode === 'stand' || mode === 'board' })
+      void this.player.play(this.clips[mode], { fade: initialized ? 0.22 : 0, poseFade: true, once: mode === 'stand' || mode === 'board' })
     }
     if (mode === 'stand' || mode === 'board') {
-      this.player.current!.time = mode === 'stand' ? this.standingFor : this.boardingFor
-      this.player.update(0)
+      this.player.current!.time = Math.max(0, (mode === 'stand' ? this.standingFor : this.boardingFor) - dt)
+      this.player.update(dt)
     } else {
-      this.player.setActionSpeed(mode === 'run' ? 2.05 / GAIT_SPEED.run : 1)
+      this.player.setActionSpeed(mode === 'run' ? speed / GAIT_SPEED.run : 1)
       this.player.update(dt)
     }
+    this.player.blendPose(!seated && !captive && this.canWalk)
     this.root.userData.animation = this.clips[mode].name
   }
 

@@ -3,6 +3,7 @@ import type { CollisionWorld } from '../player/collision'
 import { EnemyNavigation } from './navigation'
 import { RESCUE_LAYOUT } from './rescue-layout'
 import { BOARD_SECONDS, HostageActor } from './hostage-actor'
+import { HOSTAGE_RUN_SPEED } from './balance'
 import type { Vec3 } from './types'
 
 export type EscortHostage = {
@@ -27,6 +28,8 @@ export class HostageEscort {
   readonly actors: HostageActor[] = []
   private disposed = false
   readonly jeepOffset = new THREE.Vector3()
+  readonly jeepRotation = new THREE.Quaternion()
+  private readonly jeepOrigin = new THREE.Vector3(...RESCUE_LAYOUT.escapeRoute[0])
   private navigation: EnemyNavigation
   private route = RESCUE_LAYOUT.escortRoute.map(point => new THREE.Vector3(...point))
   private lengths: number[] = [0]
@@ -79,6 +82,7 @@ export class HostageEscort {
 
   sync(state: EscortMissionState) {
     this.jeepOffset.set(0, 0, 0)
+    this.jeepRotation.identity()
     this.calmFor = 0
     this.navigation.clear()
     state.hostages.forEach((hostage, index) => {
@@ -116,16 +120,19 @@ export class HostageEscort {
       if (!actor || !motion) return
       const position = new THREE.Vector3(...hostage.position)
       let moving = false
+      let moveSpeed = 0
       actor.advanceRelease(elapsed, hostage.status === 'captive')
       const cowering = hostage.status === 'following' && this.calmFor < 1.1
       if (hostage.status === 'loaded') {
         if (motion.boardingFrom) {
           motion.boardingTime = Math.min(BOARD_SECONDS, motion.boardingTime + elapsed)
           const t = motion.boardingTime / BOARD_SECONDS
-          position.copy(motion.boardingFrom).lerp(new THREE.Vector3(...RESCUE_LAYOUT.jeepSeats[index]), t * t * (3 - 2 * t)).add(this.jeepOffset)
+          position.copy(motion.boardingFrom).lerp(new THREE.Vector3(...RESCUE_LAYOUT.jeepSeats[index]), t * t * (3 - 2 * t))
           if (t === 1) motion.boardingFrom = null
-        } else position.fromArray(RESCUE_LAYOUT.jeepSeats[index]).add(this.jeepOffset)
-        actor.root.rotation.y = Math.PI / 2
+        } else position.fromArray(RESCUE_LAYOUT.jeepSeats[index])
+        position.sub(this.jeepOrigin).applyQuaternion(this.jeepRotation).add(this.jeepOrigin).add(this.jeepOffset)
+        actor.root.rotation.set(0, Math.PI / 2, 0)
+        actor.root.quaternion.premultiply(this.jeepRotation)
       } else if (hostage.status === 'following' && actor.canWalk && !cowering) {
         const progress = this.progress(position)
         const led = leaderProgress + 1.6 >= progress
@@ -157,10 +164,11 @@ export class HostageEscort {
             actor.animate(elapsed, false, false, false, false)
             return
           }
-          const stepped = this.navigation.step(position, next, elapsed * (2.05 + index * 0.06))
+          const stepped = this.navigation.step(position, next, elapsed * HOSTAGE_RUN_SPEED)
           if (stepped && stepped.distanceToSquared(position) > 0.000001) {
             actor.root.rotation.y = Math.atan2(stepped.x - position.x, stepped.z - position.z)
             motion.previous = position.clone()
+            moveSpeed = Math.hypot(stepped.x - position.x, stepped.z - position.z) / elapsed
             position.copy(stepped)
             moving = true
             motion.stalled = 0
@@ -178,7 +186,7 @@ export class HostageEscort {
       }
       hostage.position = position.toArray() as Vec3
       actor.root.position.copy(position)
-      actor.animate(elapsed, moving, cowering, hostage.status === 'loaded', hostage.status === 'captive')
+      actor.animate(elapsed, moving, cowering, hostage.status === 'loaded', hostage.status === 'captive', moveSpeed)
     })
   }
 

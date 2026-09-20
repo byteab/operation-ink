@@ -27,7 +27,7 @@ export const releasedCount = (state: MissionState) => state.hostages.filter(h =>
 export function stationLabel(state: MissionState, kind: StationKind, id: string): string | null {
   if (state.phase !== 'active' || state.jeep === 'escaping') return null
   switch (kind) {
-    case 'hostage': return state.hostages.find(h => h.id === id)?.status === 'captive' ? 'Release hostage' : null
+    case 'hostage': return state.hostages.find(h => h.id === id)?.status === 'captive' ? 'Unlock' : null
     case 'cameras': return state.camerasActive || (id !== SIGNALS_COMPUTER_ID && state.camerasDisabledUntil !== null)
       ? id === SIGNALS_COMPUTER_ID ? 'Disable cameras · 60s' : 'Disable cameras' : null
     case 'alarm': return state.alarm === 'active' ? 'Silence alarm' : null
