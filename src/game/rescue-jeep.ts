@@ -16,8 +16,20 @@ export function createRescueJeep() {
   const root = new THREE.Group()
   root.name = 'Armored rescue transport'
   root.position.set(...RESCUE_LAYOUT.escapeRoute[0])
-  root.userData = { noCollision: true, kind: 'rescue-jeep', forward: [1, 0, 0],
+  root.userData = { dynamicCollision: true, kind: 'rescue-jeep', forward: [1, 0, 0],
     passengerSeat: [-0.35, 0.34, 0.46], driverSeat: [-0.35, 0.34, -0.46] }
+
+  // Closed body volumes prevent walking through the thin decorative panels or
+  // stepping into the cabin. The visible meshes still supply sight/shot cover.
+  const barrierMaterial = new THREE.MeshBasicMaterial({ visible: false })
+  for (const [width, height, depth, x, y] of [[4.64, 1.13, 2.04, 0, 0.565],
+    [1.88, 0.93, 1.94, -0.525, 1.595]]) {
+    const barrier = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), barrierMaterial)
+    barrier.name = 'Transport body collision'
+    barrier.position.set(x, y, 0)
+    barrier.userData = { blocksSight: false, blocksShots: false }
+    root.add(barrier)
+  }
 
   // Use Draft's shared white paper for every panel, tire and fitting. Window
   // apertures retain their ink frames but no fill, so the driver can see out.

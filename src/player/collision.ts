@@ -55,7 +55,7 @@ function collisionTree(geometry: THREE.BufferGeometry) {
   return root
 }
 
-/** Local-space trees are built only for nearby meshes. Door trees move with their hinges. */
+/** Local-space trees are built only for nearby meshes; moving objects retain their trees. */
 export class CollisionWorld {
   private colliders: Collider[] = []
   private proxies: THREE.Mesh[] = []
@@ -78,7 +78,7 @@ export class CollisionWorld {
       if (object instanceof THREE.Mesh && !(object.material instanceof THREE.ShaderMaterial)) {
         let dynamic = false
         for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) {
-          if (parent.userData.doorHinge) dynamic = true
+          if (parent.userData.doorHinge || parent.userData.dynamicCollision) dynamic = true
         }
         this.add(object, dynamic, object.userData.blocksSight !== false, object.userData.blocksShots !== false)
       }

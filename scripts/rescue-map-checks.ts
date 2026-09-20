@@ -118,7 +118,7 @@ for (let x = 155; x <= 175; x += 0.5) {
   for (const dx of [-3.4, -1.7, 0, 1.7, 3.4]) for (const dz of [-1.7, 0, 1.7]) {
     const capsule = new Capsule(new THREE.Vector3(x + dx, 0.45, 11 + dz),
       new THREE.Vector3(x + dx, 2.6, 11 + dz), 0.15)
-    assert(world.fits(capsule), `Vehicle envelope blocked at ${x + dx},${11 + dz}`)
+    assert(world.fits(capsule, [mission.rescue!.jeep]), `Vehicle envelope blocked at ${x + dx},${11 + dz}`)
   }
 }
 console.log('PASS full 7.1 by 3.7 metre vehicle envelope clears gate, fence and exterior lane')

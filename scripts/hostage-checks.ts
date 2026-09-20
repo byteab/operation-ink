@@ -12,6 +12,7 @@ import { setDoorOpen, updateDoors } from '../src/world/doors'
 import type { Vec3 } from '../src/game/types'
 import { HOSTAGE_INK, STAND_UP_SECONDS } from '../src/game/hostage-actor'
 import { HOSTAGE_RUN_SPEED } from '../src/game/balance'
+import { updateRescueJeepDoor } from '../src/game/rescue-jeep'
 
 const bytes = readFileSync('public/models/stickman.glb'), load = GLTFLoader.prototype.loadAsync
 GLTFLoader.prototype.loadAsync = async function () {
@@ -43,6 +44,8 @@ function tick(state: EscortMissionState, seconds: number, danger = false, verify
     updateDoors(doors, 1 / 60)
     world.refresh()
     escort.update(1 / 60, state, player, danger)
+    const hostage = state.hostages[0]
+    updateRescueJeepDoor(mission.rescue!.jeep, hostage.position, hostage.status === 'loaded', 1 / 60)
     if (verifyMovement) state.hostages.forEach((hostage, index) => {
       if (hostage.status !== 'following') return
       const position = new THREE.Vector3(...hostage.position), previous = new THREE.Vector3(...before[index])
@@ -147,7 +150,7 @@ check('boarding reaches the passenger side and settles continuously with feet ab
       assert(current.distanceTo(previous) < 0.08, `Boarding snapped ${current.distanceTo(previous)}m`)
       if (!wasLoaded) {
         assert(current.distanceTo(new THREE.Vector3(...RESCUE_LAYOUT.jeepBoardPoint)) < 0.25)
-        assert(current.distanceTo(new THREE.Vector3(...RESCUE_LAYOUT.jeepSeats[0])) < 1.1)
+        assert(current.distanceTo(new THREE.Vector3(...RESCUE_LAYOUT.jeepSeats[0])) < 1.4)
         boarded = true
       }
       settled++

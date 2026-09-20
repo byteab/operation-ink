@@ -13,7 +13,7 @@
     "test:escape": "node scripts/check-player.mjs scripts/escape-cinematic-checks.ts",
     "test:vr": "node scripts/check-player.mjs scripts/vr-checks.ts",
     "test:mission": "node scripts/check-player.mjs scripts/mission-checks.ts",
-    "test:rescue": "npm run test:mission && node scripts/check-player.mjs scripts/rescue-map-checks.ts && node scripts/check-player.mjs scripts/hostage-checks.ts && node scripts/check-player.mjs scripts/security-checks.ts",
+    "test:rescue": "npm run test:mission && node scripts/check-player.mjs scripts/rescue-map-checks.ts && node scripts/check-player.mjs scripts/hostage-checks.ts && node scripts/check-player.mjs scripts/security-checks.ts && node scripts/check-player.mjs scripts/transport-collision-checks.ts",
     "test:weapons": "node scripts/check-player.mjs scripts/weapon-checks.ts && node scripts/check-player.mjs scripts/starting-loadout-checks.ts && node scripts/check-player.mjs scripts/shotgun-ballistics-checks.ts",
     "test:ai": "node scripts/check-player.mjs scripts/ai-checks.ts && node scripts/check-player.mjs scripts/tactical-ai-checks.ts && node scripts/check-player.mjs scripts/responsive-ai-checks.ts && node scripts/check-player.mjs scripts/fair-awareness-checks.ts && node scripts/check-player.mjs scripts/door-navigation-checks.ts && node scripts/check-player.mjs scripts/ai-reposition-checks.ts",
     "test:tower-patrol": "node scripts/check-player.mjs scripts/tower-patrol-checks.ts",

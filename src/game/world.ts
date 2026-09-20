@@ -388,6 +388,7 @@ export function createMissionWorld(compound?: THREE.Group): MissionWorld {
   const exitGate = createFenceGate({ name: 'Secure compound exit gate', x: 164, z: 11,
     width: 8, height: 3.1, angle: Math.PI / 2 })
   exitGate.userData.missionLocked = true
+  exitGate.userData.swingSeconds = 3
   root.add(exitGate)
 
   const apron = new Draft('East rail annex · concrete aprons')

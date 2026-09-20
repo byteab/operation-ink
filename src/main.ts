@@ -65,7 +65,8 @@ function render(now: number, xrFrame?: XRFrame) {
   const dt = Math.min(elapsed, 0.05)
   if (player.playing && elapsed < 1) { frameTimes.push(elapsed * 1000); if (frameTimes.length > 600) frameTimes.shift() }
   lastTime = now
-  const doorsMoving = interactions.update(dt)
+  // Door travel uses real elapsed time even when low FPS caps the physics step.
+  const doorsMoving = interactions.update(elapsed)
   let moving = false
   if (vr.active && xrFrame) vr.update(dt, xrFrame)
   else moving = player.update(dt) || camera.update(dt)

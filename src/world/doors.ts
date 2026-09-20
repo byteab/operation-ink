@@ -1,6 +1,8 @@
 import { Group } from 'three'
 import { Draft } from '../render/ink'
 
+const swings = new WeakMap<Group, { from: number; target: number; elapsed: number; duration: number }>()
+
 export interface DoorOptions {
   name: string
   x: number
@@ -71,9 +73,15 @@ export function createDoor({ name, x, z, floor, width = 1.35, height = 2.35,
 export function setDoorOpen(door: Group, open: boolean, instant = false) {
   door.userData.open = open
   if (instant) {
+    swings.delete(door)
     const hinge = door.children.find(child => child.userData.doorHinge)
     if (hinge) hinge.rotation.y = open ? -Math.PI / 2 : 0
   }
+}
+
+export function isDoorFullyOpen(door: Group) {
+  const hinge = door.children.find(child => child.userData.doorHinge)
+  return Boolean(door.userData.open && hinge && Math.abs(hinge.rotation.y + Math.PI / 2) < 0.000001)
 }
 
 export function updateDoors(doors: Group[], dt: number, reducedMotion = false) {
@@ -83,6 +91,23 @@ export function updateDoors(doors: Group[], dt: number, reducedMotion = false) {
     if (!hinge) continue
     const target = door.userData.open ? -Math.PI / 2 : 0
     const distance = target - hinge.rotation.y
+    if (door.userData.swingSeconds > 0) {
+      let swing = swings.get(door)
+      if (!swing || swing.target !== target) {
+        if (Math.abs(distance) < 0.000001) { hinge.rotation.y = target; swings.delete(door); continue }
+        swing = { from: hinge.rotation.y, target, elapsed: 0,
+          duration: door.userData.swingSeconds * Math.abs(distance) / (Math.PI / 2) }
+        swings.set(door, swing)
+      }
+      swing.elapsed = Math.min(swing.duration, swing.elapsed + Math.max(0, dt))
+      const t = swing.elapsed / swing.duration
+      // Physical gate travel keeps its duration with Reduced Motion too.
+      const eased = t * t * (3 - 2 * t)
+      hinge.rotation.y = swing.from + (target - swing.from) * eased
+      if (t === 1) swings.delete(door)
+      moving = true
+      continue
+    }
     if (Math.abs(distance) < 0.001) { hinge.rotation.y = target; continue }
     hinge.rotation.y += reducedMotion ? distance : distance * (1 - Math.exp(-16 * dt))
     moving = true

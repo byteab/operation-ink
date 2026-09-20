@@ -3,7 +3,7 @@ import { BulletTrails } from './bullet-trails'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
-import { setDoorOpen } from '../world/doors'
+import { isDoorFullyOpen, setDoorOpen } from '../world/doors'
 import { EnemyDirector } from './ai'
 import { FirstPersonWeapons } from './weapons'
 import { MissionAudio } from './audio'
@@ -40,8 +40,8 @@ export class MissionRuntime {
   readonly security: SecuritySystem
   ready = false
   deaths = 0
-  // Temporary playthrough protection. Set false to restore normal player damage.
-  invincible = true
+  // Opt-in protection for staged checks; normal play always starts vulnerable.
+  invincible = false
   private abort = new AbortController()
   private checkpoint: Checkpoint | null = null
   private initial: Checkpoint | null = null
@@ -197,7 +197,8 @@ export class MissionRuntime {
     if (!this.isActive() || this.state.jeep === 'escaping') return []
     const targets: ActionTarget[] = []
     for (const station of this.world.stations) {
-      const label = stationLabel(this.state,station.kind,station.id)
+      let label = stationLabel(this.state,station.kind,station.id)
+      if (station.kind === 'jeep' && label === 'Board jeep' && this.gateOpening()) label = 'Gate opening'
       if (label) targets.push({ object: station.object, point: station.point, kind: 'mission', label,
         descending: false, use: () => this.use(station) })
     }
@@ -209,6 +210,10 @@ export class MissionRuntime {
     if (!this.isActive()) return false
     const eye = this.camera.perspective.position
     if (eye.distanceTo(station.point) > 2.65 || !this.player.world.visible(eye, station.point, station.object)) return false
+    if (station.kind === 'jeep' && this.gateOpening()) {
+      this.hud.notify('Wait for the exit gate to finish opening.', 3)
+      return false
+    }
     const result = useStation(this.state,station.kind,station.id)
     this.hud.notify(result.message,7)
     if (!result.changed) return false
@@ -222,6 +227,10 @@ export class MissionRuntime {
     if (this.state.phase === 'complete') { this.player.pause(); this.cancelInput() }
     this.syncWorld(); this.invalidate()
     return true
+  }
+
+  private gateOpening() {
+    return this.state.gateOpen && this.world.rescue && !isDoorFullyOpen(this.world.rescue.gate)
   }
 
   private emit(event: SoundEvent, audible: boolean) {
@@ -336,6 +345,7 @@ export class MissionRuntime {
         const door = rescue.jeep.userData.passengerDoor as THREE.Group
         door.rotation.y = 0
       }
+      this.player.world.refresh()
     }
     if (resetEscort) this.escort.sync(this.state)
     this.security.sync(this.state)

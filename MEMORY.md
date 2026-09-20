@@ -1,5 +1,11 @@
 # Project memory
 
+## Solid transport and three-second exit gate
+
+- Removed the rescue jeep's collision exclusion; added closed body volumes and dynamic collider refresh for the moving car and its passenger door. Visible geometry now supplies physical cover too. The hostage approach clears the side step/wheels and outward door swing; boarding and the driver F target remain reachable.
+- Only the final exit gate has a three-second eased swing. Door updates use real elapsed time, keeping timing consistent at low FPS. Gate collision follows the hinge, and the jeep waits with “Gate opening” until fully open. Instant restart clears in-flight motion and restores car collision at the parked location.
+- Build, rescue, player, escape and door-navigation checks passed, including added collision/timing regressions and actual passenger-door motion in escort checks. User authorized agent-browser: live movement stopped at all four sides, F rejected early boarding and accepted it afterward, and gate timing measured 3.0093 s normally / 3.051 s with 90 ms frame stalls. Closed/mid/open screenshots inspected; no browser/shader errors. Evidence and staged scope: `docs/transport-collision/README.md`.
+
 ## Exterior getaway and cell lock
 
 - Follow-up: user still found the car slow/unnatural and wanted lighter black dust. Drive is now 1.8 s (was 2.8), peak 13.89 m/s (was 9.04), with smooth acceleration and a shallow road curve instead of a sideways fishtail. Body yaw follows the route tangent and steering follows curvature. Dust is pure black with much lower opacity, density, size and lifetime; emissions interpolate over frame travel. Timings: 0.08 s launch, 1.4–1.85 s fade, 2.05–2.4 s menu.
@@ -12,7 +18,7 @@
 - User requested a green hostage, faster running for hostage/enemies, and animated state transitions. Hostage color is `#229447`, travel speed is 2.6 m/s (was 2.05), and enemy running is 4.2 m/s (was 3.36). Enemy patrol walking stays unchanged; escort stride playback follows measured horizontal travel.
 - Mission actors use `Player.play(..., { poseFade: true, fade: 0.22 })` and call `blendPose()` after procedural posing. Interruptions capture the visible pose; underlying mixer/IK poses are restored each frame. Ground compensation prevents interpolated legs sinking. Existing posture/flinch/death flows remain intact.
 - Build, gait, escort/boarding, combat, death, AI and new multi-fps `test:npc-transitions` checks passed. One parallel patrol run missed a reserve waypoint; separate rerun passed. Agent-browser visual checks passed, enemies remained black, no browser errors. Evidence and reproduction: `docs/npc-motion/README.md`.
-- The preceding request's temporary invincibility remains enabled through `MissionRuntime.invincible = true`; set it false to restore player damage.
+- The temporary playthrough invincibility has been disabled at the user's request (`MissionRuntime.invincible = false`); normal damage and death are restored, including after restarting the mission.
 
 ## Compact interaction prompts
 
