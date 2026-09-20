@@ -12,6 +12,18 @@ type Collider = {
   blocksShots: boolean
 }
 
+export type SurfaceHit = {
+  distance: number; point: THREE.Vector3; normal: THREE.Vector3; mesh: THREE.Mesh; backFace: boolean
+  localPoint: THREE.Vector3; localNormal: THREE.Vector3
+}
+
+/** Retain the same contact when a hinge moves during the cosmetic bullet flight. */
+export function followSurface(hit: SurfaceHit): SurfaceHit {
+  hit.mesh.updateWorldMatrix(true, false)
+  return { ...hit, point: hit.localPoint.clone().applyMatrix4(hit.mesh.matrixWorld),
+    normal: hit.localNormal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(hit.mesh.matrixWorld)) }
+}
+
 const up = new THREE.Vector3(0, 1, 0)
 
 /** Partition triangles without duplicating large coplanar slabs into many octants. */
@@ -215,6 +227,49 @@ export class CollisionWorld {
       if (hit && hit.distance < distance) distance = hit.distance
     }
     return distance
+  }
+
+  /** Ballistic contact with the actual face normal, including hinged objects. */
+  raySurface(origin: THREE.Vector3, direction: THREE.Vector3, range: number): SurfaceHit | null {
+    this.ray.set(origin, direction)
+    this.ray.near = 0.01
+    this.ray.far = range
+    let closest: SurfaceHit | null = null
+    for (const collider of this.colliders) {
+      if (!collider.blocksShots || !this.ray.ray.intersectsBox(collider.bounds)) continue
+      const hit = this.ray.intersectObject(collider.mesh, false)[0]
+      if (!hit?.face || hit.distance >= (closest?.distance ?? range)) continue
+      const normal = hit.face.normal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(collider.mesh.matrixWorld))
+      const backFace = normal.dot(direction) > 0
+      if (backFace) normal.negate()
+      closest = { distance: hit.distance, point: hit.point, normal, mesh: collider.mesh, backFace,
+        localPoint: hit.point.clone().applyMatrix4(collider.inverse),
+        localNormal: hit.face.normal.clone().multiplyScalar(backFace ? -1 : 1) }
+    }
+    return closest
+  }
+
+  /** Local triangles for a small decal; never scan/project a whole batched building. */
+  surfacePatch(hit: SurfaceHit, radius: number) {
+    const collider = this.colliders.find(candidate => candidate.mesh === hit.mesh)
+    const geometry = new THREE.BufferGeometry(), positions: number[] = [], normals: number[] = []
+    if (collider) {
+      const sphere = new THREE.Sphere(hit.point.clone(), radius).applyMatrix4(collider.inverse)
+      const triangles: THREE.Triangle[] = []
+      this.tree(collider).getSphereTriangles(sphere, triangles)
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.mesh.matrixWorld)
+      for (const triangle of triangles) {
+        const normal = triangle.getNormal(new THREE.Vector3())
+        const facing = normal.clone().applyNormalMatrix(normalMatrix).dot(hit.normal) * (hit.backFace ? -1 : 1)
+        if (facing < 0.2 || triangle.closestPointToPoint(sphere.center, this.rayPoint).distanceToSquared(sphere.center) > sphere.radius ** 2) continue
+        for (const point of [triangle.a, triangle.b, triangle.c]) {
+          positions.push(point.x, point.y, point.z); normals.push(normal.x, normal.y, normal.z)
+        }
+      }
+    }
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
+    return geometry
   }
 
   /** A local query view shares geometry/trees, but never owns their resources.

@@ -66,12 +66,12 @@ export class MissionRuntime {
       if (!enemy || enemy.state !== 'dead' || enemy.deathClip !== 'dieShotgun') return null
       return enemy.actor.rig.bones.chest.getWorldPosition(new THREE.Vector3())
     })
-    this.impacts = new MissionImpacts(scene)
+    this.impacts = new MissionImpacts(scene, player.world)
     this.bulletTrails = new BulletTrails(scene, 'Player bullet')
     player.lookSensitivity = () => this.weapons.lookSensitivity
     this.ai = new EnemyDirector({ scene, world: player.world, doors: player.actions.doors, specs: world.enemies,
       emit: event => this.emit(event, false), damagePlayer: (amount, source, hit) => this.damage(amount, source, hit),
-      onSurfaceHit: (point, direction) => this.impacts.emit(point, direction),
+      onSurfaceHit: (point, direction, surface, weapon) => this.impacts.emit(point, direction, surface, weapon),
       dropWeapon: item => { this.weapons.addPickup(item); this.state.kills++ }, onHit: hit => {
         this.impactPoint = hit.point.clone(); this.blood.emitHit(hit); this.audio.confirmHit(hit)
       } })
@@ -236,17 +236,18 @@ export class MissionRuntime {
   private shot(shot: Shot) {
     if (!this.isActive()) return
     if (!shot.pelletIndex) this.state.shots++
-    const distance=this.player.world.rayDistance(shot.origin,shot.direction,shot.range)
+    const surface = this.player.world.raySurface(shot.origin, shot.direction, shot.range)
+    const distance = surface?.distance ?? shot.range
     this.ai.nearMiss(shot,distance)
     this.impactPoint = null
     const hit=this.ai.hit(shot,distance)
     if (hit) this.hitFlash = 0.15
     const end=this.impactPoint ?? shot.origin.clone().addScaledVector(shot.direction,distance)
-    if (!hit && distance<shot.range) {
+    const impact = !hit && surface ? () => {
       this.audio.play({kind:'impact',position:end,radius:18})
-      this.impacts.emit(end, shot.direction)
-    }
-    this.bulletTrails.emit(shot.origin, end, shot.weapon)
+      this.impacts.emit(end, shot.direction, surface, shot.weapon)
+    } : undefined
+    this.bulletTrails.emit(shot.origin, end, shot.weapon, undefined, impact)
   }
 
   damage(amount: number, source?: THREE.Vector3, hit?: PlayerBulletHit) {

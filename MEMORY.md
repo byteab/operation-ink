@@ -1,5 +1,13 @@
 # Project memory
 
+## Ink bullets and surface splashes
+
+- Player and enemy rounds now use rounded ink heads and darker tapered wakes. Actual surface contacts trigger a wet blot, outward droplets and a projected black splatter at visual arrival; damage remains immediate. Enemy misses continue to a real surface within their weapon range instead of ending two metres beyond the player.
+- `ink-splashes.ts` batches eight procedural blot variants, clipped to surface triangles and anchored to the hit mesh, including doors moving during/after flight. Stains last 45 active seconds, fade over the final five, and reuse 128 slots. Reset/disposal clear marks and pending arrivals; non-colliding effects cannot intercept shots.
+- User's latest follow-up: splashes were still too big after the first reduction. Cut dimensions by more than half again (ordinary 0.16m, shotgun pellet 0.08m, sniper 0.22m before variation), reduced the contact blot to 0.038m scale, halved droplet size and reduced outward scatter.
+- Latest shotgun follow-up: widened the cone another 50%, from 3° to 4.5° half-angle (originally 1.1°): about 1.57m across at 10m and 3.15m at 20m, identical for hip fire and ADS. Eight pellets still share the real muzzle; damage falloff, ammo and recoil are unchanged. Real animated-target checks retain lethal centred 2m shells, nearly lethal 3m shells and decreasing mean damage at 6/8/16/28m. Build and full weapon suite passed for this revision; full bullet suite passed for the preceding splash reduction.
+- Build, bullet suite (including new real player/enemy surface integration, transformed door/edge clipping, expiry/cap/disposal and 116 actual-map contacts), weapons, AI, player, player-death and polish checks passed. Updated a stale polish check from the old 120m sniper sound radius to the existing 130m behavior. Inspected the CPU ink atlas; no browser/GPU QA was run because Argent is unavailable and the current fallback question has not been answered.
+
 ## First-person death sequence
 
 - Fatal player damage now runs `PlayerDeathSequence` before the menu: backward eye-height collapse, delayed skyward tilt, soft ground rebound, then menu fade. Latest user instruction removes the death circle entirely: no vignette, only uniform background blur to 10 px and dimming to 92%. Ground contact is 1.06 s, head settles by 1.44 s, dimming finishes at 3.35 s, menu fades from 3.7–4.25 s. Swept head collision and floor checks protect walls, wire panels and platform edges.

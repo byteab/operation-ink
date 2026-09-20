@@ -4,7 +4,7 @@ import { Capsule } from 'three/addons/math/Capsule.js'
 import { EnemyActor, type ActorPostureSnapshot } from './actors'
 import type { Posture } from '../lab/postures'
 import { EnemyNavigation } from './navigation'
-import { ENEMY_HEALTH, ENEMY_RUN_SPEED, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, hitDamage, shotgunDamageMultiplier } from './balance'
+import { ENEMY_HEALTH, ENEMY_RUN_SPEED, ENEMY_WEAPONS as WEAPON, ENEMY_COMBAT as COMBAT, WEAPON_RULES, hitDamage, shotgunDamageMultiplier } from './balance'
 import { rayCapsuleDistance, reactionClipName, type HitReaction, type HitZone } from './hit-reactions'
 import { playerHitTarget, type PlayerBulletHit } from './player-hit-reactions'
 import type { AIContext, EnemySnapshot, EnemySpec, EnemyState, PlayerSense, Shot, SoundEvent, Vec3, WeaponName } from './types'
@@ -896,9 +896,11 @@ export class EnemyDirector {
     if (!hit) target.add(new THREE.Vector3((this.random(enemy) > 0.5 ? 1 : -1) * (0.7 + this.random(enemy) * (blind ? 2 : 1)), 0.2 + this.random(enemy) * (blind ? 1 : 0.6), 0))
     distance = muzzle.distanceTo(target)
     direction.copy(target).sub(muzzle).normalize()
-    const obstruction = this.context.world.rayDistance(muzzle, direction, distance + 2)
+    const range = Math.max(distance + 2, WEAPON_RULES[enemy.spec.weapon].range)
+    const surface = this.context.world.raySurface(muzzle, direction, range)
+    const obstruction = surface?.distance ?? range
     const hitPlayer = hit && obstruction >= muzzle.distanceTo(target) - 0.05
-    const end = muzzle.clone().addScaledVector(direction, hitPlayer ? Math.min(distance, obstruction) : Math.min(distance + 2, obstruction))
+    const end = muzzle.clone().addScaledVector(direction, hitPlayer ? Math.min(distance, obstruction) : obstruction)
     // Avoid shooting through a friendly body standing across a doorway.
     if (this.enemies.some(other => other !== enemy && other.health > 0 && other.state !== 'reserve' && this.bodyHit(other, muzzle, direction, distance))) return false
     enemy.burst = (enemy.burst > 0 ? enemy.burst : weapon.burst) - 1
@@ -912,6 +914,11 @@ export class EnemyDirector {
       ? COMBAT.sniperEngagedRange : COMBAT.engagedRange) + 20
     this.context.emit({ kind: `enemy-shot-${enemy.spec.weapon}`, position: muzzle.clone(), radius: reportRange })
     const near = !hitPlayer && bulletNearMiss(muzzle, end, player.eye)
+    const shotDirection = direction.clone()
+    const impact = !hitPlayer && surface ? () => {
+      this.context.emit({ kind: 'impact', position: end.clone(), radius: 18 })
+      this.context.onSurfaceHit?.(end, shotDirection, surface, enemy.spec.weapon)
+    } : undefined
     this.bulletTrails.emit(muzzle, end, enemy.spec.weapon, near ? { fraction: near.fraction, fire: () => {
       // Sound arrives with the visible round. Recheck the current listener and cover,
       // including a wall alongside the path, not only the original muzzle ray.
@@ -921,14 +928,10 @@ export class EnemyDirector {
       if (pass && this.context.world.visible(pass.point, eye, ignore)) {
         this.context.emit({ kind: 'enemy-bullet-whiz', position: pass.point, source: muzzle.clone(), intensity: pass.intensity, radius: 5 })
       }
-    } } : undefined)
+    } } : undefined, impact)
     if (hitPlayer) this.context.damagePlayer(weapon.damage, enemy.position.clone(), {
       ...bodyHit, point: end.clone(), direction: direction.clone(), weapon: enemy.spec.weapon,
     })
-    else if (obstruction < distance + 2) {
-      this.context.emit({ kind: 'impact', position: end.clone(), radius: 18 })
-      this.context.onSurfaceHit?.(end, direction.clone())
-    }
     return true
   }
 

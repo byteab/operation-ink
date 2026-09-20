@@ -54,7 +54,7 @@ try {
   }
   try {
     const table: Record<number, number[]> = {}
-    for (const distance of [3, 6, 8, 16, 28]) {
+    for (const distance of [2, 3, 6, 8, 16, 28]) {
       table[distance] = []
       for (const yaw of [0, Math.PI / 2, Math.PI]) for (const aiming of [false, true]) for (const rotation of [0, 0.25, 0.5, 0.75]) {
         const damage = fire(distance, rotation, aiming, yaw)
@@ -65,10 +65,18 @@ try {
       }
     }
     console.log(Object.fromEntries(Object.entries(table).map(([distance, damage]) => [distance, { min: Math.min(...damage), max: Math.max(...damage), mean: damage.reduce((a, b) => a + b, 0) / damage.length }])))
-    for (const distance of [3, 6, 8]) assert(table[distance].every(damage => damage === ENEMY_HEALTH), `Centered ${distance}m shot must kill from any facing, with hip fire or ADS`)
+    const meanDamage = (distance: number) => table[distance].reduce((sum, damage) => sum + damage, 0) / table[distance].length
+    assert(table[2].every(damage => damage === ENEMY_HEALTH), 'Centered 2m shots remain lethal from any facing, with hip fire or ADS')
+    assert(meanDamage(3) > ENEMY_HEALTH * 0.75, 'Close 3m shells still land most of their damage')
+    for (const distance of [6, 8]) {
+      assert(table[distance].some(damage => damage < ENEMY_HEALTH), `${distance}m spread no longer guarantees every shell kills`)
+      assert(meanDamage(distance) > ENEMY_HEALTH / 4, `${distance}m shots still land a useful portion of the shell`)
+    }
+    assert(meanDamage(3) > meanDamage(6) && meanDamage(6) > meanDamage(8) && meanDamage(8) > meanDamage(16), 'Pellet separation steadily reduces effectiveness with distance')
     assert(table[16].every(damage => damage < ENEMY_HEALTH), 'Middle-distance torso shots must not remain guaranteed instant kills')
-    assert(table[28].every(damage => damage < ENEMY_HEALTH / 2), 'Distant body hits must lose most shell damage through sparse pellet impacts')
-    assert.equal(fire(3, 0.5, false, 0, 0.6), 0, 'Close-range aim outside the silhouette must still miss')
+    assert(meanDamage(16) < meanDamage(3) / 2, 'Midrange spread lands less than half the close-range damage on average')
+    assert(table[28].every(damage => damage < ENEMY_HEALTH / 4), 'Distant body hits must lose most shell damage through sparse pellet impacts')
+    assert.equal(fire(3, 0.5, false, 0, 0.9), 0, 'A close target outside the entire spread cone must still be missed')
     console.log('PASS Actual animated targets die from centered close shells; distant targets receive sparse pellet hits and off-target shots miss')
 
     fire(16, 0.125, false)
@@ -84,7 +92,8 @@ try {
     const edge = shots[shots.length - 1].direction
     const planeDistance = (distance: number) => edge.clone().multiplyScalar(distance / edge.dot(aimCentral)).addScaledVector(aimCentral, -distance).length()
     assert(Math.abs(planeDistance(20) - planeDistance(10) * 2) < 1e-8, 'Pattern radius must grow with actual projectile travel')
-    assert(planeDistance(10) > 0.15 && planeDistance(10) < 0.25, '10m pattern must be a compact buckshot pattern, not a room-wide scatter')
+    assert(planeDistance(10) > 0.7 && planeDistance(10) < 0.85, '10m spread reaches roughly 0.8 metres from the centre line')
+    assert(planeDistance(3) < 0.25, 'Pellets remain close together just beyond the muzzle')
     console.log('PASS Hip fire and ADS share the same normalized, muzzle-origin pellet cone')
 
     wall.position.x = 0; world.refresh()

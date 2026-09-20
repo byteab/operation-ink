@@ -6,7 +6,17 @@ const CAPACITY = 96
 const UP = new THREE.Vector3(0, 1, 0)
 type Round = {
   origin: THREE.Vector3; direction: THREE.Vector3; distance: number; age: number; duration: number
-  length: number; width: number; pass?: { fraction: number; fire: () => void }
+  length: number; width: number; pass?: { fraction: number; fire: () => void }; impact?: () => void
+}
+
+function inkDrop() {
+  const geometry = new THREE.SphereGeometry(1, 10, 8)
+  const positions = geometry.getAttribute('position')
+  for (let i = 0; i < positions.count; i++) {
+    const taper = 0.35 + 0.65 * (positions.getY(i) + 1) / 2
+    positions.setXYZ(i, positions.getX(i) * taper, positions.getY(i), positions.getZ(i) * taper)
+  }
+  return geometry
 }
 
 /** Presentation only: hit tests and weapon balance remain authoritative and immediate. */
@@ -25,14 +35,14 @@ export function bulletNearMiss(origin: THREE.Vector3, end: THREE.Vector3, eye: T
   return { point, fraction, distance, intensity: (1 - distance / 2.4) ** 0.65 }
 }
 
-/** Reusable ink dart, paper rim and short graphite wake; no full-path laser lines. */
+/** Rounded liquid ink heads, paper contrast rims and short tapered ink wakes. */
 export class BulletTrails {
-  readonly rims = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0),
+  readonly rims = new THREE.InstancedMesh(inkDrop(),
     new THREE.MeshBasicMaterial({ color: penPalette.paper, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }), CAPACITY)
-  readonly heads = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0),
+  readonly heads = new THREE.InstancedMesh(inkDrop(),
     new THREE.MeshBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false }), CAPACITY)
-  readonly tails = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 4).rotateX(Math.PI),
-    new THREE.MeshBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.36, depthWrite: false, toneMapped: false }), CAPACITY)
+  readonly tails = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 8).rotateX(Math.PI),
+    new THREE.MeshBasicMaterial({ color: penPalette.ink, transparent: true, opacity: 0.52, depthWrite: false, toneMapped: false }), CAPACITY)
   private rounds: Round[] = []
   private eye = new THREE.Vector3()
   private point = new THREE.Vector3()
@@ -58,13 +68,13 @@ export class BulletTrails {
     }
   }
 
-  emit(origin: THREE.Vector3, end: THREE.Vector3, weapon: WeaponName = 'ak', pass?: Round['pass']) {
+  emit(origin: THREE.Vector3, end: THREE.Vector3, weapon: WeaponName = 'ak', pass?: Round['pass'], impact?: () => void) {
     const distance = origin.distanceTo(end)
-    if (distance < 0.025) return
+    if (distance < 0.025) { impact?.(); return }
     if (this.rounds.length === CAPACITY) this.rounds.shift()
     this.rounds.push({ origin: origin.clone(), direction: end.clone().sub(origin).normalize(), distance,
       age: 0, duration: bulletFlightTime(distance), length: weapon === 'sniper' ? 2.4 : weapon === 'shotgun' ? 0.85 : 1.65,
-      width: weapon === 'shotgun' ? 0.65 : weapon === 'sniper' ? 1.2 : 1, pass })
+      width: weapon === 'shotgun' ? 0.65 : weapon === 'sniper' ? 1.2 : 1, pass, impact })
     this.render()
   }
 
@@ -76,6 +86,11 @@ export class BulletTrails {
         const pass = round.pass
         round.pass = undefined
         pass.fire()
+      }
+      if (round.impact && round.age >= round.duration) {
+        const impact = round.impact
+        round.impact = undefined
+        impact()
       }
     }
     this.rounds = this.rounds.filter(round => round.age < round.duration + 0.035)

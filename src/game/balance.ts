@@ -49,9 +49,9 @@ export const ENEMY_COMBAT = {
 } as const
 
 export const SHOTGUN_PELLETS = 8
-// Buckshot expands from the muzzle: about 38 cm across at 10 m. Aiming does
+// Buckshot fans out from the muzzle: about 1.57 m across at 10 m, 3.15 m at 20 m. Aiming does
 // not change the barrel/choke, so ADS uses the same cone as hip fire.
-export const SHOTGUN_BALLISTICS = { halfAngle: 1.1 * Math.PI / 180, fullDamageRange: 8, minimumDamageScale: 0.4 } as const
+export const SHOTGUN_BALLISTICS = { halfAngle: 4.5 * Math.PI / 180, fullDamageRange: 8, minimumDamageScale: 0.4 } as const
 
 /** Pattern density does most of the range balancing; individual pellets also lose energy. */
 export function shotgunDamageMultiplier(distance: number) {

@@ -229,7 +229,7 @@ console.log('PASS Real enemy misses time the whiz to passage, deal no damage, an
     'Impact burst sits just in front of the authoritative surface contact')
   const plane = bounds(impacts.bursts, center, direction)
   near(plane.min, 0); near(plane.max, 0)
-  assert(plane.radius > 0.05 && plane.radius < 0.15, 'Starburst is a small mark perpendicular to bullet travel')
+  assert(plane.radius > 0.02 && plane.radius < 0.04, 'Contact blot stays smaller than eight centimetres across')
   assert(impacts.bursts.userData.noCollision && impacts.mesh.userData.noCollision)
   impacts.update(0); impacts.update(-0.1)
   assert.deepEqual(matrixAt(impacts.bursts).toArray(), initial.toArray(), 'Pause freezes the impact mark')

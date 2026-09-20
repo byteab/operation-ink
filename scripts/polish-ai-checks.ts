@@ -117,7 +117,7 @@ await check('Snipers fire at long range, stay on post when contact moves, and ca
   f.director.hear({ kind: 'shot-pistol', position: f.player.eye, radius: 38 })
   f.advance(1.3); assert(f.enemy.shots > 0, 'sniper must engage promptly')
   f.advance(9); assert(f.enemy.shots >= 4); assert(f.enemy.shots <= 5)
-  assert(f.events.some(event => event.kind === 'enemy-shot-sniper' && event.radius === 120), 'a long-range sniper round must remain audible to the player')
+  assert(f.events.some(event => event.kind === 'enemy-shot-sniper' && event.radius === 130), 'a long-range sniper round must remain audible to the player')
   f.player.feet.z = f.player.eye.z = -125
   f.advance(20)
   assert(f.enemy.position.distanceTo(post) < 0.00001)
@@ -152,6 +152,8 @@ await check('Enemy misses hit real surfaces with sound and callback at the obstr
   Object.assign(f.director, { random: () => 0.99 })
   f.advance(1 / 60)
   assert.equal(f.enemy.shots, 1); assert.equal(f.damage(), 0)
+  assert.equal(f.surfaces.length, 0, 'Surface feedback waits for the visible round')
+  f.director.bulletTrails.update(0.16)
   assert.equal(f.surfaces.length, 1); assert(Math.abs(f.surfaces[0].z - 13) < 0.0001)
   const impact = f.events.find(event => event.kind === 'impact')
   assert(impact); assert.equal(impact.radius, 18); assert(impact.position!.distanceTo(f.surfaces[0]) < 0.00001)
