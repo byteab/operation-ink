@@ -16,6 +16,7 @@ camera.position.set(0, 1.68, 0)
 const audioEvents: string[] = []
 let paused = 0, deathUpdates = 0, weaponUpdates = 0, deathResets = 0, audioActive = false, hudCleared = false
 let hitCues = 0, hurtCues = 0
+let fatalKick = 0
 let worldTime = 0, effectTime = 0, trailTime = 0
 const body = { position: new THREE.Vector3(), velocity: new THREE.Vector3(), grounded: true,
   teleport(point: THREE.Vector3) { this.position.copy(point) } }
@@ -28,13 +29,13 @@ Object.assign(m, {
   state: initialMission(), ready: true, deaths: 0, camera: { perspective: camera }, player,
   world: { bounds: { minX: -100, maxX: 100, minZ: -100, maxZ: 100 } },
   death: new PlayerDeathSequence(), playerHits: new PlayerHitReactions(),
-  weapons: { cancel: noop, beginDeath: noop, updateDeath: () => deathUpdates++, resetDeath: () => deathResets++,
+  weapons: { cancel: noop, beginDeath: noop, updateDeath: (_elapsed: number, _reduced: boolean, kick: number) => { deathUpdates++; fatalKick = kick }, resetDeath: () => deathResets++,
     update: () => weaponUpdates++, restore: noop },
   audio: { setActive: (active: boolean) => audioActive = active, play: ({ kind }: { kind: string }) => audioEvents.push(kind),
     beginDeath: () => audioEvents.push('death'), reset: () => audioEvents.push('reset'), update: noop, setAlarm: noop },
   hud: { reducedMotion: false, hurt: () => hurtCues++, hitFrom: () => hitCues++, notify: noop, clearThreat: noop, setScoped: noop, setDeath: noop,
     update: noop, reset: () => hudCleared = true, clearDeath: () => hudCleared = true },
-  ai: { update: (dt: number, sense: { alive: boolean }) => { worldTime += dt; if (sense.alive) m.damage(200, new THREE.Vector3(0, 1, -5)) }, bulletTrails: { clear: noop }, restore: noop },
+  ai: { update: (dt: number, sense: { alive: boolean }) => { worldTime += dt; if (sense.alive) m.damage(100, new THREE.Vector3(0, 1, -5)) }, bulletTrails: { clear: noop }, restore: noop },
   escort: { update: noop, sync: noop }, security: { update: noop, sync: noop, reset: noop },
   blood: { update: (dt: number) => effectTime += dt, restore: noop }, impacts: { update: noop, clear: noop }, bulletTrails: { clear: noop, update: (dt: number) => trailTime += dt },
   safePosition: new THREE.Vector3(), safeQuaternion: new THREE.Quaternion(), active: false, wasVR: false,
@@ -73,8 +74,11 @@ m.retry()
 assert(!m.death.active && hudCleared && deathResets === 1 && m.state.phase === 'active')
 assert.deepEqual(camera.position.toArray(), [0, 1.68, 0])
 assert(audioEvents.includes('reset'))
-player.playing = true; m.update(1 / 60)
+// A one-point final round must carry the same impact, independently of damage.
+player.playing = true; m.state.health = 1
+m.damage(1, new THREE.Vector3(0, 1, -5)); m.update(1 / 60)
 assert(m.death.active && m.deaths === 2 && m.death.elapsed < 0.02, 'Retry supports a fresh subsequent death')
+assert(fatalKick > 0 && fatalKick === m.death.hitKick, 'Even a one-point fatal bullet passes the heavy impact to the arms')
 player.enabled = false; m.update(1 / 60)
 assert(!m.death.active && !audioActive && deathResets === 2, 'Inspection clears the cinematic and sound')
 console.log('PASS Real runtime lethal-frame handoff, one-shot damage/audio, continued rendering, hidden-tab pause, menu completion, retry and inspection cleanup')

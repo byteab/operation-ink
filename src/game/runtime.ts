@@ -269,7 +269,8 @@ export class MissionRuntime {
     this.hud.notify(source ? `Taking fire · ${this.soundDirection(source).toLowerCase()}. Break line of sight.` : 'You fell. Find a safer route.',2.5)
     if (this.state.phase==='dead') {
       this.playerHits.clear(); this.deaths++
-      this.death.begin(this.camera.perspective, this.player.body.position, this.player.world, this.hud.reducedMotion)
+      const bulletDirection = hit?.direction ?? (source ? this.camera.perspective.position.clone().sub(source) : undefined)
+      this.death.begin(this.camera.perspective, this.player.body.position, this.player.world, this.hud.reducedMotion, bulletDirection)
       this.weapons.beginDeath()
       this.player.pause(); this.player.actions.reset(); this.cancelInput()
       this.player.body.velocity.set(0, 0, 0)
@@ -436,7 +437,7 @@ export class MissionRuntime {
     deathVisible = this.death.active && this.player.enabled && !this.player.immersive
     if (deathVisible) {
       if (this.death.update(document.hidden ? 0 : dt, this.camera.perspective, this.player.world)) this.audio.play({ kind: 'player-fall' })
-      this.weapons.updateDeath(this.death.elapsed, this.death.reducedMotion)
+      this.weapons.updateDeath(this.death.elapsed, this.death.reducedMotion, this.death.hitKick, this.death.hitSide)
       this.hud.setDeath(this.death)
     } else {
       if (this.death.active) { this.death.reset(); this.weapons.resetDeath(); this.hud.clearDeath() }
@@ -454,8 +455,8 @@ export class MissionRuntime {
     const crosshair=document.querySelector<HTMLElement>('.crosshair')!
     crosshair.classList.toggle('confirmed-hit', this.hitFlash > 0)
     this.hud.update(dt,this.state,{playing:this.player.playing,enabled:this.player.enabled&&!this.player.immersive,
-      label:this.weapons.label,ammo:this.weapons.ammo,reloading:this.weapons.reloading,blocked:this.weapons.blocked,
-      alert:this.ai.alertLevel,position:this.player.body.position,yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y,deaths:this.deaths,ready:this.ready})
+      weapon:this.weapons.current,reloading:this.weapons.reloading,
+      position:this.player.body.position,yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y,deaths:this.deaths,ready:this.ready})
     return active || this.death.running
   }
 

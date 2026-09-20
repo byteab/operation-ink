@@ -1,5 +1,12 @@
 # Project memory
 
+## Icon-only health and ammunition
+
+- Removed the in-play mission/objective panel, Inspect map button and movement/status text from the mission HUD. Follow-up also removes the guard/alarm status banner and bottom controls strip; notifications such as “Weapon ready” are now screen-reader-only. The M shortcut still opens the field map; exploration mode retains its controls.
+- Health is a monochrome heart whose ink drains from the top. Ammunition is a magazine silhouette filled from the equipped weapon's real capacity; a small circular-arrow icon indicates reloading. User's follow-up adds a compact count beside the icon: nonempty loaded magazine plus `ceil(reserve / capacity)` spares, including partials. Weapon names and round counts remain absent visually; accessible meters retain full ammunition values. Empty hands hide the magazine. Both icons invert to white during sniper scope use.
+- Follow-up browser checks passed 25 loaded/reserve/count combinations across all five weapons, hidden notification/controls/status checks, and desktop/narrow visual review. Build, weapons, player-hit and player-death suites passed.
+- User authorized agent-browser without Argent. Build, weapons, mission and player-death suites passed. Browser checks covered native firing/reloading and the M shortcut, staged full/one-round/empty states for all five weapons, empty hands, health 100/50/35/1/0, and 1440×900 / 390×844 layouts. Scope contrast was visually verified. Existing browser health assertions now target the heart fill and accessible value.
+
 ## Minimal game menus
 
 - User requested research first and substantially less menu text/clutter. Research from Game Accessibility Guidelines, NN/g progressive disclosure, and Xbox UI navigation informed compact single-purpose menus and optional Mission, Controls, and Settings pages. Sources and evidence: `docs/menu-simplification/README.md`.
@@ -17,6 +24,7 @@
 
 ## First-person death sequence
 
+- Latest follow-up gives fatal bullets a full-strength impact regardless of damage, including a one-point killing blow: head kick peaks at 65 ms, directional roll/yaw and shared arm/weapon recoil resolve by 420 ms into the existing fall. Initial backward movement follows the collision-checked resting path. Fall damage retains its prior motion, and Reduced Motion suppresses the kick. Extended 30/60/144 fps wall/ledge/aim checks, runtime one-point lethal handoff, and agent-browser real-loop death/retry/reduced-motion checks passed; impact and collapse frames were visually reviewed.
 - Fatal player damage now runs `PlayerDeathSequence` before the menu: backward eye-height collapse, delayed skyward tilt, soft ground rebound, then menu fade. Latest user instruction removes the death circle entirely: no vignette, only uniform background blur to 10 px and dimming to 92%. Ground contact is 1.06 s, head settles by 1.44 s, dimming finishes at 3.35 s, menu fades from 3.7–4.25 s. Swept head collision and floor checks protect walls, wire panels and platform edges.
 - The world must keep moving while the player falls. Death now advances blood, corpses, NPC movement, escort, projectiles/impacts and security-camera visuals until the menu opens. Dead players cannot be detected or shot. Hidden tabs and the menu still pause the world; mission active time stops at death. Combat shading now triggers only on actual damage, never on near misses; pressure cap is 0.18 instead of 0.48, with a similarly reduced damage shadow. Passing-bullet audio remains.
 - Weapon/arms lower together and cannot fire or reload. Audio clears combat, plays a local player-hit recording plus descending pulse/breath, then a body-fall recording and low impact. It stays active through player pause; menu, hidden tabs, retry, inspection and disposal clean it up. Reduced Motion uses a still camera and plain fade. Retry restores all camera/weapon/UI state. Death menu hides briefing copy to keep retry visible on short windows.

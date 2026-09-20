@@ -23,13 +23,13 @@
     document.querySelector('#walk-pause').hidden = true
     sounds.length = 0
   }
-  const kill = () => m.damage(200, c.position.clone().add({ x: 0, y: 0, z: -10 }))
+  const kill = () => { m.state.health = 1; m.damage(1, c.position.clone().add({ x: 0, y: 0, z: -10 })) }
   const draw = () => { env.renderer.render(env.scene, c); m.finishFrame() }
   const advance = seconds => {
     for (let elapsed = 0; elapsed < seconds - 1e-8; elapsed += 1 / 120) originalUpdate(Math.min(1 / 120, seconds - elapsed))
     draw()
   }
-  const state = () => ({ time: m.death.elapsed, position: c.position.toArray(), rotation: c.quaternion.toArray(),
+  const state = () => ({ time: m.death.elapsed, hitKick: m.death.hitKick, position: c.position.toArray(), rotation: c.quaternion.toArray(),
     menu: m.death.menuVisible, menuHidden: document.querySelector('#walk-pause').hidden,
     menuOpacity: getComputedStyle(document.querySelector('#walk-pause')).opacity,
     blur: getComputedStyle(document.querySelector('.death-blur')).backdropFilter,
@@ -62,6 +62,7 @@
   await new Promise(resolve => setTimeout(resolve, 4800))
   clearInterval(sample); m.audio.master.disconnect(analyser); analyser.disconnect()
   check(m.death.menuVisible && m.death.elapsed === 4.25, 'Real animation loop reaches the completed menu')
+  check(samples.some(s => s.time < 0.2 && s.hitKick > 0.5), 'A one-point fatal bullet still produces the heavy initial impact')
   check(victim.actor.animationTime > animationBefore + 0.5, 'An enemy death animation keeps advancing while the player falls')
   check(m.blood.snapshot().droplets.length === 0, 'Airborne blood settles and expires during the death sequence')
   check(samples.filter(s => s.time < 3.7).every(s => s.menuHidden), 'Menu stays hidden through fall and gradual dimming')

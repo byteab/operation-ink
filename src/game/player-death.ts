@@ -18,13 +18,22 @@ export class PlayerDeathSequence {
   private candidate = new THREE.Vector3()
   private head = new Capsule(new THREE.Vector3(), new THREE.Vector3(), 0.13)
   private impactPlayed = false
+  private bulletImpact = false
+  private hitRotation = new THREE.Vector3()
+
+  /** A fatal round always lands with full weight, even at one remaining HP. */
+  get hitKick() {
+    if (!this.active || !this.bulletImpact || this.reducedMotion) return 0
+    return ease(this.elapsed, 0, 0.065) * (1 - ease(this.elapsed, 0.065, 0.42))
+  }
+  get hitSide() { return this.hitRotation.z / 0.14 }
 
   get running() { return this.active && this.elapsed < DEATH_TIMING.end }
   get menuVisible() { return this.active && this.elapsed >= DEATH_TIMING.menu }
   get visionLoss() { return ease(this.elapsed, 0.75, DEATH_TIMING.darkened) }
   get menuOpacity() { return ease(this.elapsed, DEATH_TIMING.menu, DEATH_TIMING.end) }
 
-  begin(camera: THREE.PerspectiveCamera, feet: THREE.Vector3, world: CollisionWorld, reducedMotion: boolean) {
+  begin(camera: THREE.PerspectiveCamera, feet: THREE.Vector3, world: CollisionWorld, reducedMotion: boolean, bulletDirection?: THREE.Vector3) {
     this.reset()
     this.active = true
     this.reducedMotion = reducedMotion
@@ -32,6 +41,12 @@ export class PlayerDeathSequence {
     this.lastPosition.copy(this.start)
     this.rotation.copy(camera.quaternion)
     const yaw = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').y
+    if (bulletDirection && bulletDirection.lengthSq() > 1e-10) {
+      this.bulletImpact = true
+      const local = bulletDirection.clone().normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)
+      // A single directional head snap hands off to the falling body's momentum.
+      this.hitRotation.set(0.14 + local.z * 0.045, -local.x * 0.09, -local.x * 0.14)
+    }
     this.restRotation.setFromEuler(new THREE.Euler(1.48, yaw + 0.025, -0.045, 'YXZ'))
     const backward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))
     const floor = world.floor(feet, 0.35, 100)
@@ -58,7 +73,9 @@ export class PlayerDeathSequence {
     this.elapsed = Math.min(DEATH_TIMING.end, this.elapsed + Math.max(0, Number.isFinite(dt) ? dt : 0))
     if (!this.reducedMotion) {
       const fall = ease(this.elapsed, 0.06, DEATH_TIMING.impact)
-      const travel = ease(this.elapsed, 0.08, 1.18)
+      const kick = this.hitKick
+      // Kick toward the already collision-checked resting point, never off a ledge.
+      const travel = Math.min(1, ease(this.elapsed, 0.08, 1.18) + kick * 0.14)
       const bounce = this.elapsed > DEATH_TIMING.impact
         ? Math.sin(Math.PI * ease(this.elapsed, DEATH_TIMING.impact, 1.4)) : 0
       const desired = this.start.clone().lerp(this.rest, travel)
@@ -74,6 +91,8 @@ export class PlayerDeathSequence {
       camera.position.copy(this.lastPosition)
       // The head lags the collapsing body; a single soft rebound settles it.
       camera.quaternion.slerpQuaternions(this.rotation, this.restRotation, ease(this.elapsed, 0.16, 1.44))
+      camera.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        this.hitRotation.x * kick, this.hitRotation.y * kick, this.hitRotation.z * kick, 'YXZ')))
       camera.rotateX(-bounce * 0.025)
     }
     const impact = !this.impactPlayed && this.elapsed >= DEATH_TIMING.impact
@@ -81,5 +100,5 @@ export class PlayerDeathSequence {
     return impact
   }
 
-  reset() { this.active = false; this.elapsed = 0; this.impactPlayed = false }
+  reset() { this.active = false; this.elapsed = 0; this.impactPlayed = false; this.bulletImpact = false; this.hitRotation.set(0, 0, 0) }
 }

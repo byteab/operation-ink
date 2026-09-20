@@ -57,9 +57,48 @@ for (const [x, z, pitch] of [[0, 0, 0], [3, 5.85, 0], [3, 0, -1.5], [3, 0, 1.5]]
 }
 console.log('PASS Walls, platform edges and extreme starting aim retain a safe resting pose')
 
+// Lethal gunfire gets one strong impulse before the same collision-safe fall.
+for (const fps of [30, 60, 144]) {
+  for (const [x, z, pitch] of [[3, 0, 0], [0, 0, 0], [3, 5.85, 0], [3, 0, -1.5], [3, 0, 1.5]]) {
+    for (const direction of [v(0, 0, 1), v(1, 0, 0), v(-1, 0, 0)]) {
+      const { camera, sequence } = setup(x, z, pitch)
+      sequence.begin(camera, v(x, 3.005, z), world, false, direction)
+      const previous = camera.quaternion.clone()
+      let peak = 0
+      for (let frame = 0; frame < fps * 2; frame++) {
+        sequence.update(1 / fps, camera, world)
+        peak = Math.max(peak, sequence.hitKick)
+        assert(camera.quaternion.angleTo(previous) < 7 / fps, 'Fatal impact remains continuous across frame rates')
+        previous.copy(camera.quaternion)
+        assert(world.fits(new Capsule(camera.position.clone(), camera.position.clone(), 0.13)), 'Fatal impulse cannot penetrate cover')
+        assert(camera.position.z < 6 && camera.position.y >= 3.21999, 'Fatal impulse stays on its platform')
+      }
+      assert(peak > 0.95 && sequence.hitKick === 0, 'One fast impact fully settles into the collapse')
+      assert(camera.getWorldDirection(v()).y > 0.99)
+    }
+  }
+}
+{
+  const ordinary = setup(), fatal = setup()
+  fatal.sequence.begin(fatal.camera, v(3, 3.005), world, false, v(0, 0, 1))
+  ordinary.sequence.update(0.065, ordinary.camera, world)
+  fatal.sequence.update(0.065, fatal.camera, world)
+  assert(fatal.camera.quaternion.angleTo(ordinary.camera.quaternion) > 0.17, 'Final bullet visibly snaps the head before the fall')
+  assert(fatal.camera.position.z - ordinary.camera.position.z > 0.07, 'Heavy hit immediately pushes the body backward')
+  fatal.sequence.reset(); assert.equal(fatal.sequence.hitKick, 0)
+  for (const side of [-1, 1]) {
+    const { camera, sequence } = setup()
+    sequence.begin(camera, v(3, 3.005), world, false, v(side, 0, 0))
+    assert.equal(Math.sign(sequence.hitSide), -side, 'Fatal roll responds to the incoming bullet direction')
+  }
+}
+console.log('PASS Strong directional fatal impulse at 30/60/144 fps, wall/ledge safety and smooth handoff into the fall')
+
 {
   const { camera, sequence } = setup(3, 0, -0.8, true)
   const position = camera.position.clone(), rotation = camera.quaternion.clone()
+  sequence.begin(camera, v(3, 3.005), world, true, v(1, 0, 1))
+  assert.equal(sequence.hitKick, 0)
   sequence.update(0.8, camera, world)
   const elapsed = sequence.elapsed
   sequence.update(0, camera, world); sequence.update(NaN, camera, world)
@@ -82,6 +121,8 @@ console.log('PASS Reduced Motion uses a stationary view, and reset starts the ne
   const root = camera.children.find(object => object.name === 'First-person stickman arms')!
   const ammo = weapons.ammo
   weapons.reload(); weapons.beginDeath(); weapons.trigger(true)
+  weapons.updateDeath(0.065, false, 1, 1)
+  assert(root.position.z > 0.1 && root.position.y > 0.04 && root.rotation.x < -0.2, 'Arms and weapon recoil together from the fatal impact')
   weapons.updateDeath(0.2, false)
   assert(root.visible && root.position.y < 0, 'Weapon and arms lower together')
   assert(!weapons.reloading); assert.equal(weapons.ammo, ammo)

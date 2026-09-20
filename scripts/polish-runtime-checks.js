@@ -14,8 +14,8 @@
       assert('Trusted Begin mission click starts audio and two loops', p.playing && m.audio.status === 'running' && m.audio.diagnostics.sources === 2, m.audio.diagnostics);
       m.damage(31, env.camera.perspective.position.clone().addScalar(3));
       await frames();
-      assert('Health changes by next presented frame', m.state.health === 69 && document.querySelector('#mission-health').textContent === '69', { health: m.state.health, text: document.querySelector('#mission-health').textContent });
-      assert('Health bar and accessible label agree', document.querySelector('.mission-health-bar').style.getPropertyValue('--health') === '69%' && document.querySelector('#mission-health').getAttribute('aria-label') === 'Health: 69 of 100');
+      assert('Health changes by next presented frame', m.state.health === 69 && document.querySelector('#mission-health').getAttribute('aria-valuenow') === '69', { health: m.state.health });
+      assert('Heart fill and accessible value agree', Math.abs(Number(document.querySelector('.health-fill').getAttribute('height')) - 48 * 0.69) < 1e-6 && document.querySelector('#mission-health').getAttribute('aria-valuetext') === '69 of 100');
       return results;
     },
     async audio() {
@@ -47,7 +47,7 @@
     },
     async recovered() {
       await frames();
-      assert('Trusted Retry checkpoint click restores health and idle audio', m.state.health === 100 && m.state.phase === 'active' && document.querySelector('#mission-health').textContent === '100' && m.audio.diagnostics.sources === 0);
+      assert('Trusted Retry checkpoint click restores health and idle audio', m.state.health === 100 && m.state.phase === 'active' && document.querySelector('#mission-health').getAttribute('aria-valuenow') === '100' && m.audio.diagnostics.sources === 0);
       return results;
     },
     impacts() {

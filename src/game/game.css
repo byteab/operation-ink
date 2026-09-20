@@ -12,8 +12,9 @@ body[data-mission="true"][data-mode="walk"][data-death] #walk-pause { background
 /* Menus share a quiet paper sheet; only the mission map needs a wider page. */
 body[data-mission="true"][data-mode="walk"] #walk-pause { padding: 28px 20px; background: #ffffffbb; align-items: safe center; }
 body[data-mission="true"] #walk-hud:has(#walk-pause:not([hidden])) { z-index: 6; }
-body[data-mission="true"] #walk-hud[data-playing="false"] > .walk-controls,
-body[data-mission="true"] #walk-hud[data-playing="false"] > #inspect-mode { display: none; }
+body[data-mission="true"] .walk-controls,
+body[data-mission="true"] #inspect-mode,
+body[data-mission="true"] .walk-heading { display: none; }
 body[data-mission="true"] .walk-card { width: min(440px, 100%); padding: 38px; background: var(--paper); border-radius: 4px 7px 3px 6px; box-shadow: 3px 4px 0 #00000012; }
 body[data-mission="true"] .walk-card[data-page="mission"] { width: min(760px, 100%); }
 body[data-mission="true"] .walk-card[data-page="controls"] { width: min(560px, 100%); }
@@ -57,20 +58,10 @@ body[data-mission="true"] .walk-card .mission-tips p { font-size: 13px; margin: 
 .mission-settings label:has([type="checkbox"]) { border-top: 1px solid #ededed; }
 body[data-mission="true"] #vr-panel { display: none; }
 body[data-mission="true"][data-mode="inspect"] #vr-panel { display: block; }
-body[data-mission="true"] .walk-heading { top: auto; bottom: 112px; left: 28px; }
-body[data-mission="true"] .walk-heading .walk-eyebrow { display: none; }
-body[data-mission="true"] #walk-status { font-size: 10px; color: var(--ink-muted); }
-body[data-mission="true"] #walk-hud[data-playing="false"] .walk-heading { display: none; }
 #mission-hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; font-size: 12px; color: var(--ink-deep); }
-.mission-objective { position: absolute; left: 28px; top: 24px; max-width: calc(100% - 220px); background: #ffffffe8; border-bottom: 1px solid var(--ink-rule); padding: 8px 12px 10px; }
-.mission-objective span,.mission-vitals span,.mission-weapon span,.mission-weapon small { display: block; font-size: 10px; color: var(--ink-muted); }
-.mission-objective strong { display: block; font: 600 20px/1.15 var(--hand); margin: 3px 0; }
-.mission-objective small { font-size: 10px; color: var(--ink-muted); }
-.mission-vitals { position: absolute; left: 28px; bottom: 26px; min-width: 90px; padding: 8px 12px; background: #ffffffed; border-bottom: 1px solid var(--ink-rule); }
-.mission-vitals strong { font-weight: 400; font-size: 30px; font-variant-numeric: tabular-nums; }
-.mission-vitals .danger { color: var(--ink-deep); font-weight: 700; text-decoration: underline double; text-underline-offset: 4px; }
-.mission-health-bar { height: 4px; transform: rotate(-0.8deg); margin-top: 5px; background: linear-gradient(to right, var(--ink) var(--health,100%), #80808033 var(--health,100%)); }
-.mission-health-bar.danger { outline: 1px dashed var(--ink); outline-offset: 2px; background: linear-gradient(to right, var(--ink-deep) var(--health), #80808033 var(--health)); }
+.mission-vitals { position: absolute; left: 28px; bottom: 26px; width: 56px; height: 56px; }
+.mission-vitals svg, .magazine-icon { display: block; width: 100%; height: 100%; overflow: visible; }
+.mission-vitals, .mission-weapon { color: var(--ink); filter: drop-shadow(0 0 2px var(--paper)); }
 .mission-scope { position: fixed; inset: 0; z-index: 1; pointer-events: none; display: grid; place-items: center; overflow: hidden; }
 .mission-scope[hidden] { display: none; }
 .scope-lens { width: min(76vw,76vh); height: min(76vw,76vh); border: 3px solid var(--ink-deep); border-radius: 50%; box-shadow: 0 0 0 100vmax #000000f0, inset 0 0 28px #00000055; position: relative; overflow: hidden; }
@@ -79,13 +70,12 @@ body[data-mission="true"] #walk-hud[data-playing="false"] .walk-heading { displa
 .scope-lens span { position: absolute; bottom: 13%; left: 54%; font: 11px monospace; color: var(--ink-deep); }
 .scope-lens small { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); font: 11px var(--notes); color: var(--ink-deep); white-space: nowrap; }
 body.mission-scoped .crosshair { visibility: hidden; }
-body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; }
-.mission-weapon { position: absolute; right: 30px; bottom: 26px; text-align: right; }
-.mission-weapon strong { font-size: 28px; font-weight: 400; font-variant-numeric: tabular-nums; }
-#mission-caption { position: absolute; left: 50%; bottom: 105px; transform: translateX(-50%); max-width: 620px; width: max-content; padding: 9px 15px; background: #ffffffef; border: 1px solid var(--ink-rule); text-align: center; font-size: 12px; line-height: 1.5; }
-#mission-alert { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); color: var(--ink-deep); background: #ffffffe8; padding: 5px 10px; font-size: 11px; border-bottom: 2px solid var(--ink); }
-#mission-alert::before { content: "!"; display: inline-block; margin-right: 8px; font-weight: 700; border: 1px solid currentColor; border-radius: 45% 50% 42% 48%; width: 15px; text-align: center; }
-#mission-alert:empty { display: none; }
+body.mission-scoped :is(.mission-vitals, .mission-weapon) { color: #fff; --paper: #000; }
+.mission-weapon { position: absolute; right: 28px; bottom: 26px; width: 54px; height: 64px; }
+.magazine-count { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); white-space: nowrap; font: 500 23px/1 var(--hand); font-variant-numeric: tabular-nums; }
+.magazine-reload { position: absolute; right: 100%; top: -10px; width: 19px; height: 19px; margin-right: 3px; }
+/* Keep sound/objective announcements available to assistive technology. */
+#mission-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #mission-debrief { margin-top: 12px; color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
 .action-icon { width: 23px; height: 25px; display: block; }
 .action-icon svg { width: 100%; height: 100%; }
@@ -100,14 +90,8 @@ body.mission-scoped .mission-weapon { padding: 8px 12px; background: #ffffffed; 
 .mission-threat[data-direction="behind"] i::after { background: linear-gradient(0deg, #000000b0, transparent 22%); }
 .mission-threat span { position: absolute; left: 50%; top: 23%; transform: translateX(-50%); padding: 5px 10px; border-top: 2px solid var(--ink); background: #ffffffde; color: var(--ink); font: 600 10px/1.2 var(--font-mono, monospace); letter-spacing: 0.12em; text-transform: uppercase; }
 body[data-reduced-motion="true"] #action-marker,body[data-reduced-motion="true"] #action-prompt kbd { animation: none; }
-body[data-mission="true"] .walk-controls { font-size: 9px; padding: 7px 12px; gap: 12px; bottom: 25px; }
 @media(max-width:800px) {
-  .mission-objective { left: 15px; max-width: calc(100% - 160px); padding: 8px 10px; }
-  .mission-objective strong { font-size: 12px; }.mission-objective small { font-size: 9px; }
-  body[data-mission="true"] .walk-controls { bottom: 10px; font-size: 8px; padding: 5px; }
-  .mission-vitals,.mission-weapon { bottom: 63px; }.mission-vitals { left: 18px; }.mission-weapon { right: 18px; background: #ffffffed; padding: 8px 12px; }
-  body[data-mission="true"] .walk-heading { bottom: 150px; left: 18px; }
-  #mission-caption { max-width: calc(100% - 35px); bottom: 145px; font-size: 11px; }
+  .mission-vitals,.mission-weapon { bottom: 20px; }.mission-vitals { left: 18px; }.mission-weapon { right: 18px; }
 }
 @media(max-width:540px) {
   body[data-mission="true"][data-mode="walk"] #walk-pause { padding: 18px 14px; }

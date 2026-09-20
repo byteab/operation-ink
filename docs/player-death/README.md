@@ -2,6 +2,8 @@
 
 Fatal damage now releases input and lowers the weapon while the camera falls backward to a supported head height. The head follows the body toward the sky, with a small ground-contact rebound and a slight resting tilt. A swept head volume checks solid walls and wire panels; backward travel stays on the current platform.
 
+Fatal bullets first deliver a sharp head, arm and weapon recoil, even when the last hit only removes one health point. The impulse peaks at 65 ms and resolves by 420 ms into the existing collapse. Incoming direction controls head yaw/roll; backward body movement follows the checked resting path. Fall damage keeps the softer sequence, and Reduced Motion disables the impulse.
+
 The shared sequence clock triggers ground contact at 1.06 seconds, settles the head by 1.44 seconds, finishes background dimming by 3.35 seconds, and reveals the menu from 3.7–4.25 seconds. Death has no circle or vignette. The entire background gradually blurs to 10 px and darkens uniformly to 92%, leaving the scene faintly visible. Reduced Motion keeps the camera stationary and uses an opacity fade without blur.
 
 The world continues during the fall: airborne blood follows its physics and settles, corpse animations finish, NPCs move, projectiles and impacts expire, and security cameras keep turning. Guards cannot target or damage the dead player. The world pauses when the menu opens or the tab is hidden; the mission's active-time statistic stops at the fatal hit.
@@ -16,6 +18,7 @@ The death menu omits the briefing instructions so retry and restart remain visib
 
 - `npm run build`
 - `npm run test:player-death`: fall continuity at 30/60/144 fps, raised floors, walls, platform edges, extreme initial aim, Reduced Motion, weapon lowering, scope cleanup, and the real runtime's fatal-frame/menu/retry lifecycle.
+- The fatal-impact follow-up adds 30/60/144 fps checks for directional impulses near walls/ledges and at extreme aim, shared arm/weapon recoil, reset, and a one-point runtime killing blow. The staged agent-browser death review now uses one-point fatal damage and verifies the initial impact in the real render loop. Initial-impact and collapse screenshots were reviewed at 1440×900; no browser errors occurred. Build, weapon and player-hit suites also passed for this revision.
 - `node scripts/check-player.mjs scripts/polish-audio-checks.ts`: decoded recordings and procedural fallback, saturated source budget, single cues, mute/volume, and cleanup.
 - Existing player-hit, weapon, player movement, and VR checks passed. The follow-up also passed the full AI and bullet suites and security checks.
 - Authorized agent-browser review ran [the staged script](../../scripts/check-player-death.js) against the actual development mission. The normal render loop completed the sequence, kept the menu hidden until the background dimmed, produced one death cue and one ground-contact cue, and cleared all audio on the menu. It verified that death has no vignette, blur covers the entire background, airborne blood settles and expires, and an enemy death animation advances during the fall. Native audio had 96 decoded samples and a nonzero post-volume signal. This verifies signal output, not a subjective listening review.

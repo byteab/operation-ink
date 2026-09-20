@@ -232,11 +232,12 @@ export class FirstPersonWeapons {
     this.enabled = false
   }
 
-  updateDeath(elapsed: number, reducedMotion: boolean) {
+  updateDeath(elapsed: number, reducedMotion: boolean, hitKick = 0, hitSide = 0) {
     const drop = smooth(elapsed, 0, 0.62)
+    const kick = reducedMotion ? 0 : hitKick
     this.root.visible = this.deathVisible && elapsed < 0.62 && !reducedMotion
-    this.root.position.set(0.08 * drop, -0.85 * drop, 0.2 * drop)
-    this.root.rotation.set(-0.65 * drop, 0, 0.16 * drop)
+    this.root.position.set(0.08 * drop - hitSide * 0.04 * kick, -0.85 * drop + 0.075 * kick, 0.2 * drop + 0.1 * kick)
+    this.root.rotation.set(-0.65 * drop - 0.2 * kick, 0.06 * hitSide * kick, 0.16 * drop + 0.18 * hitSide * kick)
   }
 
   resetDeath() {

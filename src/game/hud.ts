@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import { loadedCount, releasedCount, missionObjective, type MissionState, SIGNALS_COMPUTER_ID } from './mission'
-import type { MissionWorld } from './types'
+import { type MissionState, SIGNALS_COMPUTER_ID } from './mission'
+import { WEAPON_RULES } from './balance'
+import type { MissionWorld, WeaponItem } from './types'
 import './game.css'
 import { IncomingFire } from './incoming-fire'
 import { MissionMenu } from './menu'
@@ -16,15 +17,14 @@ const icons: Record<string, string> = {
 export class MissionHUD {
   private root = document.createElement('div')
   private abort = new AbortController()
-  private objective: HTMLElement
-  private detail: HTMLElement
   private health: HTMLElement
-  private healthBar: HTMLElement
+  private healthFill: SVGRectElement
   private scope = document.createElement('div')
   private scopeLabel: HTMLSpanElement
   private ammo: HTMLElement
-  private weapon: HTMLElement
-  private alert: HTMLElement
+  private ammoFill: SVGRectElement
+  private magazineCount: HTMLElement
+  private reloadIcon: SVGElement
   private caption: HTMLElement
   private menu: MissionMenu
   private mapDot: SVGElement
@@ -48,12 +48,37 @@ export class MissionHUD {
     this.start = $<HTMLButtonElement>('#walk-start')
     this.start.textContent = 'Loading the compound…'; this.start.disabled = true
     $('.walk-heading .walk-eyebrow').textContent = 'Operation Safe Return'
-    $('.walk-controls').innerHTML = '<span><kbd>WASD</kbd> Move</span><span><kbd>F</kbd> Use</span><span><kbd>R</kbd> Reload</span><span><kbd>1–4</kbd> Pistol / Shotgun / AK / SMG</span><span><kbd>M</kbd> Field map</span><span><kbd>Esc</kbd> Pause</span>'
     $('#world').setAttribute('aria-label', 'Operation Safe Return tactical mission. Mouse to look, WASD move, left click fire, right click aim, F interact, R reload, M field map, Escape pause.')
     this.menu = new MissionMenu(this.start, this.buildMap(world), this.reducedMotion, callbacks)
     this.mapDot = document.querySelector('#field-player')!
     this.root.id = 'mission-hud'
-    this.root.innerHTML = '<div class="mission-objective"><span>Mission</span><strong id="mission-objective"></strong><small id="mission-detail"></small></div><div id="mission-alert" role="status"></div><div id="mission-caption" role="status"></div><div class="mission-vitals"><span>Condition</span><strong id="mission-health">100</strong></div><div class="mission-weapon"><span id="mission-weapon"></span><strong id="mission-ammo"></strong><small>Magazine / reserve</small></div><div class="mission-damage" aria-hidden="true"></div>'
+    this.root.innerHTML = `
+      <div id="mission-caption" role="status"></div>
+      <div class="mission-vitals" id="mission-health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <svg viewBox="0 0 64 64" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+          <defs><path id="hud-heart" d="M32 56C27 52 7 38 7 23C7 8 24 3 32 17C41 3 57 8 57 23C57 38 37 53 32 56Z"/><clipPath id="hud-heart-clip"><use href="#hud-heart"/></clipPath></defs>
+          <use href="#hud-heart" fill="var(--paper)"/>
+          <rect class="health-fill" x="7" y="8" width="50" height="48" fill="currentColor" clip-path="url(#hud-heart-clip)"/>
+          <use href="#hud-heart" fill="none" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="mission-weapon" id="mission-ammo" role="meter" aria-label="Magazine" aria-valuemin="0" aria-valuemax="30" aria-valuenow="30">
+        <span class="magazine-count" aria-hidden="true">4 ×</span>
+        <svg class="magazine-icon" viewBox="0 0 64 76" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+          <defs><path id="hud-magazine" d="M14 10L35 10L35 27C35 43 41 53 50 61L33 71C19 58 13 44 13 27Z"/><clipPath id="hud-magazine-clip"><use href="#hud-magazine"/></clipPath></defs>
+          <use href="#hud-magazine" fill="var(--paper)"/>
+          <g clip-path="url(#hud-magazine-clip)">
+            <rect class="magazine-fill" x="10" y="10" width="44" height="61" fill="currentColor"/>
+            <path d="M20 20V28C20 44 25 54 35 64M28 20V28C28 43 33 53 42 60" fill="none" stroke="var(--paper)" stroke-width="1.5"/>
+          </g>
+          <use href="#hud-magazine" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 5L37 5L37 11L12 11ZM30 70L50 58L53 62L33 74Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.7"/>
+        </svg>
+        <svg class="magazine-reload" viewBox="0 0 24 24" aria-hidden="true" hidden fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10A8 8 0 0 0 6 6L3 9M3 4V9H8M4 14A8 8 0 0 0 18 18L21 15M16 15H21V20"/>
+        </svg>
+      </div>
+      <div class="mission-damage" aria-hidden="true"></div>`
     document.body.append(this.root)
     this.death.className = 'mission-death'
     this.death.hidden = true
@@ -67,20 +92,19 @@ export class MissionHUD {
     this.threatLabel = this.threat.querySelector('span')!
     this.root.append(this.threat)
     this.clearThreat()
-    this.objective = $('#mission-objective'); this.detail = $('#mission-detail'); this.health = $('#mission-health')
-    this.health.parentElement!.querySelector('span')!.textContent = 'Health'
-    this.health.setAttribute('aria-label', 'Health: 100 of 100')
-    this.healthBar = document.createElement('div')
-    this.healthBar.className = 'mission-health-bar'
-    this.healthBar.setAttribute('aria-hidden', 'true')
-    this.health.parentElement!.append(this.healthBar)
+    this.health = $('#mission-health')
+    this.healthFill = this.health.querySelector('.health-fill')!
     this.scope.className = 'mission-scope'
     this.scope.hidden = true
     this.scope.setAttribute('aria-hidden', 'true')
     this.scope.innerHTML = '<div class="scope-lens"><i></i><b></b><span>4×</span><small>Q − · E + · Mouse wheel</small></div>'
     this.scopeLabel = this.scope.querySelector('span')!
     document.body.append(this.scope)
-    this.ammo = $('#mission-ammo'); this.weapon = $('#mission-weapon'); this.alert = $('#mission-alert'); this.caption = $('#mission-caption')
+    this.ammo = $('#mission-ammo')
+    this.ammoFill = this.ammo.querySelector('.magazine-fill')!
+    this.magazineCount = this.ammo.querySelector('.magazine-count')!
+    this.reloadIcon = this.ammo.querySelector('.magazine-reload')!
+    this.caption = $('#mission-caption')
     this.icon = document.createElement('span'); this.icon.className = 'action-icon'; this.icon.setAttribute('aria-hidden', 'true')
     $('#action-prompt').insertBefore(this.icon, $('#action-prompt').children[1])
     const opts = { signal: this.abort.signal }
@@ -152,18 +176,27 @@ export class MissionHUD {
     if (this.scopeLabel.textContent !== label) this.scopeLabel.textContent = label
   }
 
-  update(dt: number, state: MissionState, data: { playing: boolean; enabled: boolean; label: string; ammo: string; reloading: boolean; blocked: boolean; alert: string; position: THREE.Vector3; yaw: number; deaths: number; ready: boolean }) {
+  update(dt: number, state: MissionState, data: { playing: boolean; enabled: boolean; weapon: WeaponItem | null; reloading: boolean; position: THREE.Vector3; yaw: number; deaths: number; ready: boolean }) {
     this.root.hidden = !data.enabled || !data.playing
-    this.objective.textContent = missionObjective(state)
-    const cameraStatus = state.camerasActive ? 'active' : state.camerasDisabledUntil === null ? 'off'
-      : `off · ${Math.max(0, Math.ceil(state.camerasDisabledUntil - state.elapsed))}s remaining`
-    this.detail.textContent = `${loadedCount(state) ? 'Hostage aboard' : releasedCount(state) ? 'Hostage following' : 'Hostage captive'} · Cameras ${cameraStatus} · Gate ${state.gateOpen ? 'open' : 'closed'}`
-    this.health.textContent = String(Math.ceil(state.health)); this.health.classList.toggle('danger', state.health <= 35)
-    this.health.setAttribute('aria-label', `Health: ${Math.ceil(state.health)} of 100`)
-    this.healthBar.style.setProperty('--health', `${Math.max(0, Math.min(100, state.health))}%`)
-    this.healthBar.classList.toggle('danger', state.health <= 35)
-    this.weapon.textContent = data.label; this.ammo.textContent = data.reloading ? 'Reloading…' : data.ammo
-    this.alert.textContent = state.alarm === 'active' ? 'ALARM · Barracks responding' : state.alarm === 'silenced' ? 'Alarm silenced · Guards searching' : data.blocked ? 'Weapon obstructed · step back' : ['routine','clear','UNDETECTED'].includes(data.alert) ? '' : data.alert
+    const health = Math.max(0, Math.min(100, state.health))
+    this.health.setAttribute('aria-valuenow', String(Math.ceil(health)))
+    this.health.setAttribute('aria-valuetext', `${Math.ceil(health)} of 100`)
+    this.healthFill.setAttribute('y', String(56 - 48 * health / 100))
+    this.healthFill.setAttribute('height', String(48 * health / 100))
+    this.ammo.hidden = !data.weapon
+    this.reloadIcon.toggleAttribute('hidden', !data.reloading)
+    if (data.weapon) {
+      const rule = WEAPON_RULES[data.weapon.name]
+      const rounds = Math.max(0, Math.min(rule.capacity, data.weapon.magazine))
+      const magazines = (rounds > 0 ? 1 : 0) + Math.ceil(Math.max(0, data.weapon.reserve) / rule.capacity)
+      this.magazineCount.textContent = `${magazines} ×`
+      this.ammo.setAttribute('aria-label', `${rule.label} magazine`)
+      this.ammo.setAttribute('aria-valuemax', String(rule.capacity))
+      this.ammo.setAttribute('aria-valuenow', String(rounds))
+      this.ammo.setAttribute('aria-valuetext', `${data.reloading ? 'Reloading. ' : ''}${rounds} of ${rule.capacity} rounds; ${data.weapon.reserve} in reserve; ${magazines} magazines including the loaded magazine when nonempty`)
+      this.ammoFill.setAttribute('y', String(71 - 61 * rounds / rule.capacity))
+      this.ammoFill.setAttribute('height', String(61 * rounds / rule.capacity))
+    }
     if (data.playing) { this.captionTimer -= dt; this.damageTimer -= dt; this.incoming.update(dt) }
     this.threat.hidden = !this.incoming.visible || state.phase !== 'active'
     this.threat.dataset.direction = this.incoming.direction.toLowerCase()
