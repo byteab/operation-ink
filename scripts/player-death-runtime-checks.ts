@@ -5,6 +5,8 @@ import { initialMission } from '../src/game/mission'
 import { PlayerDeathSequence, DEATH_TIMING } from '../src/game/player-death'
 import { PlayerHitReactions } from '../src/game/player-hit-reactions'
 import { EscapeCinematic } from '../src/game/escape-cinematic'
+import { PlayerBody } from '../src/player/body'
+import { CollisionWorld } from '../src/player/collision'
 
 // Exercise the real mission update/damage/restore methods. Collaborators are
 // deliberately small so this checks the lifecycle without a browser or GPU.
@@ -83,3 +85,76 @@ assert(fatalKick > 0 && fatalKick === m.death.hitKick, 'Even a one-point fatal b
 player.enabled = false; m.update(1 / 60)
 assert(!m.death.active && !audioActive && deathResets === 2, 'Inspection clears the cinematic and sound')
 console.log('PASS Real runtime lethal-frame handoff, one-shot damage/audio, continued rendering, hidden-tab pause, menu completion, retry and inspection cleanup')
+
+// Run actual falling physics through the runtime, including the contact frame.
+const floorScene = new THREE.Group()
+const floor = new THREE.Mesh(new THREE.BoxGeometry(50, 1, 50), new THREE.MeshBasicMaterial())
+floor.position.y = -0.5; floorScene.add(floor)
+const fallWorld = new CollisionWorld(floorScene), fallingBody = new PlayerBody(fallWorld)
+m.player.body = fallingBody; m.player.world = fallWorld
+m.player.actions.syncCamera = () => camera.position.copy(fallingBody.position).add(new THREE.Vector3(0, 1.68, 0))
+m.ai.update = noop
+const prepareFall = (height: number, health = 100) => {
+  m.retry(); player.enabled = true; player.playing = true; player.immersive = false
+  m.state.health = health; m.hud.reducedMotion = false; m.invincible = false
+  fallingBody.teleport(new THREE.Vector3(0, height, 0)); m.player.actions.syncCamera()
+  hitCues = 0; hurtCues = 0; audioEvents.length = 0
+}
+const frame = () => {
+  if (m.player.playing) fallingBody.update(1 / 60, new THREE.Vector3(), false)
+  m.player.actions.syncCamera(); m.update(1 / 60); m.finishFrame()
+}
+const land = () => {
+  for (let i = 0; i < 300 && !fallingBody.grounded; i++) frame()
+  assert(fallingBody.grounded)
+}
+prepareFall(4)
+for (let i = 0; i < 15; i++) frame()
+assert.equal(m.state.health, 100, 'No damage before ground contact')
+land()
+assert(m.state.health > 75 && m.state.health < 80)
+assert.equal(hitCues, 1); assert.equal(hurtCues, 1)
+assert.deepEqual(audioEvents, ['damage', 'bullet-hit'], 'Landing reuses the incoming-hit voice and impact audio once')
+frame(); frame(); frame(); frame(); frame()
+assert(m.playerHits.pose.cameraPosition.y < -0.03 && m.playerHits.pose.weaponPosition.length() > 0,
+  'Hard landing visibly buckles the camera and moves the held weapon')
+const landedHealth = m.state.health
+for (let i = 0; i < 90; i++) frame()
+assert.equal(m.state.health, landedHealth); assert.equal(hurtCues, 1)
+assert.equal(m.playerHits.pose.cameraPosition.length(), 0, 'Landing reaction recovers completely')
+console.log('PASS Actual landing applies health loss, shared hurt/audio cues and camera/weapon flinch exactly once')
+
+prepareFall(4); m.hud.reducedMotion = true; land()
+assert(m.state.health < 100 && audioEvents.includes('damage'))
+assert.equal(m.playerHits.pose.cameraPosition.length(), 0, 'Reduced Motion keeps landing damage and sound without camera movement')
+prepareFall(4); m.invincible = true; land()
+assert.equal(m.state.health, 100); assert.equal(hurtCues, 0); assert.equal(audioEvents.length, 0)
+prepareFall(4, 10); land()
+assert.equal(m.state.phase, 'dead'); assert(m.death.active)
+assert.equal(m.death.hitKick, 0, 'Fatal fall uses the collapse without a directional bullet kick')
+assert.equal(audioEvents.filter(kind => kind === 'death').length, 1)
+prepareFall(0.02); land()
+assert.equal(m.state.health, 100); assert.equal(hurtCues, 0)
+
+// Events produced outside active on-foot play must be discarded, never replayed.
+for (const mode of ['paused', 'inspection', 'vr', 'traversal', 'escape']) {
+  prepareFall(0.02)
+  fallingBody.landingSpeed = 18
+  if (mode === 'paused') player.playing = false
+  if (mode === 'inspection') player.enabled = false
+  if (mode === 'vr') player.immersive = true
+  if (mode === 'traversal') player.actions.traversing = true
+  if (mode === 'escape') {
+    m.escape = { active: true }
+    m.updateEscape = noop
+  }
+  m.update(1 / 60)
+  assert.equal(m.state.health, 100, `${mode} cannot apply landing damage`)
+  assert.equal(fallingBody.landingSpeed, 0)
+  if (mode === 'escape') m.escape = new EscapeCinematic()
+  player.playing = true; player.enabled = true; player.immersive = false; player.actions.traversing = false
+  m.update(1 / 60)
+  assert.equal(m.state.health, 100, `${mode} cannot replay stale landing damage`)
+}
+fallWorld.dispose()
+console.log('PASS Reduced Motion, invincibility, fatal falls, retry and inactive/traversal/escape event cleanup')

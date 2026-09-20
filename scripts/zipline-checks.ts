@@ -5,6 +5,7 @@ import { createCompound } from '../src/world/compound'
 import { CollisionWorld } from '../src/player/collision'
 import { PlayerBody } from '../src/player/body'
 import { PlayerActions } from '../src/player/actions'
+import { fallDamage } from '../src/game/balance'
 
 const scene = createCompound(), world = new CollisionWorld(scene), body = new PlayerBody(world)
 const actions = new PlayerActions(scene, body), camera = new THREE.PerspectiveCamera(75, 1, 0.06, 1600)
@@ -42,7 +43,10 @@ const stand = (end: boolean) => {
   }
   assert(!actions.traversing, 'Ride finishes in finite time')
   assert(body.position.distanceTo(actions.ziplinePoint(zipline, true)) < 0.001)
-  for (let i = 0; i < 60; i++) body.update(1 / 60, new THREE.Vector3(), false)
+  for (let i = 0; i < 60; i++) {
+    body.update(1 / 60, new THREE.Vector3(), false)
+    assert.equal(fallDamage(body.landingSpeed), 0, 'Zipline dismount must remain safe')
+  }
   assert(body.grounded && Math.abs(body.position.y - actions.ziplinePoint(zipline, true).y) < 0.05, 'Dismount remains safely on the opposite tower')
   console.log('PASS water → observation F prompt, path clearance, grounded dismount')
 }

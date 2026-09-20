@@ -1,5 +1,11 @@
 # Project memory
 
+## High-fall damage
+
+- Player physics records downward speed before landing collision and preserves it across substeps. Mission runtime consumes each contact once; normal jumps and drops up to about 2.3 m are safe, with damage scaling to 100 for very high falls. Teleports clear pending contact, and inactive play, traversal and escape discard it.
+- Hard landings use the existing hurt recording, impact thump, screen shading and centered leg/camera/weapon flinch. The brief hit label reads “Fall damage.” Reduced Motion, invincibility, lethal collapse and restart retain their existing behavior.
+- Build, fall-damage, player, player-death, player-hit, traversal/audio, zipline, VR and mission checks passed. User authorized agent-browser fallback: all 30 browser checks passed, including native hurt samples, actual roof/tower contacts, health HUD, reduced motion, restart and one live-loop roof impact over 71 frames. Final screenshot inspected; browser errors empty. Evidence: `artifacts/fall-damage/`. Observation-ladder drops can contact the 2.5 m fence before the yard, correctly producing two separate impacts.
+
 ## Stable startup and integrated VR menu
 
 - Initial HTML stays hidden until mission initialization settles and the final camera view has rendered. This removes the unstyled VR flash and temporary ladder view; no timed splash/loading page was added. `src/startup.ts` also handles module/renderer failures with a reload action, while mission asset errors reveal the existing error menu.

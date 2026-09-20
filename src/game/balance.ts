@@ -6,6 +6,12 @@ import { GAIT_SPEED } from '../lab/gait'
 export const ENEMY_RUN_SPEED = GAIT_SPEED.run * 1.5
 export const HOSTAGE_RUN_SPEED = 2.6
 
+/** Ordinary jumps and drops up to about 2.3 m are safe; taller falls scale with impact energy. */
+export function fallDamage(landingSpeed: number) {
+  if (!Number.isFinite(landingSpeed) || landingSpeed <= 10) return 0
+  return Math.min(100, (landingSpeed * landingSpeed - 100) * 0.3)
+}
+
 // No armor or damage immunity: every confirmed hit applies this damage immediately.
 export const ENEMY_HEALTH = 100
 export const HIT_MULTIPLIERS: Record<HitZone, number> = { head: 2.2, torso: 1, arm: 0.6, leg: 0.7 }

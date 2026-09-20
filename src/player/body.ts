@@ -13,6 +13,8 @@ export class PlayerBody {
   readonly position = new THREE.Vector3()
   readonly velocity = new THREE.Vector3()
   grounded = false
+  /** Downward speed at ground contact, retained across this frame's substeps. */
+  landingSpeed = 0
   private capsule = new Capsule(new THREE.Vector3(), new THREE.Vector3(), RADIUS)
   private candidate = new THREE.Vector3()
   private delta = new THREE.Vector3()
@@ -23,6 +25,7 @@ export class PlayerBody {
     this.position.copy(position)
     this.velocity.set(0, 0, 0)
     this.grounded = false
+    this.landingSpeed = 0
   }
 
   private placeCapsule(position = this.position) {
@@ -39,6 +42,7 @@ export class PlayerBody {
   }
 
   update(dt: number, direction: THREE.Vector3, sprint: boolean) {
+    this.landingSpeed = 0
     const steps = Math.max(1, Math.ceil(Math.min(dt, 0.05) / (1 / 120)))
     const step = Math.min(dt, 0.05) / steps
     for (let i = 0; i < steps; i++) this.step(step, direction, sprint)
@@ -70,6 +74,7 @@ export class PlayerBody {
 
     this.position.add(this.delta)
     this.placeCapsule()
+    const downwardSpeed = Math.max(0, -this.velocity.y)
     this.grounded = this.world.resolve(this.capsule, this.velocity)
     this.position.copy(this.capsule.start).y -= RADIUS
 
@@ -84,7 +89,10 @@ export class PlayerBody {
         }
       }
     }
-    if (this.grounded) this.velocity.y = 0
+    if (this.grounded) {
+      if (!wasGrounded) this.landingSpeed = Math.max(this.landingSpeed, downwardSpeed)
+      this.velocity.y = 0
+    }
     if (this.velocity.lengthSq() < 0.00001) this.velocity.set(0, 0, 0)
   }
 }

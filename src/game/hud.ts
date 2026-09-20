@@ -229,7 +229,7 @@ export class MissionHUD {
     this.threat.hidden = !this.incoming.visible || state.phase !== 'active'
     this.threat.dataset.direction = this.incoming.direction.toLowerCase()
     this.threat.style.setProperty('--pressure', String(this.reducedMotion ? 0 : this.incoming.strength * 0.18))
-    this.threatLabel.textContent = `Hit · ${this.incoming.direction.toLowerCase()}`
+    this.threatLabel.textContent = this.incoming.direction === 'Below' ? 'Fall damage' : `Hit · ${this.incoming.direction.toLowerCase()}`
     this.caption.hidden = this.captionTimer <= 0
     this.root.classList.toggle('hurt', this.damageTimer > 0 && !this.reducedMotion)
     const kind = document.querySelector<HTMLElement>('#action-prompt')!.dataset.kind ?? 'mission'

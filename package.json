@@ -8,6 +8,7 @@
     "dev:vr": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "tsc --noEmit && vite build",
     "test:player": "node scripts/check-player.mjs",
+    "test:fall-damage": "node scripts/check-player.mjs scripts/fall-damage-checks.ts && node scripts/check-player.mjs scripts/player-death-runtime-checks.ts",
     "test:gait": "node scripts/check-player.mjs scripts/gait-checks.ts",
     "test:npc-transitions": "node scripts/check-player.mjs scripts/npc-transition-checks.ts",
     "test:escape": "node scripts/check-player.mjs scripts/escape-cinematic-checks.ts",

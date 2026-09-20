@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { BulletTrails } from './bullet-trails'
+import { fallDamage } from './balance'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
@@ -276,16 +277,16 @@ export class MissionRuntime {
 
   damage(amount: number, source?: THREE.Vector3, hit?: PlayerBulletHit) {
     if (this.invincible || !this.isActive() || !damageMission(this.state,amount)) return
-    if (source && this.state.phase !== 'dead' && !this.hud.reducedMotion) {
+    if (this.state.phase !== 'dead' && !this.hud.reducedMotion) {
       const point = this.player.body.position.clone().add(new THREE.Vector3(0, 1.17, 0))
-      this.playerHits.hit(hit ?? { region: 'torso', side: 0, point, direction: point.clone().sub(source) },
+      this.playerHits.hit(hit ?? { region: source ? 'torso' : 'leg', side: 0, point,
+        direction: source ? point.clone().sub(source) : new THREE.Vector3(0, 1, 0) },
         amount, this.player.body.grounded && !this.player.actions.traversing)
     }
     this.hud.hurt(); this.audio.play({kind:'damage'})
-    if (source) {
-      this.audio.play({ kind: 'bullet-hit', intensity: Math.min(1, amount / 28) })
-      this.hud.hitFrom(1, this.soundDirection(source))
-    }
+    // Share the local hurt recording, impact thump and shading for bullets and hard landings.
+    this.audio.play({ kind: 'bullet-hit', intensity: Math.min(1, amount / 28) })
+    this.hud.hitFrom(1, source ? this.soundDirection(source) : 'Below')
     this.hud.notify(source ? `Taking fire · ${this.soundDirection(source).toLowerCase()}. Break line of sight.` : 'You fell. Find a safer route.',2.5)
     if (this.state.phase==='dead') {
       this.playerHits.clear(); this.deaths++
@@ -415,6 +416,8 @@ export class MissionRuntime {
 
   update(dt:number, elapsed = dt) {
     this.finishFrame()
+    const landingSpeed = this.player.body.landingSpeed
+    this.player.body.landingSpeed = 0
     if (this.escape.active) return this.updateEscape(dt, elapsed)
     const active=this.isActive()
     if (this.player.immersive || !this.player.enabled || this.state.phase !== 'active') {
@@ -446,7 +449,7 @@ export class MissionRuntime {
       if(body.position.y < -12 || body.position.x<bounds.minX || body.position.x>bounds.maxX || body.position.z<bounds.minZ || body.position.z>bounds.maxZ) {
         body.teleport(this.safePosition); this.player.actions.syncCamera(this.camera.perspective)
         this.hud.notify('The perimeter is closed. Follow the marked routes.',3)
-      }
+      } else if (!this.player.actions.traversing) this.damage(fallDamage(landingSpeed))
       if (Math.abs(body.position.x - 117) < 10 && body.position.z > -31 && body.position.z < -2) this.state.detentionFound = true
       if (this.state.detentionFound && body.position.y < -2.8) this.state.cellsReached = true
       this.security.update(dt, this.state, this.camera.perspective.position)
