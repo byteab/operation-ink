@@ -19,7 +19,10 @@ Open the local Vite URL and select **Begin mission**. Controls are in the game m
 https://github.com/user-attachments/assets/d397e167-213b-419d-9b45-5d0fcb534e4e
 
 
-https://github.com/user-attachments/assets/368a0df1-6188-4d47-9a88-9ddbc0fb1308
+
+https://github.com/user-attachments/assets/72868325-db6f-4837-80ec-334a9c56af82
+
+
 
 
 
