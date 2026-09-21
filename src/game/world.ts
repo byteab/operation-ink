@@ -200,6 +200,11 @@ function detentionBlock() {
   }
   interiorRoomOutline(shell, 18 - WALL_THICKNESS, 24 - WALL_THICKNESS, FLOOR, 4, 117, -17)
   interiorRoomOutline(shell, 18 - WALL_THICKNESS, 24 - WALL_THICKNESS, -4.2, 0, 117, -17)
+  // The basement-height walls have no geometric edge at the upper floor.
+  // Trace the interior floor junction, inset to match the room's corner ink.
+  const inside = WALL_THICKNESS / 2 + 0.006, floorInk = FLOOR + 0.006
+  shell.line([[108 + inside, floorInk, -5 - inside], [108 + inside, floorInk, -29 + inside],
+    [126 - inside, floorInk, -29 + inside], [126 - inside, floorInk, -5 - inside]])
   // Side walls keep the upper guardroom separate from the stair opening.
   for (const x of [115.3, 118.7]) shell.box(0.14, 1.05, 11.1, x, 0.645, -14.55, 'roof', 'detail')
   for (let i = 0; i < 18; i++) {
