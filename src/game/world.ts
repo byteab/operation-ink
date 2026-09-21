@@ -1,6 +1,5 @@
 import * as THREE from 'three'
-import { Draft, type Point } from '../render/ink'
-import { penPalette } from '../render/ballpoint'
+import { Draft, wallText } from '../render/ink'
 import { crates, steps, groundOutline, WALL_THICKNESS, interiorRoomOutline, piercedWall } from '../world/architecture'
 import { createDoor } from '../world/doors'
 import { createFenceGate } from '../world/fenceGate'
@@ -18,65 +17,6 @@ const FLOOR = 0.12
 const DOOR_WIDTH = 2.1
 const DOOR_HEIGHT = 2.65
 const ROOF = 4.2
-
-/** A small number of readable signs; text meshes never become collision walls. */
-function sign(text: string, position: Point, width = 3.8, angle = 0, subtitle = '') {
-  const root = new THREE.Group()
-  root.name = `Sign · ${text}`
-  root.position.set(...position)
-  root.rotation.y = angle
-  root.userData = { noCollision: true, decorative: true, text, subtitle }
-  if (typeof document === 'undefined') return root
-  const canvas = document.createElement('canvas')
-  canvas.width = 768
-  canvas.height = 192
-  const context = canvas.getContext('2d')
-  if (!context) return root
-  const css = (color: number) => `#${color.toString(16).padStart(6, '0')}`
-  context.fillStyle = css(penPalette.paper)
-  context.fillRect(0, 0, canvas.width, canvas.height)
-  context.strokeStyle = css(penPalette.ink)
-  context.lineWidth = 3
-  context.lineCap = context.lineJoin = 'round'
-  context.beginPath()
-  context.moveTo(10, 14); context.lineTo(277, 10); context.lineTo(756, 13)
-  context.lineTo(758, 181); context.lineTo(418, 179); context.lineTo(9, 183); context.lineTo(10, 10)
-  context.stroke()
-  context.globalAlpha = 0.42
-  context.beginPath(); context.moveTo(17, 17); context.lineTo(246, 14)
-  context.moveTo(751, 109); context.lineTo(753, 186); context.stroke()
-  context.globalAlpha = 1
-  context.fillStyle = css(penPalette.dark)
-  context.textAlign = 'left'
-  context.textBaseline = 'middle'
-  const letter = (value: string, size: number, y: number) => {
-    context.font = `${size}px "Chalkboard SE", "Comic Sans MS", cursive`
-    const widths = [...value].map(character => context.measureText(character).width + 1.5)
-    const fullWidth = widths.reduce((sum, width) => sum + width, 0)
-    const scale = Math.min(1, 712 / fullWidth)
-    let x = (768 - fullWidth * scale) / 2
-    for (const [index, character] of [...value].entries()) {
-      context.save()
-      context.translate(x, y + Math.sin(index * 2.3 + value.length) * 1.4)
-      context.rotate(Math.sin(index * 4.7) * 0.014)
-      context.scale(scale, 1)
-      context.fillText(character, 0, 0)
-      context.restore()
-      x += widths[index] * scale
-    }
-  }
-  letter(text, text.length > 20 ? 41 : 53, subtitle ? 71 : 98)
-  if (subtitle) {
-    letter(subtitle, 27, 137)
-  }
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(width, width / 4),
-    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false }))
-  board.name = `${text} lettering`
-  root.add(board)
-  return root
-}
 
 type HouseSpec = { name: string; x: number; z: number; width: number; depth: number; role: 'relay' | 'dispatch' | 'crew' | 'maintenance' }
 
@@ -162,9 +102,10 @@ function house({ name, x, z, width: w, depth: d, role }: HouseSpec) {
     if (role === 'maintenance') crates(interior, -w / 2 + 0.8, -d / 2 + 1.1, 2, 'paper', FLOOR)
   }
   root.add(interior.finish())
-  const names = { relay: 'DETENTION', dispatch: 'SECURITY / CAMERAS', crew: 'CREW QUARTERS', maintenance: 'FIELD MAINTENANCE' }
-  root.add(sign(names[role], [0, 3.38, d / 2 + 0.14], Math.min(w - 1, 5.7)))
-  root.add(sign(names[role], [0, 3.38, -d / 2 - 0.14], Math.min(w - 1, 5.7), Math.PI))
+  const names = { relay: 'DETENTION', dispatch: 'SECURITY', crew: 'CREW', maintenance: 'MAINTENANCE' }
+  const letteringFace = d / 2 + WALL_THICKNESS / 2 + 0.006
+  root.add(wallText(names[role], [0, 3.38, letteringFace]))
+  root.add(wallText(names[role], [0, 3.38, -letteringFace], 0.6, Math.PI))
   return root
 }
 
@@ -289,7 +230,7 @@ function detentionBlock() {
     door.userData.missionLocked = true
     door.userData.hostageId = `hostage-${index + 1}`
     if (index === 0) cellDoors.push(door)
-    root.add(door, sign(`CELL 0${index + 1}`, [x + (left ? 0.12 : -0.12), -1.08, z], 2,
+    root.add(door, wallText(`CELL 0${index + 1}`, [x + (left ? 0.086 : -0.086), -1.15, z], 0.4,
       left ? Math.PI / 2 : -Math.PI / 2))
   }
   root.add(cells.finish())
@@ -306,9 +247,7 @@ function detentionBlock() {
   chair.rotation.y = Math.PI / 2
   chair.position.set(...RESCUE_LAYOUT.hostageSpawns[0])
   root.add(chair.finish())
-  root.add(sign('DETENTION / STAIRS', [117, 3.5, -4.8], 7, 0, 'HOLDING CELLS BELOW'))
-  root.add(sign('CELLS / DOWN', [117, 2.6, -9.2], 3.1))
-  root.add(sign('EXIT / JEEP', [117, -1.1, -28.8], 3.8))
+  root.add(wallText('DETENTION', [117, 3.45, -5 + WALL_THICKNESS / 2 + 0.006]))
   const accents = new Draft('Stairwell guidance stripe')
   accents.userData.noCollision = true
   for (const x of [115.48, 118.52]) accents.beam([x, -3.05, -19.8], [x, 1.27, -9], 0.07, 'green', 'detail')

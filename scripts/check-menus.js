@@ -28,7 +28,8 @@
     const initialWords = $('[data-menu-page="home"]').innerText.trim().split(/\s+/).length
     check(initialWords <= 25, `Opening screen has only ${initialWords} words`)
 
-    for (const name of ['mission', 'controls', 'settings', 'vr']) {
+    check(!$('[data-menu-open="vr"]') && !visible('#vr-panel'), 'Unfinished VR is not offered in the menu')
+    for (const name of ['mission', 'controls', 'settings']) {
       const selector = `[data-menu-open="${name}"]`
       click(selector)
       check(page() === name && singlePage(), `${name}: only its own page is visible`)
@@ -37,10 +38,10 @@
       check(page() === 'home' && document.activeElement === $(selector) && !p.playing, `${name}: Escape returns focus without starting the game`)
     }
 
-    $('[data-menu-open="vr"]').focus(); key('Tab')
+    $('[data-menu-open="settings"]').focus(); key('Tab')
     check(document.activeElement.id === 'walk-start', 'Tab wraps inside the menu')
     key('Tab', { shiftKey: true })
-    check(document.activeElement.dataset.menuOpen === 'vr', 'Shift+Tab wraps backwards')
+    check(document.activeElement.dataset.menuOpen === 'settings', 'Shift+Tab wraps backwards')
     $('#walk-start').focus(); key('ArrowDown')
     check(document.activeElement.dataset.menuOpen === 'mission', 'Arrow keys navigate the menu')
 

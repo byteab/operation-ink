@@ -18,7 +18,6 @@ kbd { font: inherit; color: var(--ink-deep); }
 body:has(#walk-hud[data-playing="true"]) #vr-panel { display: none; }
 body[data-vr="active"] #walk-hud, body[data-vr="active"] .inspection-help, body[data-vr="active"] .mode-button, body[data-vr="active"] .door-hint { display: none; }
 @media (max-width: 900px), (max-height: 700px) {
-  body[data-mode="walk"] #walk-pause { padding-bottom: 270px; }
   #vr-panel { right: 18px; bottom: 16px; }
 }
 button { font: inherit; cursor: pointer; }

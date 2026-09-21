@@ -92,6 +92,35 @@ export function resizeInk(width: number, height: number) {
   silhouette.uniforms.resolution.value.set(width, height)
 }
 
+/** Single-sided ink lettering, placed just outside a wall with no backing board. */
+export function wallText(text: string, position: Point, height = 0.6, angle = 0) {
+  const root = new THREE.Group()
+  root.name = `Wall text · ${text}`
+  root.position.set(...position)
+  root.rotation.y = angle
+  root.userData = { noCollision: true, decorative: true, text }
+  if (typeof document === 'undefined') return root
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) return root
+  const font = '88px "Chalkboard SE", "Comic Sans MS", cursive'
+  context.font = font
+  canvas.width = Math.ceil(context.measureText(text).width) + 24
+  canvas.height = 128
+  context.font = font
+  context.fillStyle = `#${palette.ink.toString(16).padStart(6, '0')}`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillText(text, canvas.width / 2, canvas.height / 2)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const lettering = new THREE.Mesh(new THREE.PlaneGeometry(height * canvas.width / canvas.height, height),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }))
+  lettering.name = `${text} lettering`
+  root.add(lettering)
+  return root
+}
+
 const up = new THREE.Vector3(0, 1, 0)
 
 // EdgesGeometry spent a third of the compound build re-deriving the same 12 edges for every box.

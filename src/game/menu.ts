@@ -39,7 +39,6 @@ export class MissionMenu {
           <button data-menu-open="mission">Mission</button>
           <button data-menu-open="controls">Controls</button>
           <button data-menu-open="settings">Settings</button>
-          <button data-menu-open="vr">VR</button>
         </nav>
       </section>
       <section data-menu-page="mission" hidden>
