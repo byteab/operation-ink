@@ -13,3 +13,17 @@ Open the local Vite URL and select **Begin mission**. Controls are in the game m
 - `npm test` — run all logic checks.
 
 [MIT](LICENSE) covers the source code. Audio has separate terms; Project I.G.I. recordings are not licensed for reuse here. See [sound credits](public/sounds/CREDITS.md).
+
+# GamePlay
+
+https://github.com/user-attachments/assets/d397e167-213b-419d-9b45-5d0fcb534e4e
+
+
+https://github.com/user-attachments/assets/368a0df1-6188-4d47-9a88-9ddbc0fb1308
+
+
+
+
+
+
+
