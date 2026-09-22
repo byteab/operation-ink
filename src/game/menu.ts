@@ -60,7 +60,7 @@ export class MissionMenu {
           <div><dt>Move</dt><dd><kbd>W A S D</kbd></dd></div>
           <div><dt>Look</dt><dd><kbd>Mouse</kbd></dd></div>
           <div><dt>Fire</dt><dd><kbd>Left click</kbd></dd></div>
-          <div><dt>Aim</dt><dd><kbd>Right click</kbd></dd></div>
+          <div><dt>Toggle aim</dt><dd><kbd>Right click</kbd></dd></div>
           <div><dt>Interact / pick up</dt><dd><kbd>F</kbd></dd></div>
           <div><dt>Reload</dt><dd><kbd>R</kbd></dd></div>
           <div><dt>Sprint</dt><dd><kbd>Shift</kbd></dd></div>

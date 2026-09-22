@@ -110,16 +110,20 @@ export class MissionRuntime {
       wheel.preventDefault()
       this.invalidate()
     }, { ...options, passive: false })
-    window.addEventListener('pointerdown', event => {
+    // Toggle aim so firing never requires simultaneous mouse buttons (Magic
+    // Mouse / trackpads). Mouse events also report each button independently.
+    window.addEventListener('mousedown', event => {
       if (!this.isActive() || event.target !== document.querySelector('#world')) return
       void this.audio.unlock()
       if (event.button === 0) this.weapons.trigger(true)
-      if (event.button === 2) this.aiming = true
+      if (event.button === 2) {
+        this.aiming = this.weapons.canAim && !this.aiming
+        if (this.weapons.current && !this.weapons.canAim) this.hud.notify("You can't aim with this weapon.", 2, true)
+      }
       this.invalidate()
     }, options)
-    window.addEventListener('pointerup', event => {
+    window.addEventListener('mouseup', event => {
       if (event.button === 0) this.weapons.trigger(false)
-      if (event.button === 2) this.aiming = false
     }, options)
     window.addEventListener('blur', () => this.cancelInput(), options)
     document.addEventListener('pointerlockchange', () => { if (!player.playing) this.cancelInput() }, options)
@@ -185,7 +189,7 @@ export class MissionRuntime {
       event.preventDefault(); this.invalidate(); return
     }
     switch (event.code) {
-      case 'KeyR': this.weapons.reload(); break
+      case 'KeyR': if (this.weapons.reload()) this.aiming = false; break
       case 'Digit1': this.weapons.switchSlot(0); break
       case 'Digit2': this.weapons.switchSlot(1); break
       case 'Digit3': this.weapons.switchSlot(2); break
@@ -193,6 +197,7 @@ export class MissionRuntime {
       case 'KeyG': this.weapons.drop(this.player.body.position); break
       default: return
     }
+    if (!this.weapons.canAim) this.aiming = false
     event.preventDefault(); this.invalidate()
   }
 

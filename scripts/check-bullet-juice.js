@@ -28,8 +28,8 @@
   }
   const shoot = () => {
     const canvas = document.querySelector('#world')
-    canvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }))
-    canvas.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }))
+    canvas.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }))
+    canvas.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }))
     step(0)
   }
   const sheet = document.createElement('canvas'); sheet.width = 1440; sheet.height = 650

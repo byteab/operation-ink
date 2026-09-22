@@ -43,7 +43,7 @@
       if(targets[0] && (e.mission.weapons.current?.magazine || e.mission.weapons.current?.reserve)){
         keyUp('KeyW');keyUp('ShiftLeft');aim(targets[0].position.clone().add(vec(0,1.35,0)));
         if(!e.mission.weapons.current?.magazine)tap('KeyR');
-        else if(now-lastShot>130){lastShot=now;const canvas=document.querySelector('#world');canvas.dispatchEvent(new PointerEvent('pointerdown',{button:0,bubbles:true}));window.dispatchEvent(new PointerEvent('pointerup',{button:0,bubbles:true}));}
+        else if(now-lastShot>130){lastShot=now;const canvas=document.querySelector('#world');canvas.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true}));window.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));}
         return;
       }
     }

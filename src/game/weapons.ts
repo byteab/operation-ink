@@ -7,6 +7,9 @@ import { createMissionGun } from './weapon-models'
 export { WEAPON_RULES } from './balance'
 
 const up = new THREE.Vector3(0, 1, 0)
+const right = new THREE.Vector3(1, 0, 0)
+const AIM_PITCH = THREE.MathUtils.degToRad(-5)
+const AIM_LOWER_TIME = 0.18
 const copyItem = (item: WeaponItem): WeaponItem => ({ ...item, ...(item.position ? { position: [...item.position] } : {}) })
 const smooth = (value: number, a: number, b: number) => THREE.MathUtils.smoothstep(value, a, b)
 type LooseWeapon = { item: WeaponItem; model: Gun }
@@ -43,6 +46,7 @@ export class FirstPersonWeapons {
   private pendingShot = false
   private enabled = false
   private reloadElapsed: number | null = null
+  private reloadAim = 0
   private cooldown = 0
   private switchTime = 0
   private recoil = 0
@@ -51,6 +55,7 @@ export class FirstPersonWeapons {
   private flashTime = 0
   private time = 0
   private aim = 0
+  private aimedGripY = 0
   private lower = 0
   private obstructed = false
   private disposed = false
@@ -86,6 +91,7 @@ export class FirstPersonWeapons {
   get blocked() { return this.obstructed }
   get selected() { return this.slot }
   get scoped() { return this.scopeActive }
+  get canAim() { return this.current?.name === 'ak' || this.current?.name === 'smg' || this.current?.name === 'sniper' }
   get scopeMagnification() { return this.scopeZoom }
   get lookSensitivity() { return this.scopeActive ? 1 / this.scopeZoom : 1 }
   get current(): WeaponItem | null { return this.inventory[this.slot] }
@@ -168,6 +174,11 @@ export class FirstPersonWeapons {
     this.partRotation.clear()
     if (this.current) {
       this.model = createMissionGun(this.current.name)
+      // A slight muzzle-up tilt reveals the top of the barrel while aiming.
+      // Measure that pose before parenting so its sights stay below the reticle.
+      this.model.rotation.x = AIM_PITCH
+      this.aimedGripY = -new THREE.Box3().setFromObject(this.model).max.y - 0.008
+      this.model.rotation.x = 0
       this.mount.add(this.model)
       for (const part of Object.values(this.model.userData.parts)) {
         this.partRest.set(part, part.position.clone())
@@ -192,9 +203,10 @@ export class FirstPersonWeapons {
     if (!this.enabled || !item || this.reloading || this.switchTime > 0 || item.reserve <= 0 || item.magazine >= WEAPON_RULES[item.name].capacity) return false
     this.held = false
     this.pendingShot = false
-    this.reloadElapsed = 0
+    this.reloadAim = this.aim
+    // Negative time lowers from the current pose; magazine/bolt motion starts at zero.
+    this.reloadElapsed = this.aim > 0.001 ? -AIM_LOWER_TIME : 0
     this.setScope(false)
-    this.aim = 0
     this.context.emit({ kind: 'reload', weapon: item.name, position: this.context.camera.getWorldPosition(new THREE.Vector3()), radius: 3, text: `Reloading ${this.label.toLowerCase()}` })
     return true
   }
@@ -214,6 +226,7 @@ export class FirstPersonWeapons {
     this.held = false
     this.pendingShot = false
     this.reloadElapsed = null
+    this.reloadAim = 0
     this.switchTime = 0
     this.recoil = 0
     this.flashTime = 0
@@ -303,7 +316,8 @@ export class FirstPersonWeapons {
         }
       }
     }
-    this.aim += ((frame.aiming && !this.reloading ? 1 : 0) - this.aim) * Math.min(1, delta * 12)
+    if (this.reloadElapsed !== null) this.aim = this.reloadAim * (1 - smooth(this.reloadElapsed, -AIM_LOWER_TIME, 0))
+    else this.aim += ((frame.aiming && this.canAim ? 1 : 0) - this.aim) * (1 - Math.exp(-delta * 12))
     this.checkObstruction()
     this.setScope(this.current?.name === 'sniper' && frame.aiming && !this.reloading && this.switchTime <= 0 && !this.obstructed)
     // A scoped rifle is represented by the scope overlay; hide the viewmodel to avoid near-plane clipping.
@@ -328,8 +342,8 @@ export class FirstPersonWeapons {
 
   private gripPosition() {
     const rifle = this.current?.name === 'ak' || this.current?.name === 'sniper' || this.current?.name === 'shotgun'
-    return new THREE.Vector3(THREE.MathUtils.lerp(rifle ? 0.17 : 0.16, 0.015, this.aim),
-      THREE.MathUtils.lerp(rifle ? -0.23 : -0.20, rifle ? -0.19 : -0.145, this.aim), rifle ? -0.36 : -0.43)
+    return new THREE.Vector3(THREE.MathUtils.lerp(rifle ? 0.17 : 0.16, 0, this.aim),
+      THREE.MathUtils.lerp(rifle ? -0.23 : -0.20, this.aimedGripY, this.aim), rifle ? -0.36 : -0.43)
   }
 
   private checkObstruction() {
@@ -338,7 +352,8 @@ export class FirstPersonWeapons {
     camera.updateWorldMatrix(true, false)
     const eye = camera.getWorldPosition(new THREE.Vector3())
     // Test the intended unlowered muzzle so lowering cannot make a blocked barrel clear again.
-    const point = this.model.userData.muzzle.clone().applyAxisAngle(up, Math.PI).add(this.gripPosition())
+    const point = this.model.userData.muzzle.clone().applyAxisAngle(right, AIM_PITCH * this.aim)
+      .applyAxisAngle(up, Math.PI).add(this.gripPosition())
     const muzzle = camera.localToWorld(point)
     const toMuzzle = muzzle.clone().sub(eye)
     const direction = camera.getWorldDirection(new THREE.Vector3())
@@ -349,16 +364,16 @@ export class FirstPersonWeapons {
   private pose(_dt: number) {
     if (!this.model || !this.current) return
     const motion = !this.frame.reducedMotion
-    const progress = this.reloadElapsed === null ? 0 : this.reloadElapsed / WEAPON_RULES[this.current.name].reload
+    const progress = this.reloadElapsed === null ? 0 : Math.max(0, this.reloadElapsed) / WEAPON_RULES[this.current.name].reload
     const working = this.reloading ? Math.sin(Math.PI * progress) : 0
     const position = this.gripPosition()
-    const bob = motion ? Math.min(1, this.frame.moving) * (1 - this.aim * 0.85) : 0
+    const bob = motion ? Math.min(1, this.frame.moving) * (1 - this.aim) : 0
     position.x += Math.sin(this.time * 7) * 0.004 * bob
     position.y += Math.cos(this.time * 14) * 0.003 * bob - this.lower * 0.20 - (motion ? this.switchTime * 0.7 : 0)
     position.z += (motion ? this.recoil * 0.028 : 0) + this.lower * 0.12
     position.x -= working * 0.025
     this.mount.position.copy(position)
-    this.mount.rotation.set((motion ? this.recoil * 0.035 : 0) + this.lower * 0.5,
+    this.mount.rotation.set(AIM_PITCH * this.aim + (motion ? this.recoil * 0.035 : 0) + this.lower * 0.5,
       Math.PI + working * 0.18, -working * 0.23, 'YXZ')
     const hit = motion ? this.frame.hitPose : undefined
     if (hit) {
@@ -396,7 +411,7 @@ export class FirstPersonWeapons {
     this.mount.position.add(reachableWrist.clone().sub(wrist))
     this.root.updateWorldMatrix(true, true)
     const pistol = this.current.name === 'pistol'
-    this.leftHand.visible = !pistol || this.reloading
+    this.leftHand.visible = !pistol || this.reloadElapsed !== null && this.reloadElapsed >= 0
     const leftArm = this.arms[1]
     leftArm.upper.visible = leftArm.fore.visible = leftArm.elbow.visible = this.leftHand.visible
     const support = this.model.userData.support?.clone() ?? new THREE.Vector3(0, 0.035, 0.145)

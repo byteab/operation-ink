@@ -52,7 +52,7 @@ export class MissionHUD {
     this.start = $<HTMLButtonElement>('#walk-start')
     this.start.textContent = 'Loading the compound…'; this.start.disabled = true
     $('.walk-heading .walk-eyebrow').textContent = 'Operation Safe Return'
-    $('#world').setAttribute('aria-label', 'Operation Safe Return tactical mission. Mouse to look, WASD move, left click fire, right click aim, F interact, R reload, M field map, Escape pause.')
+    $('#world').setAttribute('aria-label', 'Operation Safe Return tactical mission. Mouse to look, WASD move, left click fire, right click toggle aim, F interact, R reload, M field map, Escape pause.')
     this.menu = new MissionMenu(this.start, this.buildMap(world), this.reducedMotion, callbacks)
     this.mapDot = document.querySelector('#field-player')!
     this.root.id = 'mission-hud'
@@ -149,7 +149,11 @@ export class MissionHUD {
   showMap() { this.menu.showMap() }
   setPlaying(playing: boolean) { this.menu.setPlaying(playing) }
   error(message: string) { this.menu.error(message) }
-  notify(message: string, duration = 5) { this.caption.textContent = message; this.captionTimer = duration }
+  notify(message: string, duration = 5, visible = false) {
+    this.caption.textContent = message
+    this.captionTimer = duration
+    this.caption.classList.toggle('visible-notice', visible)
+  }
   hurt() { this.damageTimer = 0.32 }
   hitFrom(intensity: number, direction: string) { this.incoming.pulse(intensity, direction) }
   clearThreat() { this.incoming.clear(); this.threat.hidden = true }

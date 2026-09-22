@@ -87,7 +87,7 @@ function setup(initialFov = 75) {
   step(1)
   assert.equal(weapons.ammo, '4 / 10')
   assert(!weapons.scoped)
-  step(2)
+  step(2.2) // Includes the short lowering phase before the 2.9-second reload.
   assert.equal(weapons.ammo, '5 / 9')
   assert(weapons.scoped, 'Held aim resumes after magazine is seated')
   assert.equal(shots.length, 1)
@@ -121,7 +121,7 @@ function setup(initialFov = 75) {
   weapons.current!.magazine = 4
   assert(weapons.reload())
   assert(!weapons.adjustScopeZoom(1), 'Reloading disables zoom input')
-  step(3)
+  step(3.2) // Lower out of aim before starting the magazine reload.
   assert(weapons.scoped)
   assert(Math.abs(magnification() - 2) < 1e-10)
   assert(weapons.switchSlot(2)); step(0.3)
