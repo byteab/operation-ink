@@ -152,14 +152,17 @@ export class EnemyNavigation {
 
   /** A resumable job; the director advances these within a shared per-frame wall-clock budget. */
   *createPlan(from: THREE.Vector3, to: THREE.Vector3): Generator<void, THREE.Vector3[]> {
-    // Door animation may finish while this job is yielded or another guard plans.
-    // Never publish/cache a route assembled from two different hinge positions.
+    // A door can move while this job is yielded, and another guard can then
+    // invalidate the shared samples. Restart BEFORE resuming the old search:
+    // its accepted cells may now sample as null, including during string-pulling.
     while (true) {
       const revision = this.refreshDoorState()
-      const route = yield* this.buildPlan(from, to)
-      if (revision === this.refreshDoorState()) return route
-      this.clear()
-      yield
+      const job = this.buildPlan(from, to)
+      while (revision === this.refreshDoorState()) {
+        const result = job.next()
+        if (result.done) return result.value
+        yield
+      }
     }
   }
 

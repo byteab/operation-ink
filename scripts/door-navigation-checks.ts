@@ -71,6 +71,36 @@ for (const point of result.value) {
 }
 console.log('PASS a door opening during a yielded planning job cannot publish stale geometry')
 
+// Unlike the direct route above, this search goes around a wall through the
+// doorway. Interrupt every yield, including A* and route string-pulling, while
+// a second guard invalidates the shared cache. Previously split 77 threw on null.
+let interruptions = 0
+for (let split = 1; split < 2000; split++) {
+  open(false)
+  const shared = new EnemyNavigation(world, [door], () => {})
+  const from = v(-2, -2), to = v(-2, 2)
+  const pending = shared.createPlan(from, to)
+  let finished = false
+  for (let i = 0; i < split; i++) if (pending.next().done) { finished = true; break }
+  if (finished) break
+  open(true)
+  const other = shared.createPlan(v(-3, -3), v(3, 3))
+  assert.equal(other.next().done, false)
+  let result = pending.next(), resumes = 0
+  while (!result.done && resumes++ < 20000) result = pending.next()
+  assert(result.done, 'invalidated search must finish within a bounded number of resumes')
+  assert(result.value.length, 'restarted search must find the doorway')
+  let previous = from
+  for (const point of result.value) {
+    assert(shared.segment(previous, point, false), 'restarted route must clear the open leaf')
+    previous = point
+  }
+  interruptions++
+}
+assert(interruptions >= 77 && interruptions < 1999, 'exercise the failing search stage and exhaust all yield points')
+open(true)
+console.log(`PASS shared-cache invalidation safely restarts all ${interruptions} search yield points`)
+
 const overlapping = v(-0.82, 0.7)
 assert(!navigation.floor(overlapping, false), 'fixture must start intersecting the open leaf')
 const recovered = navigation.recoverDoorOverlap(overlapping)
