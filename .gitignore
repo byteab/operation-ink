@@ -5,4 +5,5 @@ dist
 localonly
 artifacts
 __pycache__
-.claude/settings.local.json
+.agent/local/
+.agent/**/*.local.*

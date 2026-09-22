@@ -1,11 +1,10 @@
 // Live-map checks via the user-requested agent-browser. Uses a dedicated session.
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
-const cli = process.env.AGENT_BROWSER_CLI ?? '/Users/ehsan/.npm/_npx/6de2aa2fded2970c/node_modules/agent-browser/bin/agent-browser.js'
-const browser = (...args) => execFileSync(process.execPath, [cli, '--session', 'fair-enemies', ...args], { encoding: 'utf8', env: { ...process.env, AGENT_BROWSER_SOCKET_DIR: '/tmp/stickman-browser' }, timeout: 60000 }).trim()
+import { runAgentBrowser } from './agent-browser.mjs'
+const browser = (...args) => runAgentBrowser('fair-enemies', ...args)
 const evaluate = code => browser('eval', '-b', Buffer.from(code).toString('base64'))
-const directory = 'docs/enemy-ai/evidence'
+const directory = 'artifacts/enemy-ai/fair-awareness'
 mkdirSync(directory, { recursive: true })
 console.log(browser('open', 'http://localhost:5173'))
 console.log(browser('wait', '--fn', 'window.__environment?.mission?.ready === true'))

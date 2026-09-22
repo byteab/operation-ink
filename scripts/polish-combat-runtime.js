@@ -1,16 +1,12 @@
 // Independent, explicitly staged browser verification; every browser command uses agent-browser headless.
-import { execFileSync } from 'node:child_process'
-import { existsSync, writeFileSync } from 'node:fs'
-const cachedCli = '/Users/ehsan/.npm/_npx/6de2aa2fded2970c/node_modules/agent-browser/bin/agent-browser.js'
-const configuredCli = process.env.AGENT_BROWSER_CLI
-const onPath = process.env.PATH?.split(':').some(directory => existsSync(`${directory}/agent-browser`))
-const cli = configuredCli ?? (onPath ? 'agent-browser' : existsSync(cachedCli) ? cachedCli : 'agent-browser')
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { runAgentBrowser } from './agent-browser.mjs'
 const root = new URL('../', import.meta.url).pathname
-const browser = (...args) => execFileSync(cli.endsWith('.js') ? process.execPath : cli, [...(cli.endsWith('.js') ? [cli] : []), '--session', 'polish-review-combat', '--headed', 'false', ...args], {
-  cwd: root, env: { ...process.env, AGENT_BROWSER_SOCKET_DIR: process.env.AGENT_BROWSER_SOCKET_DIR ?? '/tmp/stickman-browser' }, encoding: 'utf8', timeout: 120000,
-}).trim()
+const evidenceDirectory = `${root}artifacts/gameplay-polish/evidence/combat`
+mkdirSync(evidenceDirectory, { recursive: true })
+const browser = (...args) => runAgentBrowser('polish-review-combat', '--headed', 'false', ...args)
 const evaluate = code => browser('eval', '-b', Buffer.from(code).toString('base64'))
-const screenshot = name => console.log(browser('screenshot', `docs/gameplay-polish/evidence/combat/${name}.png`))
+const screenshot = name => console.log(browser('screenshot', `${evidenceDirectory}/${name}.png`))
 const setup = `(() => {
   const env=window.__environment,m=env.mission,camera=env.camera.perspective;
   if(!window.__combatReview){window.__combatReview={missionUpdate:m.update.bind(m),playerUpdate:env.player.update.bind(env.player)};m.update=()=>false;env.player.update=()=>false;}
@@ -104,11 +100,11 @@ if(mode==='ai') {
     const result={id:'patrol-hearing-search',patrol,heard,investigation,finalState:e.state,travel:e.position.distanceTo(before),shots:r.events.length};r.results.push(result);return result;
   })()`))
   const results=evaluate(`(()=>{const r=__combatReview,ai=__environment.mission.ai;ai.context.emit=r.originalEmit;ai.context.damagePlayer=r.originalDamage;ai.context.onSurfaceHit=r.originalSurface;return r.results;})()`)
-  writeFileSync(`${root}docs/gameplay-polish/evidence/combat/ai-results.json`,results+'\n');console.log(results)
+  writeFileSync(`${evidenceDirectory}/ai-results.json`,results+'\n');console.log(results)
 }
 if(mode==='video') {
   console.log(browser('set','viewport','1280','720'))
-  console.log(browser('record','start',`${root}docs/gameplay-polish/evidence/combat/weapon-motion-final.webm`))
+  console.log(browser('record','start',`${evidenceDirectory}/weapon-motion-final.webm`))
   console.log(browser('wait','--fn','window.__environment?.mission?.ready === true'))
   console.log(browser('find','role','button','click','--name','Begin mission'))
   console.log(evaluate(setup))

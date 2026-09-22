@@ -12,6 +12,13 @@ npm test             # every scripts/*-checks.ts in Node (~45 s), prints ok/FAIL
 npm run test:<area>  # focused suite, see table
 ```
 
+## Agent resources
+
+- `AGENTS.md` is the canonical repository-wide guidance for coding agents.
+- `.agent/` contains repository-owned workflow notes. Before verifying visible changes, read the [browser-check workflow](.agent/skills/browser-check/SKILL.md); do not rely on automatic directory discovery.
+- `CLAUDE.md` is a compatibility pointer to this file; keep shared guidance here instead of duplicating it.
+- Generated screenshots, recordings, and browser evidence belong in `artifacts/`, never in source or documentation directories.
+
 | You touched                                                 | Run                                                                          |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `src/player/` movement, collision, ladders                  | `test:player`, `test:traversal-audio`, `test:fall-damage`                    |
@@ -31,8 +38,8 @@ npm run test:<area>  # focused suite, see table
 - `src/world/`: compound geometry built in code from plan coordinates (0.15 m per reference pixel, north = −Z).
 - `src/player/`: capsule controller, collision trees, ladders. Physics substeps are ≤ 1/120 s.
 - `src/render/ink.ts`: the shared paper/ink materials. Use these; don't create ad-hoc materials.
-- `public/`: `models/stickman.glb` (the one skinned character), `sounds/` (see `sounds/CREDITS.md`).
-- `scripts/*-checks.ts`: Node logic checks. `scripts/check-*.js`, `capture-*.js`, route scripts: browser checks (see below).
+- `public/`: `models/stickman.glb` (the one skinned character), `sounds/` (see `public/sounds/CREDITS.md`).
+- `scripts/*-checks.ts`: Node logic checks. `scripts/check-*.js`, `capture-*.js`, route scripts: browser checks (see below). `scripts/agent-browser.mjs` provides the portable browser CLI launcher used by runtime checks.
 - `localonly/` and `artifacts/` are git-ignored scratch space. Put screenshots and evidence there, never in the repo.
 
 ## Conventions and gotchas
