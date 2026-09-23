@@ -75,7 +75,7 @@ export class MissionMenu {
           <p>Two thumbs. The whole mission.</p>
           <dl>
             <div><dt>Move &amp; run</dt><dd>Drag the left stick gently to walk. Push to the outer ring to run. Release to stop.</dd></div>
-            <div><dt>Look &amp; fire</dt><dd>Drag the right stick and hold to keep turning. A small move turns slowly; a full move turns quickly. Hold its center to fire while steering. Release to stop turning. The sight icon toggles aiming.</dd></div>
+            <div><dt>Look &amp; fire</dt><dd>Drag the right stick and hold to keep turning. A small move turns slowly; a full move turns quickly. Near an enemy, gentle aiming pulls toward the closest visible body part. Push farther to turn away, or lift your thumb to release. Hold the center to fire while steering. The sight icon toggles aiming.</dd></div>
             <div><dt>Reload &amp; weapons</dt><dd>The circular arrow appears when you can reload. The gun icon expands the right pad into weapon choices. Select a gun, drop it, or tap the center X to return. Scope zoom appears when scoped in.</dd></div>
             <div><dt>Jump &amp; interact</dt><dd>The jumping figure always jumps. Tap the circle on a door, ladder, pickup or mission control to use it.</dd></div>
             <div><dt>Map &amp; pause</dt><dd>The top-right pause icon opens the menu. Choose Mission for the map.</dd></div>

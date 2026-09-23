@@ -10,6 +10,7 @@ import { FirstPersonWeapons } from './weapons'
 import { MissionAudio } from './audio'
 import { MissionHUD } from './hud'
 import { TouchControls, type TouchAction } from './touch-controls'
+import { TouchAimAssist } from './touch-aim-assist'
 import { MissionBlood, type BloodSnapshot } from './hit-reactions'
 import { MissionImpacts } from './impacts'
 import { PlayerHitReactions, type PlayerBulletHit } from './player-hit-reactions'
@@ -39,6 +40,7 @@ export class MissionRuntime {
   readonly escapeDust: EscapeDust
   readonly hud: MissionHUD
   readonly touch: TouchControls
+  readonly aimAssist = new TouchAimAssist()
   readonly escort: HostageEscort
   readonly security: SecuritySystem
   ready = false
@@ -187,7 +189,7 @@ export class MissionRuntime {
   }
 
   private isActive() { return this.ready && this.state.phase === 'active' && !this.escape.active && this.player.enabled && this.player.playing && !this.player.immersive }
-  private cancelInput() { this.aiming = false; this.weapons.cancel(); this.touch.reset() }
+  private cancelInput() { this.aiming = false; this.weapons.cancel(); this.touch.reset(); this.aimAssist.reset() }
 
   private touchAction(action: TouchAction, slot?: number) {
     if (!this.isActive()) return false
@@ -541,6 +543,14 @@ export class MissionRuntime {
       }
     }
     const reactionActive = this.isActive() && this.state.jeep !== 'escaping'
+    const aimStrength = this.touch.aimAssistStrength
+    const weapon = this.weapons.current
+    this.aimAssist.update(dt, this.camera.perspective, this.ai.enemies, this.player.world, {
+      enabled: reactionActive && this.player.touchMode && !document.hidden && !this.player.movementLocked &&
+        !this.player.actions.traversing && !this.weapons.reloading && this.interactionTime === 0 &&
+        !!weapon && aimStrength != null,
+      strength: aimStrength ?? 0, range: weapon ? WEAPON_RULES[weapon.name].range : 0, reducedMotion: this.hud.reducedMotion,
+    })
     const hitPose = this.playerHits.update(reactionActive ? dt : 0,
       new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y, this.hud.reducedMotion)
     if (reactionActive) {

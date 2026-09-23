@@ -6,6 +6,16 @@ import { GAIT_SPEED } from '../lab/gait'
 export const ENEMY_RUN_SPEED = GAIT_SPEED.run * 1.5
 export const HOSTAGE_RUN_SPEED = 2.6
 
+/** Aim radii are fractions of the viewport's shorter half-dimension. */
+export const TOUCH_AIM_ASSIST = {
+  acquireRadius: 0.16,
+  releaseRadius: 0.22,
+  retainedBias: 0.75,
+  followRate: 12,
+  maxRadiansPerSecond: 0.65,
+  freeTurnStrength: 0.65,
+} as const
+
 /** Ordinary jumps and drops up to about 2.3 m are safe; taller falls scale with impact energy. */
 export function fallDamage(landingSpeed: number) {
   if (!Number.isFinite(landingSpeed) || landingSpeed <= 10) return 0

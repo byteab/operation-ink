@@ -38,6 +38,16 @@ export class TouchControls {
   private lastPulse = -Infinity
   private shotTimer = 0
   private haptics = true
+  private lookStrength = 0
+
+  /** Null means the right thumb is up; a held center is active with zero tilt. */
+  get aimAssistStrength(): number | null {
+    if (!this.active || this.pickerOpen) return null
+    for (const contact of this.contacts.values()) {
+      if (contact.role === 'look' || contact.role === 'fire') return this.lookStrength
+    }
+    return null
+  }
 
   constructor(private player: FirstPersonController, private callbacks: Callbacks) {
     this.marker = document.querySelector<HTMLButtonElement>('#action-marker')!
@@ -194,6 +204,7 @@ export class TouchControls {
       this.stick.classList.toggle('touch-running', stick.sprint)
     } else if (contact.role === 'look' || contact.role === 'fire') {
       const stick = touchLookStick(x, y, contact.radius)
+      this.lookStrength = Math.min(1, Math.hypot(stick.x / 1200, stick.y / 900))
       this.player.setTouchLook(stick.x, stick.y)
       this.lookCursor.style.transform = `translate(${stick.knobX}px, ${stick.knobY}px)`
     }
@@ -223,6 +234,7 @@ export class TouchControls {
       this.running = false
     }
     if (contact.role === 'look' || contact.role === 'fire') {
+      this.lookStrength = 0
       this.player.clearTouchLook()
       this.lookPad.classList.remove('touch-tracking')
       this.lookCursor.style.transform = ''
