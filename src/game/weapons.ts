@@ -88,6 +88,10 @@ export class FirstPersonWeapons {
   get label() { return this.current ? WEAPON_RULES[this.current.name].label : 'Empty hands' }
   get ammo() { return this.current ? `${this.current.magazine} / ${this.current.reserve}` : '—' }
   get reloading() { return this.reloadElapsed !== null }
+  get canReload() {
+    const item = this.current
+    return this.enabled && !!item && !this.reloading && this.switchTime <= 0 && item.reserve > 0 && item.magazine < WEAPON_RULES[item.name].capacity
+  }
   get blocked() { return this.obstructed }
   get selected() { return this.slot }
   get scoped() { return this.scopeActive }
@@ -200,7 +204,7 @@ export class FirstPersonWeapons {
 
   reload() {
     const item = this.current
-    if (!this.enabled || !item || this.reloading || this.switchTime > 0 || item.reserve <= 0 || item.magazine >= WEAPON_RULES[item.name].capacity) return false
+    if (!item || !this.canReload) return false
     this.held = false
     this.pendingShot = false
     this.reloadAim = this.aim

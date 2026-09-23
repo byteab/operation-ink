@@ -30,9 +30,10 @@ const player = { enabled: true, immersive: false, playing: true, body, movementL
 }
 Object.assign(m, {
   state: initialMission(), ready: true, deaths: 0, camera: { perspective: camera }, player,
+  touch: { reset: noop, update: noop },
   world: { bounds: { minX: -100, maxX: 100, minZ: -100, maxZ: 100 } },
   death: new PlayerDeathSequence(), escape: new EscapeCinematic(), escapeDust: { clear: noop }, playerHits: new PlayerHitReactions(),
-  weapons: { cancel: noop, beginDeath: noop, updateDeath: (_elapsed: number, _reduced: boolean, kick: number) => { deathUpdates++; fatalKick = kick }, resetDeath: () => deathResets++,
+  weapons: { slots: [], cancel: noop, beginDeath: noop, updateDeath: (_elapsed: number, _reduced: boolean, kick: number) => { deathUpdates++; fatalKick = kick }, resetDeath: () => deathResets++,
     update: () => weaponUpdates++, restore: noop },
   audio: { setActive: (active: boolean) => audioActive = active, play: ({ kind }: { kind: string }) => audioEvents.push(kind),
     beginDeath: () => audioEvents.push('death'), reset: () => audioEvents.push('reset'), update: noop, setAlarm: noop },

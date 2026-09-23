@@ -3,7 +3,9 @@ import { EnvironmentCamera } from '../camera'
 import { EnvironmentInteractions } from '../interactions'
 import { CollisionWorld } from './collision'
 import { PlayerBody } from './body'
-import { PlayerActions } from './actions'
+import { PlayerActions, type ActionTarget } from './actions'
+import { actionIcon } from './action-icons'
+import { clampSensitivity, loadInputSettings, saveInputSettings, type SensitivityKey } from './input-settings'
 
 const movementKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']
 
@@ -16,6 +18,8 @@ export class FirstPersonController {
   immersive = false
   missionMode = false
   movementLocked = false
+  touchMode = false
+  readonly inputSettings = loadInputSettings()
   canPlay: () => boolean = () => true
   onPlayingChange: (playing: boolean) => void = () => {}
   lookSensitivity: () => number = () => 1
@@ -24,6 +28,8 @@ export class FirstPersonController {
   private started = false
   private walkRotation = new THREE.Quaternion()
   private pressed = new Set<string>()
+  private touchMove = { x: 0, forward: 0, sprint: false }
+  private touchLook = { x: 0, y: 0 }
   private abort = new AbortController()
   private direction = new THREE.Vector3()
   private forward = new THREE.Vector3()
@@ -35,7 +41,8 @@ export class FirstPersonController {
   private walkButton = document.querySelector<HTMLButtonElement>('#walk-mode')!
   private prompt = document.querySelector<HTMLElement>('#action-prompt')!
   private actionLabel = document.querySelector<HTMLElement>('#action-label')!
-  private marker = document.querySelector<HTMLElement>('#action-marker')!
+  private marker = document.querySelector<HTMLButtonElement>('#action-marker')!
+  private markerTarget: ActionTarget | null = null
   private status = document.querySelector<HTMLElement>('#walk-status')!
 
   constructor(private canvas: HTMLCanvasElement, scene: THREE.Scene, private camera: EnvironmentCamera,
@@ -49,6 +56,7 @@ export class FirstPersonController {
     this.walkButton.addEventListener('click', () => { this.enable(); this.requestControl() }, options)
     document.querySelector('#inspect-mode')!.addEventListener('click', () => camera.setView('overview'), options)
     canvas.addEventListener('pointerdown', event => {
+      if (this.touchMode && event.pointerType !== 'mouse') return
       if (!this.enabled || this.immersive || event.button !== 0) return
       if (!this.playing) this.requestControl()
       this.dragging = true
@@ -59,7 +67,7 @@ export class FirstPersonController {
     document.addEventListener('mousemove', this.look, options)
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement === canvas && this.enabled) this.resume()
-      else if (this.playing && !this.fallback) this.pause()
+      else if (this.playing && !this.fallback && !this.touchMode) this.pause()
     }, options)
     document.addEventListener('pointerlockerror', this.useFallback, options)
     window.addEventListener('keydown', this.keyDown, options)
@@ -99,12 +107,14 @@ export class FirstPersonController {
     const target = ladder ? this.actions.ladderPoint(ladder, false).add(new THREE.Vector3(0, 1.5, 0)) : spawn.clone().add(new THREE.Vector3(0, 1.5, -5))
     this.camera.active.lookAt(target)
     this.pressed.clear()
+    this.clearTouchInput()
     this.invalidate()
   }
 
   requestControl() {
     if (!this.enabled || this.immersive || !this.canPlay()) return
     this.canvas.focus({ preventScroll: true })
+    if (this.touchMode) { this.resume(); return }
     if (!this.canvas.requestPointerLock || this.fallback) { this.useFallback(); return }
     try {
       const request = this.canvas.requestPointerLock() as Promise<void> | undefined
@@ -131,6 +141,7 @@ export class FirstPersonController {
 
   pause = () => {
     this.pressed.clear()
+    this.clearTouchInput()
     this.dragging = false
     this.playing = false
     this.body.velocity.x = 0
@@ -138,6 +149,7 @@ export class FirstPersonController {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock()
     this.prompt.hidden = true
     this.marker.hidden = true
+    this.markerTarget = null
     this.hud.dataset.playing = 'false'
     this.panel.hidden = !this.enabled
     this.startButton.textContent = this.missionMode ? (this.started ? 'Resume mission' : 'Begin mission') : this.started ? 'Resume walk' : 'Start walking'
@@ -147,12 +159,58 @@ export class FirstPersonController {
 
   private look = (event: MouseEvent) => {
     if (!this.enabled || !this.playing || (document.pointerLockElement !== this.canvas && !(this.fallback && this.dragging))) return
+    this.lookBy(event.movementX * this.inputSettings.mouse,
+      event.movementY * this.inputSettings.mouse * (this.inputSettings.invertMouse ? -1 : 1))
+  }
+
+  setSensitivity(key: SensitivityKey, value: number) {
+    this.inputSettings[key] = clampSensitivity(key, value)
+    saveInputSettings(this.inputSettings)
+    return this.inputSettings[key]
+  }
+
+  setLookInverted(input: 'mouse' | 'touch', inverted: boolean) {
+    this.inputSettings[input === 'mouse' ? 'invertMouse' : 'invertTouch'] = inverted
+    saveInputSettings(this.inputSettings)
+  }
+
+  /** Shared by mouse and touch; scope sensitivity and pitch limits apply to both. */
+  lookBy(x: number, y: number) {
+    if (!this.enabled || !this.playing || this.immersive || this.movementLocked) return
     this.rotation.setFromQuaternion(this.camera.active.quaternion, 'YXZ')
     const sensitivity = 0.0022 * this.lookSensitivity()
-    this.rotation.y -= event.movementX * sensitivity
-    this.rotation.x = THREE.MathUtils.clamp(this.rotation.x - event.movementY * sensitivity, -1.5, 1.5)
+    this.rotation.y -= x * sensitivity
+    this.rotation.x = THREE.MathUtils.clamp(this.rotation.x - y * sensitivity, -1.5, 1.5)
     this.camera.active.quaternion.setFromEuler(this.rotation)
     this.invalidate()
+  }
+
+  setTouchMovement(x: number, forward: number, sprint: boolean) {
+    if (!this.touchMode || !this.enabled || !this.playing || this.immersive || this.movementLocked) return
+    this.touchMove = { x, forward, sprint }
+    this.invalidate()
+  }
+
+  setTouchLook(x: number, y: number) {
+    if (!this.touchMode || !this.enabled || !this.playing || this.immersive || this.movementLocked) return
+    this.touchLook = { x, y }
+    this.invalidate()
+  }
+
+  clearTouchMovement() { this.touchMove = { x: 0, forward: 0, sprint: false } }
+  clearTouchLook() { this.touchLook = { x: 0, y: 0 } }
+  clearTouchInput() { this.clearTouchMovement(); this.clearTouchLook() }
+
+  jump() {
+    return this.playing && !this.immersive && !this.movementLocked && !this.actions.traversing && this.body.jump()
+  }
+
+  interact(expected?: ActionTarget) {
+    return this.playing && !this.immersive && !this.movementLocked && this.actions.activate(this.camera.active, 'animated', expected)
+  }
+
+  interactMarker() {
+    return !!this.markerTarget && !this.marker.hidden && this.interact(this.markerTarget)
   }
 
   private keyDown = (event: KeyboardEvent) => {
@@ -164,9 +222,9 @@ export class FirstPersonController {
     if (movementKeys.includes(event.code)) {
       event.preventDefault()
       this.pressed.add(event.code)
-      if (event.code === 'Space' && !event.repeat && !this.actions.traversing) this.body.jump()
+      if (event.code === 'Space' && !event.repeat) this.jump()
     }
-    if (event.code === 'KeyF' && !event.repeat) { event.preventDefault(); this.actions.activate(this.camera.active) }
+    if (event.code === 'KeyF' && !event.repeat) { event.preventDefault(); this.interact() }
     if (event.code === 'KeyR' && !event.repeat && !this.missionMode) { event.preventDefault(); this.respawn() }
     this.invalidate()
   }
@@ -175,29 +233,41 @@ export class FirstPersonController {
     if (!this.enabled || this.immersive || !this.playing) return false
     if (this.movementLocked) {
       this.prompt.hidden = true; this.marker.hidden = true; this.status.textContent = 'Escaping by jeep'
+      this.markerTarget = null
       return true
     }
+    if (this.touchLook.x || this.touchLook.y) this.lookBy(this.touchLook.x * dt * this.inputSettings.look,
+      this.touchLook.y * dt * this.inputSettings.look * (this.inputSettings.invertTouch ? -1 : 1))
     this.world.refresh()
     if (!this.actions.updateTraversal(dt)) {
-      const x = Number(this.pressed.has('KeyD') || this.pressed.has('ArrowRight')) - Number(this.pressed.has('KeyA') || this.pressed.has('ArrowLeft'))
-      const z = Number(this.pressed.has('KeyW') || this.pressed.has('ArrowUp')) - Number(this.pressed.has('KeyS') || this.pressed.has('ArrowDown'))
+      const x = Number(this.pressed.has('KeyD') || this.pressed.has('ArrowRight')) - Number(this.pressed.has('KeyA') || this.pressed.has('ArrowLeft')) + this.touchMove.x
+      const z = Number(this.pressed.has('KeyW') || this.pressed.has('ArrowUp')) - Number(this.pressed.has('KeyS') || this.pressed.has('ArrowDown')) + this.touchMove.forward
       this.camera.active.getWorldDirection(this.forward)
       this.forward.y = 0
       this.forward.normalize()
-      this.direction.set(-this.forward.z, 0, this.forward.x).multiplyScalar(x).addScaledVector(this.forward, z).normalize()
-      this.body.update(dt, this.direction, this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'))
+      this.direction.set(-this.forward.z, 0, this.forward.x).multiplyScalar(x).addScaledVector(this.forward, z).clampLength(0, 1)
+      this.body.update(dt, this.direction, this.touchMove.sprint || this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'))
     }
     if (this.body.position.y < -20 || Math.max(Math.abs(this.body.position.x), Math.abs(this.body.position.z)) > 1150) this.respawn()
     this.actions.syncCamera(this.camera.active, dt)
     const target = this.actions.findTarget(this.camera.active)
     this.prompt.hidden = !target
     this.marker.hidden = !target
+    this.markerTarget = null
     if (target) {
       this.actionLabel.textContent = target.label
-      this.marker.textContent = target.kind === 'door' ? '▯' : target.kind === 'ladder' ? '☷' : target.kind === 'zipline' ? '↘' : target.kind === 'pickup' ? '+' : '⚙'
+      if (this.marker.dataset.kind !== target.kind) {
+        this.marker.innerHTML = actionIcon(target.kind)
+        this.marker.dataset.kind = target.kind
+      }
+      this.marker.setAttribute('aria-label', target.label)
       this.prompt.dataset.kind = target.kind
       this.projected.copy(target.point).project(this.camera.active)
-      this.marker.hidden = Math.abs(this.projected.x) > 0.95 || Math.abs(this.projected.y) > 0.9 || this.projected.z > 1
+      const halfSize = this.touchMode ? 26 : 16
+      const xLimit = Math.min(0.95, 1 - halfSize * 2 / innerWidth)
+      const yLimit = Math.min(0.9, 1 - halfSize * 2 / innerHeight)
+      this.marker.hidden = Math.abs(this.projected.x) > xLimit || Math.abs(this.projected.y) > yLimit || this.projected.z > 1 || this.projected.z < -1
+      if (!this.marker.hidden) this.markerTarget = target
       this.marker.style.left = `${(this.projected.x + 1) * 50}%`
       this.marker.style.top = `${(1 - this.projected.y) * 50}%`
     }
@@ -205,7 +275,7 @@ export class FirstPersonController {
     const state = ride ? `Riding to ${ride.destination} · ${Math.round((1 - ride.remaining / ride.distance) * 100)}%` :
       this.actions.climbing ? (this.actions.climbing.descending ? 'Climbing down' : 'Climbing up') :
       !this.body.grounded ? 'In the air' : this.direction.lengthSq() > 0 ?
-        (this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight') ? 'Sprinting' : 'Walking') : 'On foot'
+        (this.touchMove.sprint || this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight') ? 'Sprinting' : 'Walking') : 'On foot'
     this.status.textContent = this.fallback ? `${state} · drag to look` : state
     return true
   }

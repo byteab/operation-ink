@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { BulletTrails } from './bullet-trails'
-import { fallDamage } from './balance'
+import { fallDamage, WEAPON_RULES } from './balance'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
@@ -9,6 +9,7 @@ import { EnemyDirector } from './ai'
 import { FirstPersonWeapons } from './weapons'
 import { MissionAudio } from './audio'
 import { MissionHUD } from './hud'
+import { TouchControls, type TouchAction } from './touch-controls'
 import { MissionBlood, type BloodSnapshot } from './hit-reactions'
 import { MissionImpacts } from './impacts'
 import { PlayerHitReactions, type PlayerBulletHit } from './player-hit-reactions'
@@ -37,6 +38,7 @@ export class MissionRuntime {
   readonly escape = new EscapeCinematic()
   readonly escapeDust: EscapeDust
   readonly hud: MissionHUD
+  readonly touch: TouchControls
   readonly escort: HostageEscort
   readonly security: SecuritySystem
   ready = false
@@ -85,10 +87,24 @@ export class MissionRuntime {
         this.impactPoint = hit.point.clone(); this.blood.emitHit(hit); this.audio.confirmHit(hit)
       } })
     this.hud = new MissionHUD(world, {
+      inputSettings: player.inputSettings, sensitivityChange: (key, value) => player.setSensitivity(key, value),
+      invertLook: (input, inverted) => player.setLookInverted(input, inverted),
       retry: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
       restart: () => { this.restart(); void this.audio.unlock(); this.player.requestControl() },
       volume: value => this.audio.setVolume(value), mute: value => this.audio.setMuted(value) })
+    this.touch = new TouchControls(player, {
+      action: (action, slot) => this.touchAction(action, slot),
+      fire: (held, cancelled) => {
+        if (cancelled) this.weapons.cancel()
+        else if (!held || this.isActive()) this.weapons.trigger(held)
+        this.invalidate()
+      },
+      feedback: strong => this.audio.controlTick(strong),
+      unlock: () => { void this.audio.unlock() },
+    })
     player.onPlayingChange = playing => {
+      if (!playing) this.cancelInput()
+      this.updateTouch()
       this.hud.setPlaying(playing)
       if (this.escape.active) this.hud.setEscape(this.escape)
     }
@@ -113,6 +129,7 @@ export class MissionRuntime {
     // Toggle aim so firing never requires simultaneous mouse buttons (Magic
     // Mouse / trackpads). Mouse events also report each button independently.
     window.addEventListener('mousedown', event => {
+      if (player.touchMode && document.pointerLockElement !== document.querySelector('#world')) return
       if (!this.isActive() || event.target !== document.querySelector('#world')) return
       void this.audio.unlock()
       if (event.button === 0) this.weapons.trigger(true)
@@ -170,7 +187,37 @@ export class MissionRuntime {
   }
 
   private isActive() { return this.ready && this.state.phase === 'active' && !this.escape.active && this.player.enabled && this.player.playing && !this.player.immersive }
-  private cancelInput() { this.aiming = false; this.weapons.cancel() }
+  private cancelInput() { this.aiming = false; this.weapons.cancel(); this.touch.reset() }
+
+  private touchAction(action: TouchAction, slot?: number) {
+    if (!this.isActive()) return false
+    let changed = true
+    switch (action) {
+      case 'pause': this.player.pause(); break
+      case 'map': this.player.pause(); this.hud.showMap(); break
+      case 'aim':
+        if (!this.weapons.canAim || this.weapons.reloading || this.player.actions.traversing) return false
+        this.aiming = !this.aiming; break
+      case 'reload': changed = this.weapons.reload(); if (changed) this.aiming = false; break
+      case 'jump': changed = this.player.jump(); break
+      case 'use': changed = this.player.interactMarker(); break
+      case 'slot': changed = this.weapons.switchSlot(slot ?? -1); if (changed) this.aiming = false; break
+      case 'drop': this.weapons.drop(this.player.body.position); this.aiming = false; break
+      case 'zoom-in': changed = this.weapons.adjustScopeZoom(1); break
+      case 'zoom-out': changed = this.weapons.adjustScopeZoom(-1); break
+    }
+    this.updateTouch(); this.invalidate()
+    return changed
+  }
+
+  private updateTouch() {
+    this.touch.update({ active: this.isActive(), aiming: this.aiming,
+      canAim: this.weapons.canAim && !this.weapons.reloading && !this.player.actions.traversing,
+      reloading: this.weapons.reloading, armed: !!this.weapons.current, scoped: this.weapons.scoped,
+      zoom: this.weapons.scopeMagnification, selected: this.weapons.selected,
+      slots: this.weapons.slots.map(slot => slot ? { name: slot.name, label: WEAPON_RULES[slot.name].label } : null),
+      canReload: this.weapons.canReload && !this.player.actions.traversing })
+  }
   private keyDown = (event: KeyboardEvent) => {
     if (this.escape.active) return
     const zoomKey = event.code === 'KeyQ' || event.code === 'KeyE'
@@ -266,7 +313,7 @@ export class MissionRuntime {
 
   private shot(shot: Shot) {
     if (!this.isActive()) return
-    if (!shot.pelletIndex) this.state.shots++
+    if (!shot.pelletIndex) { this.state.shots++; this.touch.shot() }
     const surface = this.player.world.raySurface(shot.origin, shot.direction, shot.range)
     const distance = surface?.distance ?? shot.range
     this.ai.nearMiss(shot,distance)
@@ -524,9 +571,10 @@ export class MissionRuntime {
     this.hud.update(dt,this.state,{playing:this.player.playing,enabled:this.player.enabled&&!this.player.immersive,
       weapon:this.weapons.current,reloading:this.weapons.reloading,
       position:this.player.body.position,yaw:new THREE.Euler().setFromQuaternion(this.camera.perspective.quaternion,'YXZ').y,deaths:this.deaths,ready:this.ready})
+    this.updateTouch()
     return active || this.death.running
   }
 
   finishFrame() { this.playerHits.removeCamera() }
-  dispose() { this.escape.reset(this.camera.perspective);this.escapeDust.dispose();this.playerHits.clear();this.disposed=true;this.abort.abort();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.onPlayingChange=()=>{};this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
+  dispose() { this.escape.reset(this.camera.perspective);this.escapeDust.dispose();this.playerHits.clear();this.disposed=true;this.abort.abort();this.touch.dispose();this.bulletTrails.dispose();this.escort.dispose();this.weapons.dispose();this.ai.dispose();this.blood.dispose();this.impacts.dispose();this.audio.dispose();this.hud.dispose();this.player.movementLocked=false;this.player.onPlayingChange=()=>{};this.player.lookSensitivity=()=>1;this.player.actions.extraTargets=()=>[];this.player.actions.onAction=()=>{} }
 }

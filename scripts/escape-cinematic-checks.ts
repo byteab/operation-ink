@@ -70,6 +70,7 @@ const player = {
 Object.assign(m, {
   state: initialMission(), escape: new EscapeCinematic(), escapeDust: new EscapeDust(new THREE.Scene()), playerHits: new PlayerHitReactions(), camera: { perspective: camera },
   player, ready: true, deaths: 0, invincible: false, aiming: false, invalidate: noop,
+  touch: { reset: noop, update: noop },
   world: { rescue: { jeep, gate: new THREE.Group(), cellDoors: [] } },
   weapons: { cancel: noop, update: () => weaponVisible = false, resetDeath: noop, restore: noop },
   hud: { reducedMotion: false, setScoped: noop, clearThreat: noop, notify: noop, reset: noop,

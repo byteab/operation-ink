@@ -118,10 +118,11 @@ export class PlayerActions {
     return this.target
   }
 
-  activate(camera: THREE.Camera, climb: 'animated' | 'instant' = 'animated') {
+  activate(camera: THREE.Camera, climb: 'animated' | 'instant' = 'animated', expected?: ActionTarget) {
     // Recheck range and occlusion on the actual keypress, never use a stale prompt.
     const target = this.findTarget(camera)
-    if (!target) return false
+    if (!target || (expected && (target.object !== expected.object || target.kind !== expected.kind ||
+      target.descending !== expected.descending || target.label !== expected.label))) return false
     if (target.kind === 'door') {
       const door = target.object as THREE.Group
       setDoorOpen(door, !door.userData.open)

@@ -1,0 +1,96 @@
+/* Fixed satellites leave the look/fire surface free for a captured thumb. */
+body[data-touch="true"] { --touch-edge: 24px; --look-size: 152px; --orbit: 118px; --diagonal: 84px; --satellite: 52px; --pad-inset: 103px; --stick-size: 144px; --stick-bottom: 55px; --pad-bottom: 117px; --picker-size: 224px; --picker-scale: 1.473684; --picker-shift: -14px; --picker-x: 56px; --picker-y: 37px; --picker-drop: 80px; }
+#touch-controls { position: fixed; inset: 0; z-index: 4; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; color: #808080; --control-line: #0000002e; --control-paper: #ffffff33; }
+#touch-controls [data-touch] { pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
+#touch-controls button { display: grid; place-items: center; width: 52px; height: 52px; padding: 10px; border: 1px solid var(--control-line); border-radius: 50%; background: var(--control-paper); color: #808080; transition: transform 90ms ease-out, background-color 120ms, color 120ms, border-color 120ms; }
+#touch-controls button .touch-icon { display: grid; place-items: center; pointer-events: none; }
+#touch-controls button svg { display: block; width: 26px; height: 26px; }
+#touch-controls :is([data-touch="jump"], [data-touch="drop"]) svg { width: 30px; height: 30px; }
+#touch-controls button:disabled { color: #bdbdbd; border-color: #00000014; background: #ffffff1a; }
+#touch-controls button:focus-visible { outline: 2px solid #808080; outline-offset: 4px; }
+#touch-controls button.touch-held, #touch-controls button[aria-pressed="true"] { color: #000000bf; border-color: #808080; background: #ffffffb3; }
+#touch-controls button.touch-held { transform: scale(0.95); }
+.touch-look { position: absolute; inset: 76px 0 0 42%; }
+.touch-utilities, .touch-movement, .touch-actions, .touch-zoom { z-index: 2; }
+#touch-controls #action-marker { z-index: 1; width: 48px; height: 48px; padding: 0; margin: 0; line-height: 0; border: 1.5px solid #808080; background: #ffffffeb; color: #000000cc; transform: translate(-50%, -50%); animation: none; touch-action: none; }
+#touch-controls #action-marker svg { display: block; width: 24px; height: 24px; }
+#touch-controls #action-marker.touch-held { color: #000000; background: #ffffff; border-color: #000000; }
+.touch-utilities { position: absolute; top: max(14px, env(safe-area-inset-top)); right: max(var(--touch-edge), env(safe-area-inset-right)); }
+#touch-controls .touch-utilities button { border-radius: 8px 10px 8px 11px; width: 48px; height: 48px; }
+.touch-movement { position: absolute; left: max(var(--touch-edge), env(safe-area-inset-left)); bottom: calc(var(--stick-bottom) + env(safe-area-inset-bottom)); width: var(--stick-size); }
+.touch-stick { position: relative; width: var(--stick-size); height: var(--stick-size); border: 1px dashed var(--control-line); border-radius: 50%; background: #ffffff1a; display: grid; place-items: center; }
+.touch-knob { width: 54px; height: 54px; border: 1px solid #80808080; border-radius: 48% 52% 50% 49%; background: var(--control-paper); pointer-events: none; transform: translate(0, 0); transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1); }
+.touch-stick.touch-held .touch-knob { transition: none; border-color: #808080; background: #ffffffb3; }
+.touch-stick.touch-running { border-color: #808080; border-style: solid; }
+.touch-actions { position: absolute; right: calc(max(var(--touch-edge), env(safe-area-inset-right)) + var(--pad-inset)); bottom: calc(var(--pad-bottom) + env(safe-area-inset-bottom)); width: 0; height: 0; }
+.touch-pad-surface { position: absolute; left: calc(var(--look-size) / -2); top: calc(var(--look-size) / -2); width: var(--look-size); height: var(--look-size); border: 1px solid var(--control-line); border-radius: 50%; background: #ffffff1a; pointer-events: none; transform: translate(0, 0) scale(1); transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.touch-combat { position: absolute; inset: 0; opacity: 1; visibility: visible; transition: opacity 140ms ease-out, visibility 0s; }
+.touch-picker-open .touch-pad-surface { transform: translate(var(--picker-shift), var(--picker-shift)) scale(var(--picker-scale)); background: #ffffffe6; transition-duration: 220ms; }
+.touch-picker-open .touch-combat { opacity: 0; visibility: hidden; transition: opacity 80ms ease-out, visibility 0s linear 80ms; }
+#touch-controls [inert] [data-touch] { pointer-events: none; }
+.touch-shortcuts { position: absolute; inset: 0; }
+#touch-controls .touch-shortcuts button { position: absolute; width: var(--satellite); height: var(--satellite); margin: calc(var(--satellite) / -2); }
+#touch-controls [data-touch="weapon"] { left: calc(-1 * var(--diagonal)); top: calc(-1 * var(--diagonal)); }
+#touch-controls [data-touch="aim"] { left: 0; top: calc(-1 * var(--orbit)); }
+#touch-controls [data-touch="jump"] { left: var(--diagonal); top: calc(-1 * var(--diagonal)); }
+#touch-controls [data-touch="reload"] { left: calc(-1 * var(--orbit)); top: calc(-0.42 * var(--diagonal)); }
+.touch-look-pad { position: absolute; left: calc(var(--look-size) / -2); top: calc(var(--look-size) / -2); width: var(--look-size); height: var(--look-size); border-radius: 50%; display: grid; place-items: center; }
+#touch-controls [data-touch="fire"] { position: relative; width: 60px; height: 60px; padding: 12px; background: transparent; border-color: transparent; }
+#touch-controls [data-touch="fire"] svg { width: 30px; height: 30px; }
+#touch-controls [data-touch="fire"].touch-held { background: #ffffffb3; }
+#touch-controls [data-touch="fire"]:disabled { pointer-events: none; }
+.touch-actions:has(.touch-tracking) .touch-pad-surface { border-color: #80808080; }
+.touch-actions:has(.touch-aiming) .touch-pad-surface { border-color: #808080; }
+.touch-actions:has(.touch-shot) .touch-pad-surface { border-color: #808080; }
+.touch-look-cursor { pointer-events: none; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #808080; border: 1px solid #fff; opacity: 0; }
+.touch-tracking .touch-look-cursor { opacity: 1; }
+.touch-weapon-tray { position: absolute; left: calc(var(--picker-size) / -2); top: calc(var(--picker-size) / -2); width: var(--picker-size); height: var(--picker-size); border-radius: 50%; opacity: 0; visibility: hidden; pointer-events: none; transform: translate(var(--picker-shift), var(--picker-shift)) scale(0.94); transition: opacity 90ms ease-out, transform 140ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 140ms; }
+.touch-picker-open .touch-weapon-tray { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(var(--picker-shift), var(--picker-shift)) scale(1); transition: opacity 140ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s; }
+#touch-controls .touch-weapon-tray button { position: absolute; left: calc(50% + var(--item-x, 0px)); top: calc(50% + var(--item-y, 0px)); margin: calc(var(--satellite) / -2); width: var(--satellite); height: var(--satellite); padding: 8px; border-color: transparent; background: transparent; }
+#touch-controls .touch-weapon-tray button[aria-pressed="true"] { border-color: var(--control-line); background: #ffffff80; }
+#touch-controls [data-slot="0"] { --item-x: calc(-1 * var(--picker-x)); --item-y: calc(-1 * var(--picker-y)); }
+#touch-controls [data-slot="1"] { --item-x: var(--picker-x); --item-y: calc(-1 * var(--picker-y)); }
+#touch-controls [data-slot="2"] { --item-x: calc(-1 * var(--picker-x)); --item-y: var(--picker-y); }
+#touch-controls [data-slot="3"] { --item-x: var(--picker-x); --item-y: var(--picker-y); }
+#touch-controls [data-touch="slot"] svg { width: 32px; height: 32px; }
+#touch-controls .touch-weapon-tray :is([data-touch="drop"], [data-touch="close"]) { width: 44px; height: 44px; margin: -22px; }
+#touch-controls [data-touch="drop"] { --item-y: var(--picker-drop); }
+#touch-controls [data-touch="close"] svg { width: 22px; height: 22px; }
+.touch-zoom { position: absolute; top: max(78px, calc(env(safe-area-inset-top) + 64px)); right: max(var(--touch-edge), env(safe-area-inset-right)); display: flex; gap: 8px; }
+/* One centered status group stays separate from the thumb controls and Pause. */
+body[data-touch="true"] .mission-status { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); height: 44px; display: flex; align-items: center; gap: 14px; }
+body[data-touch="true"] .mission-vitals { position: static; width: 36px; height: 36px; }
+body[data-touch="true"] .mission-weapon { position: relative; inset: auto; width: 76px; height: 40px; display: flex; align-items: center; justify-content: center; gap: 4px; padding-left: 10px; border-left: 1px solid #bdbdbd; }
+body[data-touch="true"] .magazine-count { position: static; transform: none; font-size: 18px; }
+body[data-touch="true"] .magazine-icon { width: 30px; height: 40px; }
+body[data-touch="true"] .magazine-reload { right: -16px; top: 12px; margin: 0; width: 18px; height: 18px; }
+body[data-touch="true"] #action-prompt, body[data-touch="true"] .scope-lens small { display: none; }
+body[data-touch="true"] #mission-caption.visible-notice { bottom: auto; top: max(80px, calc(env(safe-area-inset-top) + 66px)); }
+.mission-touch-help { display: none; }
+body[data-touch="true"] .mission-touch-help { display: block; }
+body[data-touch="true"] .mission-keys { display: none; }
+body[data-touch="true"] .menu-back kbd { display: none; }
+.mission-touch-help dl { margin: 16px 0 0; }
+.mission-touch-help dl > div { padding: 10px 0; border-bottom: 1px solid #bdbdbd; }
+.mission-touch-help dt { font-weight: bold; margin-bottom: 4px; }
+.mission-touch-help dd { margin: 0; font-size: 13px; line-height: 1.5; color: #555; }
+@media (max-width: 540px) {
+  body[data-touch="true"] { --touch-edge: 16px; --look-size: 144px; --orbit: 114px; --diagonal: 81px; --satellite: 48px; --pad-inset: 98px; --stick-size: 124px; --picker-scale: 1.555556; }
+  .touch-knob { width: 48px; height: 48px; }
+  #touch-controls [data-touch="fire"] { width: 56px; height: 56px; }
+}
+/* Stagger the thumbs on narrow phones so Reload stays clear of movement. */
+@media (min-width: 360px) and (max-width: 389px) and (min-height: 501px) {
+  body[data-touch="true"] { --pad-bottom: 160px; }
+}
+@media (max-width: 359px) {
+  body[data-touch="true"] { --touch-edge: 8px; --look-size: 128px; --orbit: 104px; --diagonal: 74px; --satellite: 44px; --pad-inset: 90px; --stick-size: 102px; --pad-bottom: 130px; --picker-size: 200px; --picker-scale: 1.5625; --picker-shift: -12px; --picker-x: 50px; --picker-y: 32px; --picker-drop: 70px; }
+}
+@media (max-height: 500px) {
+  body[data-touch="true"] { --stick-bottom: 34px; --pad-bottom: 117px; }
+}
+body[data-reduced-motion="true"] #touch-controls button { transition: none; }
+body[data-reduced-motion="true"] #touch-controls button.touch-held { transform: none; }
+@media (prefers-reduced-motion: reduce) { #touch-controls button { transition: none; } }
+body[data-reduced-motion="true"] :is(.touch-pad-surface, .touch-combat, .touch-weapon-tray, .touch-knob) { transition: none; }
+@media (prefers-reduced-motion: reduce) { :is(.touch-pad-surface, .touch-combat, .touch-weapon-tray, .touch-knob) { transition: none; } }

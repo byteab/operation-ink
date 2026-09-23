@@ -35,7 +35,8 @@ body[data-mode="walk"] .inspection-help { display: none; }
 #walk-hud[data-playing="false"] .crosshair { display: none; }
 .walk-controls { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 22px; width: max-content; max-width: calc(100% - 32px); padding: 10px 16px; border: 0; border-top: 1px solid var(--ink-rule); border-radius: 0; background: #ffffffe8; font-size: 11px; color: var(--ink-muted); }
 .walk-controls kbd { margin-right: 4px; color: var(--ink); }
-#action-marker { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid var(--ink); border-radius: 50%; background: #ffffffe8; font-size: 22px; animation: interact-pulse 1.25s ease-in-out infinite; }
+#action-marker { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; width: 29px; height: 29px; padding: 0; line-height: 0; appearance: none; color: var(--ink); border: 1px solid var(--ink); border-radius: 50%; background: #ffffffe8; pointer-events: none; animation: interact-pulse 1.25s ease-in-out infinite; }
+#action-marker svg { display: block; width: 20px; height: 20px; pointer-events: none; }
 #action-prompt { position: absolute; top: calc(50% + 58px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #ffffffef; border: 1px solid var(--ink-rule); border-radius: 3px 5px 3px 4px; width: max-content; max-width: calc(100% - 32px); }
 #action-prompt kbd { display: grid; place-items: center; width: 24px; height: 26px; flex: 0 0 auto; border: 1px solid var(--ink); border-bottom-width: 2px; border-radius: 3px; font-size: 13px; }
 #action-prompt strong { display: block; font-size: 12px; font-weight: 500; }

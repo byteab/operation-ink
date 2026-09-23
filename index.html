@@ -2,7 +2,7 @@
 <html lang="en" data-loading>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="data:," />
     <title>Operation Safe Return — Stickman</title>
@@ -33,7 +33,7 @@
       <div class="walk-heading"><span class="walk-eyebrow">COMPOUND / EXPLORATION</span><span id="walk-status">On foot</span></div>
       <button id="inspect-mode" class="mode-button">Inspect map <span>↗</span></button>
       <div class="crosshair" aria-hidden="true"></div>
-      <div id="action-marker" aria-hidden="true" hidden></div>
+      <button type="button" id="action-marker" aria-label="Interact" aria-hidden="true" tabindex="-1" hidden></button>
       <div id="action-prompt" role="status" hidden><kbd>F</kbd><strong id="action-label"></strong></div>
       <div class="walk-controls"><span><kbd>W A S D</kbd> Walk</span><span><kbd>Shift</kbd> Sprint</span><span><kbd>Space</kbd> Jump</span><span><kbd>F</kbd> Interact</span><span><kbd>Esc</kbd> Pause</span></div>
       <div id="walk-pause">

@@ -421,6 +421,21 @@ export class MissionAudio {
     } else if (audible && !this.alarmSource) this.play({ kind: 'horn', position, radius: 100 })
   }
 
+  /** Non-positional UI feedback uses the same mute/volume bus, never AI hearing. */
+  controlTick(strong = false) {
+    const context = this.context
+    if (!context || !this.master || !this.active || this.muted || this.volume <= 0 || this.dying || this.disposed || !this.reserveSources(1)) return
+    const oscillator = context.createOscillator(), gain = context.createGain(), now = context.currentTime
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(strong ? 340 : 520, now)
+    oscillator.frequency.exponentialRampToValueAtTime(150, now + 0.035)
+    gain.gain.setValueAtTime(0.001, now)
+    gain.gain.exponentialRampToValueAtTime(0.065, now + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045)
+    oscillator.connect(gain).connect(this.master)
+    this.track(oscillator, [gain]); oscillator.start(now); oscillator.stop(now + 0.05)
+  }
+
   play(event: SoundEvent) {
     const context = this.context
     if (!context || !this.master || !this.active || this.muted || this.volume <= 0 || this.disposed) return

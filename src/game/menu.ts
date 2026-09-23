@@ -1,7 +1,22 @@
 import { missionObjective, type MissionState } from './mission'
+import { SENSITIVITY_LIMITS, type InputSettings, type SensitivityKey } from '../player/input-settings'
 
 type MenuPage = 'home' | 'mission' | 'controls' | 'settings' | 'vr' | 'restart'
-type MenuCallbacks = { retry: () => void; restart: () => void }
+export type MenuCallbacks = { retry: () => void; restart: () => void;
+  inputSettings: InputSettings; sensitivityChange: (key: SensitivityKey, value: number) => number;
+  invertLook: (input: 'mouse' | 'touch', inverted: boolean) => void }
+
+const sensitivitySlider = (key: SensitivityKey, label: string, settings: InputSettings) => {
+  const [min, max] = SENSITIVITY_LIMITS[key]
+  const value = settings[key]
+  const input = key === 'mouse' ? 'mouse' : 'touch'
+  const inverted = key === 'mouse' ? settings.invertMouse : settings.invertTouch
+  return `<div class="sensitivity-setting" data-input-settings="${key === 'mouse' ? 'mouse' : 'touch'}">
+    <label for="sensitivity-${key}">${label}<output id="sensitivity-${key}-value" for="sensitivity-${key}">${Math.round(value * 100)}%</output></label>
+    <input id="sensitivity-${key}" type="range" min="${min * 100}" max="${max * 100}" step="5" value="${Math.round(value * 100)}" />
+    ${key === 'move' ? '' : `<label class="look-inversion" for="invert-${input}">Invert vertical look <input id="invert-${input}" aria-label="Invert ${input} vertical look" type="checkbox" ${inverted ? 'checked' : ''} /></label>`}
+  </div>`
+}
 
 /** One decision at a time; reference material never blocks entering the game. */
 export class MissionMenu {
@@ -56,6 +71,16 @@ export class MissionMenu {
       <section data-menu-page="controls" hidden>
         <button class="menu-back" data-menu-back><span aria-hidden="true">←</span> Back <kbd>Esc</kbd></button>
         <h2 id="controls-page-title">Controls</h2>
+        <div class="mission-touch-help">
+          <p>Two thumbs. The whole mission.</p>
+          <dl>
+            <div><dt>Move &amp; run</dt><dd>Drag the left stick gently to walk. Push to the outer ring to run. Release to stop.</dd></div>
+            <div><dt>Look &amp; fire</dt><dd>Drag the right stick and hold to keep turning. A small move turns slowly; a full move turns quickly. Hold its center to fire while steering. Release to stop turning. The sight icon toggles aiming.</dd></div>
+            <div><dt>Reload &amp; weapons</dt><dd>The circular arrow appears when you can reload. The gun icon expands the right pad into weapon choices. Select a gun, drop it, or tap the center X to return. Scope zoom appears when scoped in.</dd></div>
+            <div><dt>Jump &amp; interact</dt><dd>The jumping figure always jumps. Tap the circle on a door, ladder, pickup or mission control to use it.</dd></div>
+            <div><dt>Map &amp; pause</dt><dd>The top-right pause icon opens the menu. Choose Mission for the map.</dd></div>
+          </dl>
+        </div>
         <dl class="mission-keys">
           <div><dt>Move</dt><dd><kbd>W A S D</kbd></dd></div>
           <div><dt>Look</dt><dd><kbd>Mouse</kbd></dd></div>
@@ -76,10 +101,16 @@ export class MissionMenu {
         <button class="menu-back" data-menu-back><span aria-hidden="true">←</span> Back <kbd>Esc</kbd></button>
         <h2 id="settings-page-title">Settings</h2>
         <div class="mission-settings">
+          ${sensitivitySlider('mouse', 'Mouse sensitivity', callbacks.inputSettings)}
+          ${sensitivitySlider('move', 'Left stick sensitivity', callbacks.inputSettings)}
+          ${sensitivitySlider('look', 'Right stick sensitivity', callbacks.inputSettings)}
           <label class="mission-volume-label" for="mission-volume">Volume <output id="mission-volume-value" for="mission-volume">55%</output></label>
           <input id="mission-volume" type="range" min="0" max="100" value="55" />
           <label for="mission-mute">Mute <input id="mission-mute" type="checkbox" /></label>
           <label for="mission-motion">Reduced motion <input id="mission-motion" type="checkbox" ${reducedMotion ? 'checked' : ''} /></label>
+          <label for="mission-touch">Touch controls <input id="mission-touch" type="checkbox" /></label>
+          <label for="mission-haptics">Touch vibration <input id="mission-haptics" type="checkbox" checked /></label>
+          <p class="touch-feedback-note">Vibration works on supported devices. Button sounds follow Volume and Mute. Reduced motion also turns off vibration.</p>
         </div>
       </section>
       <section data-menu-page="vr" hidden>
@@ -106,6 +137,19 @@ export class MissionMenu {
     this.retry = this.element('#mission-retry')
     this.restart = this.element('#mission-restart')
     const options = { signal: this.abort.signal }
+    for (const key of ['mouse', 'move', 'look'] as const) {
+      this.element(`#sensitivity-${key}`).addEventListener('input', event => {
+        const input = event.target as HTMLInputElement
+        const value = Math.round(callbacks.sensitivityChange(key, Number(input.value) / 100) * 100)
+        input.value = String(value)
+        this.element(`#sensitivity-${key}-value`).textContent = `${value}%`
+      }, options)
+    }
+    for (const input of ['mouse', 'touch'] as const) {
+      this.element(`#invert-${input}`).addEventListener('change', event => {
+        callbacks.invertLook(input, (event.target as HTMLInputElement).checked)
+      }, options)
+    }
     this.card.querySelectorAll<HTMLElement>('[data-menu-open]').forEach(button => {
       button.addEventListener('click', () => this.show(button.dataset.menuOpen as MenuPage, button), options)
     })

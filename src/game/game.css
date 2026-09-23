@@ -63,6 +63,12 @@ body[data-mission="true"] .walk-card .mission-tips p { font-size: 13px; margin: 
 .mission-settings input[type="range"] { width: 100%; margin: 0 0 24px; height: 24px; accent-color: var(--ink); }
 .mission-settings input[type="checkbox"] { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); }
 .mission-settings label:has([type="checkbox"]) { border-top: 1px solid #ededed; }
+.sensitivity-setting { border-bottom: 1px solid #ededed; }
+.mission-settings .sensitivity-setting label { min-height: 44px; }
+.mission-settings .sensitivity-setting input[type="range"] { height: 44px; margin-bottom: 8px; }
+.mission-settings .look-inversion { min-height: 48px; border-top: 0; }
+[data-input-settings="touch"], body[data-touch="true"] [data-input-settings="mouse"] { display: none; }
+body[data-touch="true"] [data-input-settings="touch"] { display: block; }
 body[data-mission="true"] #vr-panel { position: static; width: 100%; max-width: none; padding: 0; border: 0; background: transparent; }
 body[data-mission="true"] #vr-panel .walk-eyebrow { display: none; }
 body[data-mission="true"] #vr-enter { margin-top: 24px; text-align: left; }

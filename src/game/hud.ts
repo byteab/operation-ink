@@ -4,7 +4,7 @@ import { WEAPON_RULES } from './balance'
 import type { MissionWorld, WeaponItem } from './types'
 import './game.css'
 import { IncomingFire } from './incoming-fire'
-import { MissionMenu } from './menu'
+import { MissionMenu, type MenuCallbacks } from './menu'
 import type { PlayerDeathSequence } from './player-death'
 import type { EscapeCinematic } from './escape-cinematic'
 
@@ -44,7 +44,7 @@ export class MissionHUD {
   private threatLabel: HTMLElement
   reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  constructor(world: MissionWorld, callbacks: { retry: () => void; restart: () => void; volume: (value: number) => void; mute: (value: boolean) => void }) {
+  constructor(world: MissionWorld, callbacks: MenuCallbacks & { volume: (value: number) => void; mute: (value: boolean) => void }) {
     document.body.dataset.mission = 'true'
     document.body.dataset.reducedMotion = String(this.reducedMotion)
     document.title = 'Operation Safe Return — Stickman'
@@ -58,6 +58,7 @@ export class MissionHUD {
     this.root.id = 'mission-hud'
     this.root.innerHTML = `
       <div id="mission-caption" role="status"></div>
+      <div class="mission-status">
       <div class="mission-vitals" id="mission-health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
         <svg viewBox="0 0 64 64" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
           <defs><path id="hud-heart" d="M32 56C27 52 7 38 7 23C7 8 24 3 32 17C41 3 57 8 57 23C57 38 37 53 32 56Z"/><clipPath id="hud-heart-clip"><use href="#hud-heart"/></clipPath></defs>
@@ -81,6 +82,7 @@ export class MissionHUD {
         <svg class="magazine-reload" viewBox="0 0 24 24" aria-hidden="true" hidden fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 10A8 8 0 0 0 6 6L3 9M3 4V9H8M4 14A8 8 0 0 0 18 18L21 15M16 15H21V20"/>
         </svg>
+      </div>
       </div>
       <div class="mission-damage" aria-hidden="true"></div>`
     document.body.append(this.root)
