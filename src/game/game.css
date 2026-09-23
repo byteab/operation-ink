@@ -1,4 +1,9 @@
 body[data-mission="true"] { color: var(--ink-deep); font-family: var(--notes); }
+/* The game owns gestures; paused menus still allow vertical scrolling. */
+html:has(body[data-mission="true"]), body[data-mission="true"], body[data-mission="true"] #walk-pause { overscroll-behavior: none; }
+body[data-mission="true"], body[data-mission="true"] #walk-pause { touch-action: pan-y; }
+body[data-mission="true"]:has(#walk-hud[data-playing="true"]) { touch-action: none; }
+body[data-mission="true"], body[data-mission="true"] * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
 .mission-escape { position: fixed; inset: 0; z-index: 5; background: #000; pointer-events: none; }
 body[data-escape] #walk-hud { z-index: 6; }
 body[data-escape] #walk-hud > :not(#walk-pause), body[data-escape] #mission-hud,

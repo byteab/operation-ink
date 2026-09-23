@@ -6,6 +6,9 @@ import { GAIT_SPEED } from '../lab/gait'
 export const ENEMY_RUN_SPEED = GAIT_SPEED.run * 1.5
 export const HOSTAGE_RUN_SPEED = 2.6
 
+/** Touch movement makes enemy fire harder to evade. Keep the health bar at 100. */
+export const TOUCH_PLAYER_BULLET_DAMAGE_MULTIPLIER = 0.5
+
 /** Aim radii are fractions of the viewport's shorter half-dimension. */
 export const TOUCH_AIM_ASSIST = {
   acquireRadius: 0.16,

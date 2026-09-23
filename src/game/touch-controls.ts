@@ -106,6 +106,17 @@ export class TouchControls {
       this.root.addEventListener(event, e => this.release((e as PointerEvent).pointerId, event !== 'pointerup'), opts)
     }
     this.root.addEventListener('contextmenu', e => e.preventDefault(), opts)
+    // Pointer-event cancellation alone does not suppress every Safari touch
+    // default. These surfaces already act on pointers, so need no emulated click.
+    const preventBrowserGesture = (event: Event) => { if (player.touchMode && event.cancelable) event.preventDefault() }
+    for (const surface of [this.root, document.querySelector('#world')!]) {
+      for (const event of ['touchstart', 'touchmove', 'touchend']) {
+        surface.addEventListener(event, preventBrowserGesture, { ...opts, passive: false })
+      }
+    }
+    for (const event of ['gesturestart', 'gesturechange', 'dblclick', 'selectstart', 'dragstart', 'contextmenu']) {
+      document.addEventListener(event, preventBrowserGesture, { ...opts, passive: false })
+    }
     this.root.addEventListener('click', e => {
       e.preventDefault()
       if (e.detail || (e as PointerEvent).pointerType || !this.active) return

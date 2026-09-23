@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { BulletTrails } from './bullet-trails'
-import { fallDamage, WEAPON_RULES } from './balance'
+import { fallDamage, TOUCH_PLAYER_BULLET_DAMAGE_MULTIPLIER, WEAPON_RULES } from './balance'
 import type { EnvironmentCamera } from '../camera'
 import type { FirstPersonController } from '../player/controller'
 import type { ActionTarget } from '../player/actions'
@@ -331,7 +331,8 @@ export class MissionRuntime {
   }
 
   damage(amount: number, source?: THREE.Vector3, hit?: PlayerBulletHit) {
-    if (this.invincible || !this.isActive() || !damageMission(this.state,amount)) return
+    const healthDamage = this.player.touchMode && (source || hit) ? amount * TOUCH_PLAYER_BULLET_DAMAGE_MULTIPLIER : amount
+    if (this.invincible || !this.isActive() || !damageMission(this.state,healthDamage)) return
     if (this.state.phase !== 'dead' && !this.hud.reducedMotion) {
       const point = this.player.body.position.clone().add(new THREE.Vector3(0, 1.17, 0))
       this.playerHits.hit(hit ?? { region: source ? 'torso' : 'leg', side: 0, point,

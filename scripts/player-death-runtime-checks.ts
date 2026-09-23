@@ -7,6 +7,7 @@ import { PlayerHitReactions } from '../src/game/player-hit-reactions'
 import { EscapeCinematic } from '../src/game/escape-cinematic'
 import { PlayerBody } from '../src/player/body'
 import { CollisionWorld } from '../src/player/collision'
+import { ENEMY_WEAPONS } from '../src/game/balance'
 
 // Exercise the real mission update/damage/restore methods. Collaborators are
 // deliberately small so this checks the lifecycle without a browser or GPU.
@@ -23,7 +24,7 @@ let fatalKick = 0
 let worldTime = 0, effectTime = 0, trailTime = 0
 const body = { position: new THREE.Vector3(), velocity: new THREE.Vector3(), grounded: true,
   teleport(point: THREE.Vector3) { this.position.copy(point) } }
-const player = { enabled: true, immersive: false, playing: true, body, movementLocked: false,
+const player = { enabled: true, immersive: false, playing: true, touchMode: false, body, movementLocked: false,
   world: { floor: () => 0, fits: () => true, refresh: noop },
   actions: { traversing: false, climbing: false, doors: [], reset: noop, syncCamera: () => camera.position.copy(body.position).add(new THREE.Vector3(0, 1.68, 0)) },
   pause() { paused++; this.playing = false },
@@ -87,6 +88,34 @@ assert(fatalKick > 0 && fatalKick === m.death.hitKick, 'Even a one-point fatal b
 player.enabled = false; m.update(1 / 60)
 assert(!m.death.active && !audioActive && deathResets === 2, 'Inspection clears the cinematic and sound')
 console.log('PASS Real runtime lethal-frame handoff, one-shot damage/audio, continued rendering, hidden-tab pause, menu completion, retry and inspection cleanup')
+
+// Test health loss through the runtime, including fractional rounds and restores.
+for (const touchMode of [false, true]) {
+  player.touchMode = touchMode
+  for (const [weapon, rules] of Object.entries(ENEMY_WEAPONS)) {
+    m.retry(); player.enabled = true; player.playing = true
+    m.damage(rules.damage, new THREE.Vector3(0, 1, -5))
+    assert.equal(m.state.health, 100 - rules.damage * (touchMode ? 0.5 : 1), `${weapon} damage in ${touchMode ? 'touch' : 'desktop'} mode`)
+  }
+}
+m.retry(); player.playing = true
+m.damage(9, undefined, { region: 'torso', side: 0, point: new THREE.Vector3(), direction: new THREE.Vector3(0, 0, 1) })
+assert.equal(m.state.health, 95.5, 'Bullet hit metadata also identifies gunfire without a source position')
+m.damage(20)
+assert.equal(m.state.health, 75.5, 'Touch assistance does not reduce fall damage')
+player.touchMode = false; m.damage(9, new THREE.Vector3(0, 1, -5))
+assert.equal(m.state.health, 66.5, 'Switching to mouse controls immediately restores normal damage')
+player.touchMode = true; m.state.health = 9
+m.damage(9, new THREE.Vector3(0, 1, -5))
+assert.equal(m.state.health, 4.5); assert.equal(m.state.phase, 'active')
+m.damage(9, new THREE.Vector3(0, 1, -5))
+assert.equal(m.state.health, 0); assert.equal(m.state.phase, 'dead')
+m.retry(); player.playing = true
+assert.equal(m.state.health, 100)
+m.damage(9, new THREE.Vector3(0, 1, -5))
+assert.equal(m.state.health, 95.5, 'Retry retains touch assistance without changing maximum health')
+player.touchMode = false
+console.log('PASS Every enemy weapon deals half damage on touch, with exact fractional damage, lethal hits, input switching and retry')
 
 // Run actual falling physics through the runtime, including the contact frame.
 const floorScene = new THREE.Group()

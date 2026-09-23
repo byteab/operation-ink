@@ -49,6 +49,20 @@
     check(visible(control('aim')) && visible(control('jump')), 'Aim and Jump have dedicated persistent buttons')
     check(!visible(control('reload')) && !visible(control('use')), 'A full magazine and no nearby target hide Reload and Interact')
     check([...$('#touch-controls').querySelectorAll('button')].filter(visible).length === 5, 'Only applicable actions are visible around the pad')
+    check(getComputedStyle(document.body).touchAction === 'none', 'The entire playing surface blocks browser pan and zoom')
+    for (const el of [control('fire'), control('fire').querySelector('svg'), $('.mission-vitals'), $('.magazine-count')]) {
+      check(getComputedStyle(el).userSelect === 'none', 'Controls, SVG icons and HUD text cannot be selected')
+    }
+    const browserEvent = (el, type) => {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      el.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    for (const el of [control('fire'), $('#world')]) {
+      for (const type of ['touchstart', 'touchmove', 'touchend', 'dblclick', 'gesturestart', 'gesturechange', 'selectstart', 'dragstart', 'contextmenu']) {
+        check(browserEvent(el, type), `${type} browser default is cancelled on ${el.id || 'Fire'}`)
+      }
+    }
     const positions = ['weapon', 'aim', 'jump'].map(name => point(control(name)))
     for (const name of ['move', 'look', 'fire', 'jump', 'aim', 'weapon', 'pause']) {
       const el = control(name), b = el.getBoundingClientRect()
@@ -246,6 +260,7 @@
     check(visible(control('aim')) && visible(control('jump')) && !visible(control('reload')), 'Aim and Jump stay visible when unarmed; Reload stays hidden')
     tap(control('pause')); $('[data-menu-open="mission"]').click()
     check(!p.playing && $('.walk-card').dataset.page === 'mission' && !visible($('#touch-controls')), 'The map remains reachable through Pause without an extra gameplay button')
+    check(getComputedStyle($('#walk-pause')).touchAction === 'pan-y' && !browserEvent($('.walk-card'), 'touchmove'), 'Paused menus retain native scrolling without browser zoom')
     $('[data-menu-page="mission"] [data-menu-back]').click()
     resume()
     pointer(stick, 'pointerdown', 1, { x: origin.x + radius, y: origin.y })
@@ -290,6 +305,7 @@
     check(p.playing && m.state.health === 100 && visible($('#touch-controls')) && p.touchMove.x === 0 && !m.aiming, 'Retry restores touch play without stale movement or aim')
     tap(control('pause')); $('[data-menu-open="settings"]').click(); $('#mission-touch').click()
     check(!p.touchMode && !visible($('#touch-controls')) && document.body.dataset.touch === 'false', 'Touch mode can be turned off for keyboard/mouse play')
+    check(!browserEvent($('#world'), 'touchend') && !browserEvent($('#world'), 'gesturestart'), 'Touch event fallbacks switch off with touch mode')
     return { passed: results.length, results }
   } finally {
     m.ai.update = original.ai; m.invincible = original.invincible
